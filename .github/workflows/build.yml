@@ -95,8 +95,6 @@ jobs:
         with:
           targets: ${{ matrix.target }}-${{ matrix.cuda }}
           push: true
-          set: |
-            *.tags: ${{ steps.date.outputs.date }}-${{ matrix.target }}-${{ matrix.cuda }}
 
       - name: Build summary
         if: env.SKIP_BUILD != 'true'

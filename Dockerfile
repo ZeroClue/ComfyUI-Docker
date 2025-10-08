@@ -95,8 +95,14 @@ RUN if [ -z "$SKIP_CUSTOM_NODES" ]; then \
 # Install Runpod CLI
 #RUN wget -qO- cli.runpod.net | sudo bash
 
-# Install code-server
-RUN curl -fsSL https://code-server.dev/install.sh | sh
+# Install code-server (optional - can be skipped with build argument)
+ARG INSTALL_CODE_SERVER=true
+RUN if [ "$INSTALL_CODE_SERVER" = "true" ]; then \
+        echo "Installing code-server..." && \
+        curl -fsSL https://code-server.dev/install.sh | sh; \
+    else \
+        echo "Skipping code-server installation."; \
+    fi
 
 EXPOSE 22 3000 8080 8888
 

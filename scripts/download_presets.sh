@@ -152,6 +152,43 @@ for preset in "${PRESETS[@]}"; do
             download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors" "/workspace/ComfyUI/models/vae"
             download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_s2v_14B_fp8_scaled.safetensors" "/workspace/ComfyUI/models/diffusion_models"
             ;;
+        # ZeroClue Custom Presets
+        WAN_22_5B_TIV2)
+            echo "Preset: WAN_22_5B_TIV2 (ZeroClue Custom)"
+            download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors" "/workspace/ComfyUI/models/text_encoders"
+            download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors" "/workspace/ComfyUI/models/vae"
+            download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors" "/workspace/ComfyUI/models/diffusion_models"
+            ;;
+        WAN_22_5B_TIV2_GGUF_Q8_0)
+            echo "Preset: WAN_22_5B_TIV2_GGUF_Q8_0 (ZeroClue Custom)"
+            download_if_missing "https://huggingface.co/city96/umt5-xxl-encoder-gguf/resolve/main/umt5-xxl-encoder-Q8_0.gguf" "/workspace/ComfyUI/models/text_encoders"
+            download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors" "/workspace/ComfyUI/models/vae"
+            download_if_missing "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_ti2v_5B_Q8_0.gguf" "/workspace/ComfyUI/models/diffusion_models"
+            ;;
+        WAN_22_5B_TIV2_GGUF_Q6_K)
+            echo "Preset: WAN_22_5B_TIV2_GGUF_Q6_K (ZeroClue Custom)"
+            download_if_missing "https://huggingface.co/city96/umt5-xxl-encoder-gguf/resolve/main/umt5-xxl-encoder-Q6_K.gguf" "/workspace/ComfyUI/models/text_encoders"
+            download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors" "/workspace/ComfyUI/models/vae"
+            download_if_missing "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_ti2v_5B_Q6_K.gguf" "/workspace/ComfyUI/models/diffusion_models"
+            ;;
+        WAN_22_5B_TIV2_GGUF_Q5_K_M)
+            echo "Preset: WAN_22_5B_TIV2_GGUF_Q5_K_M (ZeroClue Custom)"
+            download_if_missing "https://huggingface.co/city96/umt5-xxl-encoder-gguf/resolve/main/umt5-xxl-encoder-Q5_K_M.gguf" "/workspace/ComfyUI/models/text_encoders"
+            download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors" "/workspace/ComfyUI/models/vae"
+            download_if_missing "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_ti2v_5B_Q5_K_M.gguf" "/workspace/ComfyUI/models/diffusion_models"
+            ;;
+        WAN_22_5B_TIV2_GGUF_Q4_K_M)
+            echo "Preset: WAN_22_5B_TIV2_GGUF_Q4_K_M (ZeroClue Custom)"
+            download_if_missing "https://huggingface.co/city96/umt5-xxl-encoder-gguf/resolve/main/umt5-xxl-encoder-Q4_K_M.gguf" "/workspace/ComfyUI/models/text_encoders"
+            download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors" "/workspace/ComfyUI/models/vae"
+            download_if_missing "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_ti2v_5B_Q4_K_M.gguf" "/workspace/ComfyUI/models/diffusion_models"
+            ;;
+        WAN_22_5B_TIV2_FP8_E4M3FN)
+            echo "Preset: WAN_22_5B_TIV2_FP8_E4M3FN (ZeroClue Custom)"
+            download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors" "/workspace/ComfyUI/models/text_encoders"
+            download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors" "/workspace/ComfyUI/models/vae"
+            download_if_missing "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_ti2v_5B_fp8_e4m3fn.safetensors" "/workspace/ComfyUI/models/diffusion_models"
+            ;;
         *)
             echo "No matching preset for '${preset}', skipping."
             ;;

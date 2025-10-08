@@ -1,0 +1,146 @@
+# Git ignore file for ComfyUI-Docker project
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Project analysis and documentation
+.zeroclue/
+
+# OS generated files
+.DS_Store?
+ehthumbs.db
+Icon?
+._*
+
+# Logs and runtime files
+*.log
+logs/
+workspace/ComfyUI/output/
+workspace/ComfyUI/input/
+workspace/ComfyUI/user/
+workspace/ComfyUI/temp/
+workspace/ComfyUI/models/checkpoints/*.safetensors
+workspace/ComfyUI/models/checkpoints/*.ckpt
+workspace/ComfyUI/models/diffusion_models/*.safetensors
+workspace/ComfyUI/models/diffusion_models/*.bin
+workspace/ComfyUI/models/text_encoders/*.safetensors
+workspace/ComfyUI/models/text_encoders/*.bin
+workspace/ComfyUI/models/vae/*.safetensors
+workspace/ComfyUI/models/vae/*.bin
+workspace/ComfyUI/models/loras/*.safetensors
+workspace/ComfyUI/models/loras/*.pt
+workspace/ComfyUI/models/loras/*.pth
+workspace/ComfyUI/models/upscale_models/*.safetensors
+workspace/ComfyUI/models/upscale_models/*.pth
+workspace/ComfyUI/models/audio_encoders/*.safetensors
+workspace/ComfyUI/models/audio_encoders/*.bin
+workspace/.cache/
+workspace/tmp/
+workspace/logs/
+
+# Environment and configuration files
+.env
+.env.local
+.env.production
+.env.staging
+config.json
+settings.json
+
+# Docker related
+docker-compose.override.yml
+.dockerignore.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Node.js (if any frontend tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+
+# SSH keys and certificates
+*.pem
+*.key
+*.crt
+*.p12
+id_rsa*
+id_ed25519*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Build artifacts
+build/
+dist/
+target/
+*.tar.gz
+*.zip
+
+# Test coverage
+coverage/
+.coverage
+.nyc_output
+htmlcov/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath
+*.sage.py
+
+# Spyder
+.spyderproject
+.spyproject
+
+# Rope
+.ropeproject
+
+# mkdocs
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/

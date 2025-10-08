@@ -1,10 +1,12 @@
-[![Build and Push Docker Images](https://github.com/somb1/ComfyUI-Docker/actions/workflows/build.yml/badge.svg)](https://github.com/somb1/ComfyUI-Docker/actions/workflows/build.yml)
+# ZeroClue ComfyUI-Docker
 
 > 🔄 **Auto-updated every 8 hours** to always include the latest version.
 
-> 💬 Feedback & Issues → [GitHub Issues](https://github.com/somb1/ComfyUI-Docker/issues)
+> 💬 Feedback & Issues → [GitHub Issues](https://github.com/ZeroClue/ComfyUI-Docker/issues)
 
-> 🚀 This Docker image was originally built for running on RunPod, but it can also be used on your local machine. See the [Local Setup Guide(WiP)](https://github.com/somb1/ComfyUI-Docker/wiki/Running-on-Local).
+> 🚀 This Docker image is maintained by ZeroClue and designed for both cloud deployment and local use.
+
+> 🌟 **Original Project**: This is a customised fork of the excellent [somb1/ComfyUI-Docker](https://github.com/somb1/ComfyUI-Docker) project. All credit goes to the original maintainers for creating this powerful ComfyUI distribution.
 
 ## 🔌 Exposed Ports
 
@@ -20,26 +22,30 @@
 ## 🏷️ Tag Format
 
 ```text
-sombi/comfyui:(A)-torch2.8.0-(B)
+zeroclue/comfyui:(A)-torch2.8.0-(B)
 ```
 
-* **(A)**: `slim` or `base`
-  * `slim`: ComfyUI + Manager only
-  * `base`: slim + pre-installed custom nodes
+* **(A)**: `base`, `slim`, or `minimal`
+  * `base`: ComfyUI + Manager + custom nodes + code-server
+  * `slim`: ComfyUI + Manager + code-server (no custom nodes)
+  * `minimal`: ComfyUI + Manager only (no custom nodes, no code-server)
 * **(B)**: CUDA version → `cu124`, `cu126`, `cu128`
 
 ---
 
 ## 🧱 Image Variants
 
-| Image Name                            | Custom Nodes | CUDA |
-| ------------------------------------- | ------------ | ---- |
-| `sombi/comfyui:base-torch2.8.0-cu124` | ✅ Yes        | 12.4 |
-| `sombi/comfyui:base-torch2.8.0-cu126` | ✅ Yes        | 12.6 |
-| `sombi/comfyui:base-torch2.8.0-cu128` | ✅ Yes        | 12.8 |
-| `sombi/comfyui:slim-torch2.8.0-cu124` | ❌ No         | 12.4 |
-| `sombi/comfyui:slim-torch2.8.0-cu126` | ❌ No         | 12.6 |
-| `sombi/comfyui:slim-torch2.8.0-cu128` | ❌ No         | 12.8 |
+| Image Name                            | Custom Nodes | Code Server | CUDA |
+| ------------------------------------- | ------------ | ----------- | ---- |
+| `zeroclue/comfyui:base-torch2.8.0-cu124` | ✅ Yes        | ✅ Yes      | 12.4 |
+| `zeroclue/comfyui:base-torch2.8.0-cu126` | ✅ Yes        | ✅ Yes      | 12.6 |
+| `zeroclue/comfyui:base-torch2.8.0-cu128` | ✅ Yes        | ✅ Yes      | 12.8 |
+| `zeroclue/comfyui:slim-torch2.8.0-cu124` | ❌ No         | ✅ Yes      | 12.4 |
+| `zeroclue/comfyui:slim-torch2.8.0-cu126` | ❌ No         | ✅ Yes      | 12.6 |
+| `zeroclue/comfyui:slim-torch2.8.0-cu128` | ❌ No         | ✅ Yes      | 12.8 |
+| `zeroclue/comfyui:minimal-torch2.8.0-cu124` | ❌ No         | ❌ No       | 12.4 |
+| `zeroclue/comfyui:minimal-torch2.8.0-cu126` | ❌ No         | ❌ No       | 12.6 |
+| `zeroclue/comfyui:minimal-torch2.8.0-cu128` | ❌ No         | ❌ No       | 12.8 |
 
 > 👉 To switch: **Edit Pod/Template** → set `Container Image`.
 
@@ -50,6 +56,7 @@ sombi/comfyui:(A)-torch2.8.0-(B)
 | Variable                | Description                                                                | Default   |
 | ----------------------- | -------------------------------------------------------------------------- | --------- |
 | `ACCESS_PASSWORD`       | Password for JupyterLab & code-server                                      | (unset)   |
+| `ENABLE_CODE_SERVER`    | Enable/disable code-server (VS Code web IDE) (`True`/`False`)             | `True`    |
 | `TIME_ZONE`             | [Timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (e.g., `Asia/Seoul`)   | `Etc/UTC` |
 | `COMFYUI_EXTRA_ARGS`    | Extra ComfyUI options (e.g. `--fast`)                        | (unset)   |
 | `INSTALL_SAGEATTENTION` | Install [SageAttention2](https://github.com/thu-ml/SageAttention) on start (`True`/`False`) | `False`    |

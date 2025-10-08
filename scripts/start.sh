@@ -100,6 +100,12 @@ start_jupyter() {
 
 # Start code-server
 start_code_server() {
+    # Check if code-server should be started (default: true)
+    if [[ "${ENABLE_CODE_SERVER,,}" == "false" ]]; then
+        echo "code-server is disabled (ENABLE_CODE_SERVER=false). Skipping startup."
+        return
+    fi
+
     echo "Starting code-server..."
     mkdir -p /workspace/logs
 

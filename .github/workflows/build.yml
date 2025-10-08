@@ -1,9 +1,25 @@
-name: Build and Push Docker Images
+name: Build and Push ZeroClue Docker Images
 
 on:
   workflow_dispatch:
+    inputs:
+      targets:
+        description: 'Build targets (comma-separated): base,slim,minimal'
+        required: false
+        default: 'base,slim,minimal'
+      cuda_versions:
+        description: 'CUDA versions (comma-separated): 12-4,12-5,12-6,12-8,12-9,13-0'
+        required: false
+        default: '12-6,12-8'
   schedule:
     - cron: "0 */8 * * *"
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'docker-bake.hcl'
+      - 'scripts/**'
+      - 'custom_nodes.txt'
 
 jobs:
   bake:
@@ -11,8 +27,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [base, slim]
-        cuda: [12-4, 12-6, 12-8]
+        target: ${{ github.event.inputs.targets != '' && fromJson(format('["{0}"]', replace(github.event.inputs.targets, ',', '","'))) || fromJson('["base","slim","minimal"]') }}
+        cuda: ${{ github.event.inputs.cuda_versions != '' && fromJson(format('["{0}"]', replace(github.event.inputs.cuda_versions, ',', '","'))) || fromJson('["12-6","12-8"]) }}
     steps:
       - name: Maximize build space
         uses: AdityaGarg8/remove-unwanted-software@v5
@@ -38,8 +54,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
       - name: Build and push
         uses: docker/bake-action@v6
         with:
           targets: ${{ matrix.target }}-${{ matrix.cuda }}
           push: true
+          set: |
+            *.tags: ${{ steps.date.outputs.date }}-${{ matrix.target }}-${{ matrix.cuda }}
+
+      - name: Build summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target**: ${{ matrix.target }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **CUDA Version**: ${{ matrix.cuda }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository**: zeroclue/comfyui" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Date**: ${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY

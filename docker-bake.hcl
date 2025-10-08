@@ -1,5 +1,5 @@
 variable "DOCKERHUB_REPO_NAME" {
-    default = "sombi/comfyui"
+    default = "zeroclue/comfyui"
 }
 
 variable "PYTHON_VERSION" {
@@ -24,6 +24,7 @@ target "_common" {
     args = {
         PYTHON_VERSION     = PYTHON_VERSION
         TORCH_VERSION      = TORCH_VERSION
+        INSTALL_CODE_SERVER = "true"
     }
 }
 
@@ -78,6 +79,12 @@ target "_cu130" {
 target "_no_custom_nodes" {
     args = {
         SKIP_CUSTOM_NODES = "1"
+    }
+}
+
+target "_no_code_server" {
+    args = {
+        INSTALL_CODE_SERVER = "false"
     }
 }
 
@@ -139,4 +146,35 @@ target "slim-12-9" {
 target "slim-13-0" {
     inherits = ["_cu130", "_no_custom_nodes"]
     tags = tag("slim", "cu130")
+}
+
+# Minimal images without code-server
+target "minimal-12-4" {
+    inherits = ["_cu124", "_no_custom_nodes", "_no_code_server"]
+    tags = tag("minimal", "cu124")
+}
+
+target "minimal-12-5" {
+    inherits = ["_cu125", "_no_custom_nodes", "_no_code_server"]
+    tags = tag("minimal", "cu125")
+}
+
+target "minimal-12-6" {
+    inherits = ["_cu126", "_no_custom_nodes", "_no_code_server"]
+    tags = tag("minimal", "cu126")
+}
+
+target "minimal-12-8" {
+    inherits = ["_cu128", "_no_custom_nodes", "_no_code_server"]
+    tags = tag("minimal", "cu128")
+}
+
+target "minimal-12-9" {
+    inherits = ["_cu129", "_no_custom_nodes", "_no_code_server"]
+    tags = tag("minimal", "cu129")
+}
+
+target "minimal-13-0" {
+    inherits = ["_cu130", "_no_custom_nodes", "_no_code_server"]
+    tags = tag("minimal", "cu130")
 }

@@ -1,5 +1,5 @@
 # Set the base image
-ARG BASE_IMAGE
+ARG BASE_IMAGE=nvidia/cuda:12.6.3-devel-ubuntu24.04
 FROM ${BASE_IMAGE}
 
 # Set the shell and enable pipefail for better error handling
@@ -126,8 +126,10 @@ COPY --chmod=755 scripts/download_presets.sh /
 COPY --chmod=755 scripts/install_custom_nodes.sh /
 
 # Welcome Message
-COPY logo/runpod.txt /etc/runpod.txt
-RUN echo 'cat /etc/runpod.txt' >> /root/.bashrc
+#COPY logo/runpod.txt /etc/runpod.txt
+#RUN echo 'cat /etc/runpod.txt' >> /root/.bashrc
+COPY logo/zeroclue.txt /etc/zeroclue.txt
+RUN echo 'cat /etc/zeroclue.txt' >> /root/.bashrc
 RUN echo 'echo -e "\nFor detailed documentation and guides, please visit:\n\033[1;34mhttps://docs.runpod.io/\033[0m and \033[1;34mhttps://blog.runpod.io/\033[0m\n\n"' >> /root/.bashrc
 
 # Set entrypoint to the start script

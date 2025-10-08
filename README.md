@@ -80,7 +80,7 @@ zeroclue/comfyui:(A)-torch2.8.0-(B)
 bash /download_presets.sh PRESET1,PRESET2,...
 ```
 
-> 👉 To see which presets are available and view the download list for each, check the [Wiki](https://github.com/somb1/ComfyUI-Docker/wiki/PRESET_DOWNLOAD).
+> 👉 To see which presets are available and view the download list for each, check the [Wiki](https://github.com/ZeroClue/ComfyUI-Docker/wiki/PRESET_DOWNLOAD).
 
 ---
 
@@ -129,4 +129,4 @@ bash /download_presets.sh PRESET1,PRESET2,...
 * ComfyUI-VideoHelperSuite
 * ComfyUI-wanBlockswap
 
-> 👉 More details in the [Wiki](https://github.com/somb1/ComfyUI-Docker/wiki/Custom-Nodes).
+> 👉 More details in the [Wiki](https://github.com/ZeroClue/ComfyUI-Docker/wiki/Custom-Nodes).

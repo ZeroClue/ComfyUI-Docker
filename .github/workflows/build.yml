@@ -11,8 +11,8 @@ on:
         description: 'CUDA versions (comma-separated): 12-4,12-5,12-6,12-8,12-9,13-0'
         required: false
         default: '12-6,12-8'
-  schedule:
-    - cron: "0 */8 * * *"
+  # schedule:
+  #   - cron: "0 */8 * * *"
   push:
     branches: [main]
     paths:

@@ -1,19 +1,75 @@
-# Set the base image
+# ==========================================
+# Multi-stage build for optimized Docker images
+# ==========================================
+
+# Set the base images for different stages
 ARG BASE_IMAGE=nvidia/cuda:12.6.3-devel-ubuntu24.04
-FROM ${BASE_IMAGE}
+ARG RUNTIME_BASE_IMAGE=nvidia/cuda:12.6.3-runtime-ubuntu24.04
+
+# ==========================================
+# Builder Stage - Includes build tools
+# ==========================================
+FROM ${BASE_IMAGE} as builder
 
 # Set the shell and enable pipefail for better error handling
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Set basic environment variables
+# Set build environment variables
+ARG PYTHON_VERSION
+ARG TORCH_VERSION
+ARG CUDA_VERSION
+
+ENV SHELL=/bin/bash
+ENV PYTHONUNBUFFERED=True
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update and upgrade
+RUN apt-get update --yes && \
+    apt-get upgrade --yes
+
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+
+# Install build dependencies (builder stage only)
+RUN apt-get install --yes --no-install-recommends \
+        git wget curl bash build-essential cmake ninja-build clang \
+        libgl1 libglib2.0-0 libomp-dev ca-certificates && \
+    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Install the UV tool from astral-sh
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Install Python and create virtual environment
+RUN uv python install ${PYTHON_VERSION} --default --preview && \
+    uv venv --seed /venv
+ENV PATH="/venv/bin:$PATH"
+
+# Install Python packages that need compilation
+RUN pip install --no-cache-dir -U \
+    pip setuptools wheel \
+    torch==${TORCH_VERSION} torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
+
+# ==========================================
+# Runtime Stage - Production optimized
+# ==========================================
+FROM ${RUNTIME_BASE_IMAGE} as runtime
+
+# Set the shell and enable pipefail for better error handling
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Set runtime environment variables
 ARG PYTHON_VERSION
 ARG TORCH_VERSION
 ARG CUDA_VERSION
 ARG SKIP_CUSTOM_NODES
+ARG INSTALL_DEV_TOOLS=true
+ARG INSTALL_SCIENCE_PACKAGES=true
+ARG INSTALL_CODE_SERVER=true
 
 # Set basic environment variables
-ENV SHELL=/bin/bash 
-ENV PYTHONUNBUFFERED=True 
+ENV SHELL=/bin/bash
+ENV PYTHONUNBUFFERED=True
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Set the default workspace directory
@@ -47,10 +103,10 @@ RUN apt-get update --yes && \
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 
-# Install essential packages
+# Install essential runtime packages
 RUN apt-get install --yes --no-install-recommends \
-        git wget curl bash nginx-light rsync sudo binutils ffmpeg lshw nano tzdata file build-essential cmake nvtop \
-        libgl1 libglib2.0-0 clang libomp-dev ninja-build \
+        git wget curl bash nginx-light rsync sudo binutils ffmpeg lshw nano tzdata file \
+        libgl1 libglib2.0-0 \
         openssh-server ca-certificates && \
     apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
@@ -64,14 +120,30 @@ RUN uv python install ${PYTHON_VERSION} --default --preview && \
     uv venv --seed /venv
 ENV PATH="/workspace/venv/bin:/venv/bin:$PATH"
 
-# Install essential Python packages and dependencies
+# Copy Python packages from builder stage
+COPY --from=builder /venv /venv
+
+# Install essential Python packages
 RUN pip install --no-cache-dir -U \
     pip setuptools wheel \
-    jupyterlab jupyterlab_widgets ipykernel ipywidgets \
     huggingface_hub hf_transfer \
-    numpy scipy matplotlib pandas scikit-learn seaborn requests tqdm pillow pyyaml \
-    triton \
-    torch==${TORCH_VERSION} torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
+    numpy requests tqdm pillow pyyaml \
+    triton
+
+# Conditionally install development and science packages
+RUN if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \
+        echo "Installing development tools..." && \
+        pip install --no-cache-dir jupyterlab jupyterlab_widgets ipykernel ipywidgets; \
+    else \
+        echo "Skipping development tools installation."; \
+    fi
+
+RUN if [ "$INSTALL_SCIENCE_PACKAGES" = "true" ]; then \
+        echo "Installing science packages..." && \
+        pip install --no-cache-dir scipy matplotlib pandas scikit-learn seaborn; \
+    else \
+        echo "Skipping science packages installation."; \
+    fi
 
 # Install ComfyUI and ComfyUI Manager
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git && \
@@ -96,7 +168,6 @@ RUN if [ -z "$SKIP_CUSTOM_NODES" ]; then \
 #RUN wget -qO- cli.runpod.net | sudo bash
 
 # Install code-server (optional - can be skipped with build argument)
-ARG INSTALL_CODE_SERVER=true
 RUN if [ "$INSTALL_CODE_SERVER" = "true" ]; then \
         echo "Installing code-server..." && \
         curl -fsSL https://code-server.dev/install.sh | sh; \
@@ -123,6 +194,8 @@ COPY --chmod=755 scripts/pre_start.sh /
 COPY --chmod=755 scripts/post_start.sh /
 
 COPY --chmod=755 scripts/download_presets.sh /
+COPY --chmod=755 scripts/download_image_presets.sh /
+COPY --chmod=755 scripts/download_audio_presets.sh /
 COPY --chmod=755 scripts/install_custom_nodes.sh /
 
 # Welcome Message

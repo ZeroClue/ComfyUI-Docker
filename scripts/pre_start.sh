@@ -172,3 +172,15 @@ if [ "${INSTALL_CUSTOM_NODES,,}" = "true" ]; then
 fi
 
 /download_presets.sh --quiet "${PRESET_DOWNLOAD}"
+
+# Download image generation presets if specified
+if [ -n "${IMAGE_PRESET_DOWNLOAD}" ]; then
+    echo "**** IMAGE_PRESET_DOWNLOAD is set. Downloading image generation presets... ****"
+    /download_image_presets.sh --quiet "${IMAGE_PRESET_DOWNLOAD}"
+fi
+
+# Download audio generation presets if specified
+if [ -n "${AUDIO_PRESET_DOWNLOAD}" ]; then
+    echo "**** AUDIO_PRESET_DOWNLOAD is set. Downloading audio generation presets... ****"
+    /download_audio_presets.sh --quiet "${AUDIO_PRESET_DOWNLOAD}"
+fi

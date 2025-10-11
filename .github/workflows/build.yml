@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: 'Build targets (comma-separated): base,slim,minimal'
+        description: 'Build targets (comma-separated): base,slim,minimal,production,ultra-slim'
         required: false
-        default: 'base,slim,minimal'
+        default: 'base,slim,minimal,production,ultra-slim'
       cuda_versions:
         description: 'CUDA versions (comma-separated): 12-4,12-5,12-6,12-8,12-9,13-0'
         required: false
@@ -28,6 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Existing variants
           - target: base
             cuda: 12-6
           - target: base
@@ -39,11 +40,21 @@ jobs:
           - target: minimal
             cuda: 12-6
           - target: minimal
+            cuda: 12-8
+          # New production variants
+          - target: production
+            cuda: 12-6
+          - target: production
+            cuda: 12-8
+          # New ultra-slim variants
+          - target: ultra-slim
+            cuda: 12-6
+          - target: ultra-slim
             cuda: 12-8
     steps:
       - name: Check if should run
         run: |
-          TARGETS="${{ github.event.inputs.targets || 'base,slim,minimal' }}"
+          TARGETS="${{ github.event.inputs.targets || 'base,slim,minimal,production,ultra-slim' }}"
           CUDA="${{ github.event.inputs.cuda_versions || '12-6,12-8' }}"
 
           if [[ ",$TARGETS," != *",${{ matrix.target }},"* ]]; then

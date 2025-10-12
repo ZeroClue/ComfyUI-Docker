@@ -1,0 +1,285 @@
+# ==========================================
+# Optimized Multi-stage build for ComfyUI with Dependency Conflict Resolution
+# ==========================================
+
+# Set the base images for different stages
+ARG BASE_IMAGE=nvidia/cuda:12.6.3-devel-ubuntu24.04
+ARG RUNTIME_BASE_IMAGE=nvidia/cuda:12.6.3-runtime-ubuntu24.04
+
+# ==========================================
+# Analysis Stage - Dependency analysis and conflict resolution
+# ==========================================
+FROM ${BASE_IMAGE} as analysis
+
+# Set build environment variables
+ARG PYTHON_VERSION=3.11
+ARG BUILD_MODE=optimized
+
+ENV SHELL=/bin/bash
+ENV PYTHONUNBUFFERED=True
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install analysis dependencies
+RUN apt-get update --yes && \
+    apt-get install --yes --no-install-recommends \
+        git wget curl python3 python3-pip python3-requests && \
+    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Install UV tool for fast Python package management
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Install Python
+RUN uv python install ${PYTHON_VERSION} --default --preview
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Copy analysis scripts and custom nodes list
+COPY scripts/analyze_requirements.py /scripts/
+COPY scripts/dependency_resolver.py /scripts/
+COPY custom_nodes.txt /tmp/
+
+# Run dependency analysis and conflict resolution
+RUN python3 scripts/analyze_requirements.py custom_nodes.txt && \
+    python3 scripts/dependency_resolver.py custom_nodes_analysis.json dependency_resolution.json
+
+# ==========================================
+# Builder Stage - Includes build tools and optimized dependency installation
+# ==========================================
+FROM ${BASE_IMAGE} as builder
+
+# Set the shell and enable pipefail for better error handling
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Set build environment variables
+ARG PYTHON_VERSION=3.11
+ARG TORCH_VERSION=2.8.0
+ARG CUDA_VERSION=cu126
+ARG BUILD_MODE=optimized
+
+ENV SHELL=/bin/bash
+ENV PYTHONUNBUFFERED=True
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Update and upgrade
+RUN apt-get update --yes && \
+    apt-get upgrade --yes
+
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+
+# Install build dependencies (builder stage only)
+RUN apt-get install --yes --no-install-recommends \
+        git wget curl bash build-essential cmake ninja-build clang \
+        libgl1 libglib2.0-0 libomp-dev ca-certificates \
+        libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
+        libv4l-dev libxvidcore-dev libx264-dev && \
+    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Install the UV tool from astral-sh
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Install Python and create virtual environment
+RUN uv python install ${PYTHON_VERSION} --default --preview && \
+    uv venv --seed /venv
+ENV PATH="/venv/bin:$PATH"
+
+# Install Python packages that need compilation
+RUN pip install --no-cache-dir -U \
+    pip setuptools wheel && \
+    pip install --no-cache-dir \
+    torch==${TORCH_VERSION} torchvision torchaudio \
+    --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
+
+# Copy analysis results
+COPY --from=analysis /tmp/dependency_resolution.json /tmp/
+COPY scripts/install_custom_nodes.sh /scripts/
+
+# Install ComfyUI
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git /tmp/ComfyUI && \
+    cd /tmp/ComfyUI && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Clone ComfyUI Manager
+RUN cd /tmp/ComfyUI/custom_nodes && \
+    git clone https://github.com/ltdrdata/ComfyUI-Manager.git
+
+# Copy custom nodes list
+COPY custom_nodes.txt /tmp/custom_nodes.txt
+
+# Install custom nodes with optimized dependency resolution
+RUN cd /tmp/ComfyUI/custom_nodes && \
+    if [ -f "/tmp/dependency_resolution.json" ] && [ "$BUILD_MODE" = "optimized" ]; then \
+        echo "Using optimized dependency installation..." && \
+        /scripts/install_custom_nodes.sh optimized true; \
+    else \
+        echo "Using standard dependency installation..." && \
+        xargs -n 1 git clone --recursive < /tmp/custom_nodes.txt && \
+        find /tmp/ComfyUI/custom_nodes -name "requirements.txt" -exec pip install --no-cache-dir -r {} \; && \
+        find /tmp/ComfyUI/custom_nodes -name "install.py" -exec python {} \; ; \
+    fi
+
+# Pre-compile Python files for better startup performance
+RUN python -m compileall /tmp/ComfyUI && \
+    python -m compileall /venv/lib/python*/site-packages
+
+# ==========================================
+# Runtime Stage - Production optimized with moderate cleanup
+# ==========================================
+FROM ${RUNTIME_BASE_IMAGE} as runtime
+
+# Set the shell and enable pipefail for better error handling
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Set runtime environment variables
+ARG PYTHON_VERSION=3.11
+ARG TORCH_VERSION=2.8.0
+ARG CUDA_VERSION=cu126
+ARG SKIP_CUSTOM_NODES=false
+ARG INSTALL_DEV_TOOLS=true
+ARG INSTALL_SCIENCE_PACKAGES=true
+ARG INSTALL_CODE_SERVER=true
+ARG BUILD_MODE=optimized
+
+# Set basic environment variables
+ENV SHELL=/bin/bash
+ENV PYTHONUNBUFFERED=True
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Set the default workspace directory
+ENV RP_WORKSPACE=/workspace
+
+# Override the default huggingface cache directory
+ENV HF_HOME="${RP_WORKSPACE}/.cache/huggingface/"
+
+# Faster transfer of models from the hub to the container
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
+ENV HF_XET_HIGH_PERFORMANCE=1
+
+# Shared python package cache
+ENV VIRTUALENV_OVERRIDE_APP_DATA="${RP_WORKSPACE}/.cache/virtualenv/"
+ENV PIP_CACHE_DIR="${RP_WORKSPACE}/.cache/pip/"
+ENV UV_CACHE_DIR="${RP_WORKSPACE}/.cache/uv/"
+
+# Modern pip workarounds
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+ENV PIP_ROOT_USER_ACTION=ignore
+
+# Set TZ and Locale
+ENV TZ=Etc/UTC
+
+# Set working directory
+WORKDIR /
+
+# Update and upgrade
+RUN apt-get update --yes && \
+    apt-get upgrade --yes
+
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+
+# Install essential runtime packages
+RUN apt-get install --yes --no-install-recommends \
+        git wget curl bash nginx-light rsync sudo binutils ffmpeg lshw nano tzdata file \
+        libgl1 libglib2.0-0 libavcodec58 libavformat58 libavutil58 \
+        libswscale6 libv4l-0 libxvidcore4 libx264-164 \
+        openssh-server ca-certificates && \
+    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Install the UV tool from astral-sh
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Install Python and create virtual environment
+RUN uv python install ${PYTHON_VERSION} --default --preview && \
+    uv venv --seed /venv
+ENV PATH="/workspace/venv/bin:/venv/bin:$PATH"
+
+# Copy Python packages and ComfyUI from builder stage
+COPY --from=builder /venv /venv
+COPY --from=builder /tmp/ComfyUI /ComfyUI
+
+# Install essential Python packages
+RUN pip install --no-cache-dir -U \
+    pip setuptools wheel \
+    huggingface_hub hf_transfer \
+    numpy requests tqdm pillow pyyaml \
+    triton
+
+# Conditionally install development and science packages
+RUN if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \
+        echo "Installing development tools..." && \
+        pip install --no-cache-dir jupyterlab jupyterlab_widgets ipykernel ipywidgets; \
+    else \
+        echo "Skipping development tools installation."; \
+    fi
+
+RUN if [ "$INSTALL_SCIENCE_PACKAGES" = "true" ]; then \
+        echo "Installing science packages..." && \
+        pip install --no-cache-dir scipy matplotlib pandas scikit-learn seaborn; \
+    else \
+        echo "Skipping science packages installation."; \
+    fi
+
+# Install code-server (optional)
+RUN if [ "$INSTALL_CODE_SERVER" = "true" ]; then \
+        echo "Installing code-server..." && \
+        curl -fsSL https://code-server.dev/install.sh | sh; \
+    else \
+        echo "Skipping code-server installation."; \
+    fi
+
+# Copy analysis scripts and installation tools
+COPY scripts/install_custom_nodes.sh /scripts/
+COPY --from=analysis /tmp/dependency_resolution.json /tmp/
+
+EXPOSE 22 3000 8080 8888
+
+# NGINX Proxy
+COPY proxy/nginx.conf /etc/nginx/nginx.conf
+COPY proxy/snippets /etc/nginx/snippets
+COPY proxy/readme.html /usr/share/nginx/html/readme.html
+
+# Remove existing SSH host keys
+RUN rm -f /etc/ssh/ssh_host_*
+
+# Copy the README.md
+COPY README.md /usr/share/nginx/html/README.md
+
+# Start Scripts
+COPY --chmod=755 scripts/start.sh /
+COPY --chmod=755 scripts/pre_start.sh /
+COPY --chmod=755 scripts/post_start.sh /
+
+COPY --chmod=755 scripts/download_presets.sh /
+COPY --chmod=755 scripts/download_image_presets.sh /
+COPY --chmod=755 scripts/download_audio_presets.sh /
+
+# Welcome Message
+COPY logo/zeroclue.txt /etc/zeroclue.txt
+RUN echo 'cat /etc/zeroclue.txt' >> /root/.bashrc
+RUN echo 'echo -e "\nFor detailed documentation and guides, please visit:\n\033[1;34mhttps://docs.runpod.io/\033[0m and \033[1;34mhttps://blog.runpod.io/\033[0m\n\n"' >> /root/.bashrc
+
+# ==========================================
+# Post-build optimization (moderate cleanup)
+# ==========================================
+RUN echo "Performing post-build optimization..." && \
+    # Clean pip cache (safe cleanup with high impact)
+    pip cache purge && \
+    # Remove temporary files and build artifacts
+    rm -rf /tmp/* /var/tmp/* && \
+    # Remove log files
+    find /var/log -type f -delete && \
+    # Remove package manager caches
+    apt-get autoremove -y && apt-get clean && \
+    # Remove man pages and documentation (optional - can be disabled for debugging)
+    rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base && \
+    echo "Post-build optimization complete"
+
+# Set entrypoint to the start script
+CMD ["/start.sh"]

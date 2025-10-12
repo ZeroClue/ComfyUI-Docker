@@ -286,15 +286,16 @@ RUN echo 'echo -e "\nFor detailed documentation and guides, please visit:\n\033[
 # ==========================================
 RUN echo "Performing post-build optimization..." && \
     # Clean pip cache (safe cleanup with high impact)
-    pip cache purge && \
-    # Remove temporary files and build artifacts
-    rm -rf /tmp/* /var/tmp/* && \
-    # Remove log files
-    find /var/log -type f -delete && \
-    # Remove package manager caches
-    apt-get autoremove -y && apt-get clean && \
+    pip cache purge || echo "Warning: pip cache purge failed (non-critical)" && \
+    # Remove temporary files and build artifacts (safe cleanup)
+    rm -rf /tmp/* /var/tmp/* 2>/dev/null || echo "Warning: Some temp files cleanup failed (non-critical)" && \
+    # Remove log files (safe cleanup)
+    find /var/log -type f -delete 2>/dev/null || echo "Warning: Some log cleanup failed (non-critical)" && \
+    # Remove package manager caches (safe cleanup)
+    apt-get autoremove -y 2>/dev/null || echo "Warning: autoremove failed (non-critical)" && \
+    apt-get clean 2>/dev/null || echo "Warning: apt-get clean failed (non-critical)" && \
     # Remove man pages and documentation (optional - can be disabled for debugging)
-    rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base && \
+    rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base 2>/dev/null || echo "Warning: Documentation removal failed (non-critical)" && \
     echo "Post-build optimization complete"
 
 # Set entrypoint to the start script

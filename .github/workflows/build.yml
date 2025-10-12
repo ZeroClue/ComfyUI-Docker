@@ -203,7 +203,7 @@ jobs:
           fi
 
           # Clean Python cache
-          find /tmp -name "*.pyc" -delete
+          find /tmp -name "*.pyc" -delete 2>/dev/null || true
           find /tmp -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
           # Clean pip cache if available

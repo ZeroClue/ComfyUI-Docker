@@ -201,58 +201,45 @@ jobs:
             echo "SPACE_THRESHOLD_MET=false" >> $GITHUB_ENV
           fi
 
-      - name: Ultra-aggressive disk space cleanup
+      - name: Simple and effective disk space cleanup
         if: env.SKIP_BUILD == ''
         run: |
-          echo "=== Ultra-Aggressive Disk Space Cleanup for CUDA 12.6 ==="
+          echo "=== Simple Disk Space Cleanup for CUDA 12.6 ==="
           BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           echo "Available space before cleanup: ${BEFORE_SPACE}GB"
 
-          # Phase 1: Package and tool caches
-          echo "Phase 1: Cleaning package and tool caches..."
-          npm cache clean --force --loglevel=error 2>/dev/null || true
-          pip cache purge --no-cache-dir 2>/dev/null || true
-          go clean -modcache 2>/dev/null || true
+          # Simple, proven cleanup operations
+          echo "Running proven cleanup operations..."
 
-          # Phase 2: Docker cleanup (most critical)
-          echo "Phase 2: Aggressive Docker cleanup..."
-          docker system prune -af --volumes --filter "until=30m" 2>/dev/null || true
-          docker builder prune -af --filter "until=30m" 2>/dev/null || true
-          docker image prune -af --filter "until=30m" 2>/dev/null || true
+          # Docker cleanup (most effective)
+          docker system prune -af --volumes 2>/dev/null || true
+          docker builder prune -af 2>/dev/null || true
 
-          # Phase 3: System file cleanup
-          echo "Phase 3: System file cleanup..."
-          rm -rf ~/.cache/* ~/.npm ~/.composer ~/.local/share/Trash 2>/dev/null || true
-          rm -rf /home/runner/.cache/* /home/runner/work/_temp/* 2>/dev/null || true
+          # Remove large cache directories
+          rm -rf ~/.cache/* /home/runner/.cache/* 2>/dev/null || true
+          rm -rf /home/runner/work/_temp/* 2>/dev/null || true
           rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
 
-          # Phase 4: Language and build caches
-          echo "Phase 4: Language and build cache cleanup..."
-          find /tmp -name "*.pyc" -delete 2>/dev/null || true
-          find /tmp -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-          find /usr -name "*.pyc" -delete 2>/dev/null || true
-          find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-          rm -rf /opt/hostedtoolcache/Python/*/x64/lib/python*/site-packages/*/__pycache__ 2>/dev/null || true
+          # Clean package caches
+          npm cache clean --force 2>/dev/null || true
+          pip cache purge 2>/dev/null || true
 
-          # Phase 5: System documentation cleanup (user-accessible only)
-          echo "Phase 5: System documentation cleanup..."
-          rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base /usr/share/info 2>/dev/null || true
-          rm -rf /usr/share/locale/* /usr/local/share/locale/* 2>/dev/null || true
+          # Remove Python cache files
+          find /opt/hostedtoolcache -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
-          # Phase 6: Advanced cleanup (safe operations only)
-          echo "Phase 6: Advanced cleanup..."
-          find /var -name "*.log" -size +1M -truncate -s 0 2>/dev/null || true
-          find /tmp -name "*.tmp" -delete 2>/dev/null || true
-          find /var/tmp -name "*.tmp" -delete 2>/dev/null || true
+          # Remove documentation (user-accessible)
+          rm -rf /usr/share/man /usr/share/doc /usr/share/info 2>/dev/null || true
 
-          AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
-          SPACE_RECOVERED=$((AVAILABLE_SPACE - BEFORE_SPACE))
-          echo "Available space after cleanup: ${AVAILABLE_SPACE}GB"
+          AFTER_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          SPACE_RECOVERED=$((AFTER_SPACE - BEFORE_SPACE))
+          echo "Available space after cleanup: ${AFTER_SPACE}GB"
           echo "Space recovered: ${SPACE_RECOVERED}GB"
 
-          # Use safer environment variable setting
-          echo "AVAILABLE_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
-          echo "SPACE_RECOVERED=${SPACE_RECOVERED}" >> $GITHUB_ENV
+          # Simple reporting without environment variables
+          echo "=== Cleanup Summary ==="
+          echo "Before: ${BEFORE_SPACE}GB"
+          echo "After: ${AFTER_SPACE}GB"
+          echo "Recovered: ${SPACE_RECOVERED}GB"
 
       - name: Download analysis artifacts
         uses: actions/download-artifact@v4
@@ -403,44 +390,45 @@ jobs:
             echo "MONITORING_INTERVAL=20" >> $GITHUB_ENV
           fi
 
-      - name: Ultra-aggressive disk space cleanup
+      - name: Simple and effective disk space cleanup for optimized builds
         if: env.SKIP_BUILD == ''
         run: |
-          echo "=== Ultra-Aggressive Disk Space Cleanup for Optimized CUDA 12.6 ==="
+          echo "=== Simple Disk Space Cleanup for Optimized CUDA 12.6 ==="
           BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           echo "Available space before cleanup: ${BEFORE_SPACE}GB"
 
-          # Use the same aggressive cleanup as CUDA 12.8 for optimized variants
-          npm cache clean --force --loglevel=error 2>/dev/null || true
-          pip cache purge --no-cache-dir 2>/dev/null || true
-          go clean -modcache 2>/dev/null || true
+          # Aggressive but proven cleanup for optimized builds
+          echo "Running aggressive cleanup for optimized variants..."
 
-          docker system prune -af --volumes --filter "until=15m" 2>/dev/null || true
-          docker builder prune -af --filter "until=15m" 2>/dev/null || true
-          docker image prune -af --filter "until=15m" 2>/dev/null || true
+          # Docker cleanup (most effective)
+          docker system prune -af --volumes 2>/dev/null || true
+          docker builder prune -af 2>/dev/null || true
 
-          rm -rf ~/.cache/* ~/.npm ~/.composer ~/.local/share/Trash 2>/dev/null || true
-          rm -rf /home/runner/.cache/* /home/runner/work/_temp/* 2>/dev/null || true
+          # Remove all cache directories
+          rm -rf ~/.cache/* /home/runner/.cache/* 2>/dev/null || true
+          rm -rf /home/runner/work/_temp/* 2>/dev/null || true
           rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
 
-          find /tmp -name "*.pyc" -delete 2>/dev/null || true
-          find /tmp -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-          find /usr -name "*.pyc" -delete 2>/dev/null || true
-          find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+          # Clean package caches
+          npm cache clean --force 2>/dev/null || true
+          pip cache purge 2>/dev/null || true
 
-          # User-accessible cleanup only
-          rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base /usr/share/info 2>/dev/null || true
+          # Remove Python cache files
+          find /opt/hostedtoolcache -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
-          find /var -name "*.log" -size +50K -truncate -s 0 2>/dev/null || true
+          # Remove documentation (user-accessible)
+          rm -rf /usr/share/man /usr/share/doc /usr/share/info 2>/dev/null || true
 
-          AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
-          SPACE_RECOVERED=$((AVAILABLE_SPACE - BEFORE_SPACE))
-          echo "Available space after cleanup: ${AVAILABLE_SPACE}GB"
+          AFTER_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          SPACE_RECOVERED=$((AFTER_SPACE - BEFORE_SPACE))
+          echo "Available space after cleanup: ${AFTER_SPACE}GB"
           echo "Space recovered: ${SPACE_RECOVERED}GB"
 
-          # Use safer environment variable setting
-          echo "AVAILABLE_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
-          echo "SPACE_RECOVERED=${SPACE_RECOVERED}" >> $GITHUB_ENV
+          # Simple reporting without environment variables
+          echo "=== Optimized Build Cleanup Summary ==="
+          echo "Before: ${BEFORE_SPACE}GB"
+          echo "After: ${AFTER_SPACE}GB"
+          echo "Recovered: ${SPACE_RECOVERED}GB"
 
       - name: Download analysis artifacts
         uses: actions/download-artifact@v4
@@ -483,68 +471,6 @@ jobs:
         id: date
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Enhanced disk space monitoring during optimized CUDA 12.6 build
-        if: env.ENABLE_MONITORING == 'true' && env.SKIP_BUILD == ''
-        run: |
-          echo "=== Starting Enhanced Optimized CUDA 12.6 Disk Space Monitoring ==="
-          MONITORING_INTERVAL=${MONITORING_INTERVAL:-15}
-          echo "Monitoring interval: ${MONITORING_INTERVAL} seconds"
-
-          if [ "$EMERGENCY_MODE" = "true" ]; then
-            echo "Emergency mode activated - ultra-frequent monitoring"
-            MONITORING_INTERVAL=8
-          fi
-
-          monitor_disk_space() {
-            local cleanup_count=0
-            local max_cleanups=4
-
-            while true; do
-              SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
-              TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-              echo "[$TIMESTAMP] Optimized CUDA 12.6 build - Available disk space: ${SPACE}GB"
-
-              # Critical threshold for optimized builds
-              if [ "$SPACE" -lt 6 ]; then
-                echo "🚨 CRITICAL: Extremely low disk space during optimized CUDA 12.6 build (${SPACE}GB)"
-                echo "Attempting immediate emergency cleanup..."
-                df -h
-
-                # Ultra-aggressive emergency cleanup
-                docker system prune -af --volumes --filter "until=2m" 2>/dev/null || true
-                docker builder prune -af --filter "until=2m" 2>/dev/null || true
-                docker image prune -af --filter "until=2m" 2>/dev/null || true
-                rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
-                rm -rf /home/runner/work/_temp/* 2>/dev/null || true
-                find /var -name "*.log" -size +50K -truncate -s 0 2>/dev/null || true
-
-                cleanup_count=$((cleanup_count + 1))
-                echo "Emergency cleanup #$cleanup_count completed"
-
-                if [ "$cleanup_count" -gt $max_cleanups ]; then
-                  echo "❌ CRITICAL: Max cleanup attempts exceeded for optimized build."
-                  echo "Available space: ${SPACE}GB after $cleanup_count cleanup attempts"
-                  exit 1
-                fi
-
-              # Warning threshold
-              elif [ "$SPACE" -lt 12 ]; then
-                echo "⚠️ WARNING: Low disk space during optimized CUDA 12.6 build (${SPACE}GB)"
-                echo "Attempting standard cleanup..."
-
-                docker system prune -af --volumes --filter "until=15m" 2>/dev/null || true
-                rm -rf /tmp/pip-* /tmp/*~ 2>/dev/null || true
-              fi
-
-              sleep $MONITORING_INTERVAL
-            done
-          }
-
-          monitor_disk_space &
-          MONITOR_PID=$!
-          echo "MONITOR_PID=$MONITOR_PID" >> $GITHUB_ENV
-          echo "Enhanced monitoring for optimized build started (PID: $MONITOR_PID)"
-
       - name: Build and push optimized CUDA 12.6
         if: env.SKIP_BUILD == ''
         uses: docker/bake-action@v6
@@ -555,14 +481,6 @@ jobs:
           files: |
             docker-bake.hcl
             docker-bake-optimized.hcl
-
-      - name: Stop monitoring for optimized CUDA 12.6
-        if: always() && env.ENABLE_MONITORING == 'true' && env.SKIP_BUILD == ''
-        run: |
-          if [ -n "$MONITOR_PID" ]; then
-            kill $MONITOR_PID 2>/dev/null || true
-            echo "Optimized CUDA 12.6 disk space monitoring stopped"
-          fi
 
       - name: Build summary for optimized CUDA 12.6
         if: env.SKIP_BUILD == ''
@@ -680,126 +598,47 @@ jobs:
           remove-cached-tools: 'true'
           remove-swapfile: 'true'
 
-      - name: Ultra-aggressive cleanup for CUDA 12.8
+      - name: Simple and effective disk space cleanup for CUDA 12.8
         if: env.SKIP_BUILD == ''
         run: |
-          echo "=== Ultra-Aggressive Disk Space Cleanup for CUDA 12.8 ==="
+          echo "=== Simple Disk Space Cleanup for CUDA 12.8 ==="
           BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           echo "Available space before cleanup: ${BEFORE_SPACE}GB"
 
-          # Phase 1: Package and tool caches
-          echo "Phase 1: Cleaning package and tool caches..."
-          npm cache clean --force --loglevel=error 2>/dev/null || true
-          pip cache purge --no-cache-dir 2>/dev/null || true
-          go clean -modcache 2>/dev/null || true
+          # Most aggressive cleanup for CUDA 12.8 (largest packages)
+          echo "Running maximum cleanup for CUDA 12.8..."
 
-          # Phase 2: Docker cleanup (most critical for CUDA 12.8)
-          echo "Phase 2: Aggressive Docker cleanup..."
-          docker system prune -af --volumes --filter "until=15m" 2>/dev/null || true
-          docker builder prune -af --filter "until=15m" 2>/dev/null || true
-          docker image prune -af --filter "until=15m" 2>/dev/null || true
+          # Docker cleanup (most effective)
+          docker system prune -af --volumes 2>/dev/null || true
+          docker builder prune -af 2>/dev/null || true
 
-          # Phase 3: System file cleanup
-          echo "Phase 3: System file cleanup..."
-          rm -rf ~/.cache/* ~/.npm ~/.composer ~/.local/share/Trash 2>/dev/null || true
-          rm -rf /home/runner/.cache/* /home/runner/work/_temp/* 2>/dev/null || true
+          # Remove all cache directories aggressively
+          rm -rf ~/.cache/* /home/runner/.cache/* 2>/dev/null || true
+          rm -rf /home/runner/work/_temp/* 2>/dev/null || true
           rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
 
-          # Phase 4: Language and build caches
-          echo "Phase 4: Language and build cache cleanup..."
-          find /tmp -name "*.pyc" -delete 2>/dev/null || true
-          find /tmp -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-          find /usr -name "*.pyc" -delete 2>/dev/null || true
-          find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-          rm -rf /opt/hostedtoolcache/Python/*/x64/lib/python*/site-packages/*/__pycache__ 2>/dev/null || true
+          # Clean package caches
+          npm cache clean --force 2>/dev/null || true
+          pip cache purge 2>/dev/null || true
 
-          # Phase 5: System documentation cleanup (user-accessible only)
-          echo "Phase 5: System documentation cleanup..."
-          rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base /usr/share/info 2>/dev/null || true
-          rm -rf /usr/share/locale/* /usr/local/share/locale/* 2>/dev/null || true
+          # Remove Python cache files
+          find /opt/hostedtoolcache -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
-          # Phase 6: Advanced cleanup (safe operations only)
-          echo "Phase 6: Advanced cleanup..."
-          find /var -name "*.log" -size +500K -truncate -s 0 2>/dev/null || true
-          find /tmp -name "*.tmp" -delete 2>/dev/null || true
-          find /var/tmp -name "*.tmp" -delete 2>/dev/null || true
+          # Remove documentation (user-accessible)
+          rm -rf /usr/share/man /usr/share/doc /usr/share/info 2>/dev/null || true
 
-          AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
-          SPACE_RECOVERED=$((AVAILABLE_SPACE - BEFORE_SPACE))
-          echo "Available space after cleanup: ${AVAILABLE_SPACE}GB"
+          AFTER_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          SPACE_RECOVERED=$((AFTER_SPACE - BEFORE_SPACE))
+          echo "Available space after cleanup: ${AFTER_SPACE}GB"
           echo "Space recovered: ${SPACE_RECOVERED}GB"
 
-          # Use safer environment variable setting
-          echo "AVAILABLE_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
-          echo "SPACE_RECOVERED=${SPACE_RECOVERED}" >> $GITHUB_ENV
+          # Simple reporting without environment variables
+          echo "=== CUDA 12.8 Cleanup Summary ==="
+          echo "Before: ${BEFORE_SPACE}GB"
+          echo "After: ${AFTER_SPACE}GB"
+          echo "Recovered: ${SPACE_RECOVERED}GB"
 
-      - name: Enhanced disk space monitoring during CUDA 12.8 build
-        if: env.ENABLE_MONITORING == 'true' && env.SKIP_BUILD == ''
-        run: |
-          echo "=== Starting Enhanced CUDA 12.8 Disk Space Monitoring ==="
-          MONITORING_INTERVAL=${MONITORING_INTERVAL:-10}
-          echo "Monitoring interval: ${MONITORING_INTERVAL} seconds"
-
-          if [ "$EMERGENCY_MODE" = "true" ]; then
-            echo "Emergency mode activated - ultra-frequent monitoring"
-            MONITORING_INTERVAL=5
-          fi
-
-          monitor_disk_space() {
-            local cleanup_count=0
-            local max_cleanups=5
-
-            while true; do
-              SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
-              TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-              echo "[$TIMESTAMP] CUDA 12.8 build - Available disk space: ${SPACE}GB"
-
-              # Critical threshold - immediate emergency cleanup
-              if [ "$SPACE" -lt 5 ]; then
-                echo "🚨 CRITICAL: Extremely low disk space during CUDA 12.8 build (${SPACE}GB)"
-                echo "Attempting immediate emergency cleanup..."
-                df -h
-
-                # Ultra-aggressive emergency cleanup
-                docker system prune -af --volumes --filter "until=1m" 2>/dev/null || true
-                docker builder prune -af --filter "until=1m" 2>/dev/null || true
-                docker image prune -af --filter "until=1m" 2>/dev/null || true
-                rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
-                rm -rf /home/runner/work/_temp/* 2>/dev/null || true
-                rm -rf ~/.cache/* /home/runner/.cache/* 2>/dev/null || true
-                find /var -name "*.log" -size +100K -truncate -s 0 2>/dev/null || true
-
-                cleanup_count=$((cleanup_count + 1))
-                echo "Emergency cleanup #$cleanup_count completed"
-
-                # Check if we've exceeded cleanup attempts
-                if [ "$cleanup_count" -gt $max_cleanups ]; then
-                  echo "❌ CRITICAL: Max cleanup attempts exceeded. Build environment unstable."
-                  echo "Available space: ${SPACE}GB after $cleanup_count cleanup attempts"
-                  exit 1
-                fi
-
-              # Warning threshold - standard cleanup
-              elif [ "$SPACE" -lt 10 ]; then
-                echo "⚠️ WARNING: Low disk space during CUDA 12.8 build (${SPACE}GB)"
-                echo "Attempting standard cleanup..."
-
-                # Standard cleanup
-                docker system prune -af --volumes --filter "until=10m" 2>/dev/null || true
-                rm -rf /tmp/pip-* /tmp/*~ 2>/dev/null || true
-                find /tmp -name "*.tmp" -delete 2>/dev/null || true
-              fi
-
-              sleep $MONITORING_INTERVAL
-            done
-          }
-
-          # Start monitoring in background
-          monitor_disk_space &
-          MONITOR_PID=$!
-          echo "MONITOR_PID=$MONITOR_PID" >> $GITHUB_ENV
-          echo "Enhanced monitoring started (PID: $MONITOR_PID)"
-
+      
       - name: Download analysis artifacts
         uses: actions/download-artifact@v4
         with:
@@ -852,14 +691,7 @@ jobs:
             docker-bake.hcl
             ${{ contains(matrix.target, 'optimized') && 'docker-bake-optimized.hcl' || '' }}
 
-      - name: Stop monitoring
-        if: always() && env.ENABLE_MONITORING == 'true' && env.SKIP_BUILD == ''
-        run: |
-          if [ -n "$MONITOR_PID" ]; then
-            kill $MONITOR_PID 2>/dev/null || true
-            echo "CUDA 12.8 disk space monitoring stopped"
-          fi
-
+      
       - name: Build summary for CUDA 12.8
         if: env.SKIP_BUILD == ''
         run: |

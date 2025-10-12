@@ -644,3 +644,4 @@ cat /tmp/custom_nodes_install.log
 # Actions tab → Select workflow → View build logs
 ```
 - trim the commit message
+- always use trimmed commit message

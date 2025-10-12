@@ -256,26 +256,6 @@ jobs:
       - name: Set up Docker Buildx
         if: env.SKIP_BUILD == ''
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:buildx-stable-1
-          buildkitd-flags: --allow-insecure-entitlement security.insecure --addr tcp://0.0.0.0:1234
-          config: |
-            [worker.oci]
-            max-parallelism = 2
-
-            [worker.container]
-            gc = true
-            gc-keep-duration = 10m
-            gc-max-storage = 15GB
-
-            [registry."docker.io"]
-            http = false
-
-            [buildkitd]
-            gc = true
-            gc-keep-duration = 10m
-            gc-max-storage = 20GB
 
       - name: Get current date
         if: env.SKIP_BUILD == ''
@@ -445,26 +425,6 @@ jobs:
       - name: Set up Docker Buildx
         if: env.SKIP_BUILD == ''
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:buildx-stable-1
-          buildkitd-flags: --allow-insecure-entitlement security.insecure --addr tcp://0.0.0.0:1234
-          config: |
-            [worker.oci]
-            max-parallelism = 1
-
-            [worker.container]
-            gc = true
-            gc-keep-duration = 8m
-            gc-max-storage = 12GB
-
-            [registry."docker.io"]
-            http = false
-
-            [buildkitd]
-            gc = true
-            gc-keep-duration = 8m
-            gc-max-storage = 18GB
 
       - name: Get current date
         if: env.SKIP_BUILD == ''
@@ -654,26 +614,6 @@ jobs:
       - name: Set up Docker Buildx
         if: env.SKIP_BUILD == ''
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:buildx-stable-1
-          buildkitd-flags: --allow-insecure-entitlement security.insecure --addr tcp://0.0.0.0:1234
-          config: |
-            [worker.oci]
-            max-parallelism = 1
-
-            [worker.container]
-            gc = true
-            gc-keep-duration = 5m
-            gc-max-storage = 10GB
-
-            [registry."docker.io"]
-            http = false
-
-            [buildkitd]
-            gc = true
-            gc-keep-duration = 5m
-            gc-max-storage = 15GB
 
       - name: Get current date
         if: env.SKIP_BUILD == ''

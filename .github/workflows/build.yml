@@ -195,11 +195,7 @@ jobs:
       - name: Additional cleanup and monitoring
         if: env.SKIP_BUILD == ''
         run: |
-          echo "=== Additional Cleanup ==="
-
-          # Clean package manager caches
-          apt-get clean -y
-          rm -rf /var/lib/apt/lists/*
+          echo "=== Additional User-space Cleanup ==="
 
           # Clean npm cache if exists
           if command -v npm &> /dev/null; then
@@ -209,6 +205,15 @@ jobs:
           # Clean Python cache
           find /tmp -name "*.pyc" -delete
           find /tmp -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+          # Clean pip cache if available
+          if command -v pip &> /dev/null; then
+            pip cache purge || true
+          fi
+
+          # Clean temporary files in user directories
+          rm -rf ~/.cache/* 2>/dev/null || true
+          rm -rf /tmp/pip-* 2>/dev/null || true
 
           # Check space after cleanup
           echo "=== Disk Space After Cleanup ==="

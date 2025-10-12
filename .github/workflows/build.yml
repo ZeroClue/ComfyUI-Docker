@@ -210,9 +210,9 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
-          remove-large-packages: 'true'
-          remove-cached-tools: 'true'
-          remove-swapfile: 'true'
+          root-reserve-mb: 1024
+          temp-reserve-mb: 100
+          swap-size-mb: 4096
 
       - name: Enhanced disk space cleanup
         if: env.SKIP_BUILD == ''
@@ -220,6 +220,26 @@ jobs:
           echo "=== Enhanced Disk Space Cleanup for CUDA 12.6 ==="
           BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           echo "Available space after marketplace cleanup: ${BEFORE_SPACE}GB"
+
+          # Critical check - if we have less than 5GB, the build will fail
+          if [ "$BEFORE_SPACE" -lt 5 ]; then
+            echo "❌ CRITICAL: Only ${BEFORE_SPACE}GB available after marketplace cleanup"
+            echo "This is insufficient for Docker builds even with optimization"
+            echo "Taking emergency measures..."
+
+            # Remove ALL possible non-essential files
+            rm -rf /opt/hostedtoolcache/Java* /opt/hostedtoolcache/Node* /opt/hostedtoolcache/go /opt/hostedtoolcache/PyPy* 2>/dev/null || true
+            rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* 2>/dev/null || true
+            rm -rf /var/lib/apt/lists/* /var/cache/apt/* 2>/dev/null || true
+
+            AFTER_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+            echo "Emergency cleanup recovered: $((AFTER_SPACE - BEFORE_SPACE))GB"
+
+            if [ "$AFTER_SPACE" -lt 5 ]; then
+              echo "❌ FATAL: Still insufficient space (${AFTER_SPACE}GB) after emergency cleanup"
+              exit 1
+            fi
+          fi
 
           # Additional cleanup operations for maximum space recovery
           echo "Running additional cleanup operations..."
@@ -243,10 +263,21 @@ jobs:
           # Remove documentation (user-accessible)
           rm -rf /usr/share/man /usr/share/doc /usr/share/info 2>/dev/null || true
 
+          # Aggressive removal of large toolchain components we don't need
+          echo "=== Aggressive Toolchain Cleanup ==="
+          rm -rf /opt/hostedtoolcache/Java* /opt/hostedtoolcache/Go* /opt/hostedtoolcache/Ruby* /opt/hostedtoolcache/Scala* 2>/dev/null || true
+          rm -rf /opt/hostedtoolcache/PyPy* /opt/hostedtoolcache/node* 2>/dev/null || true
+
           AFTER_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           SPACE_RECOVERED=$((AFTER_SPACE - BEFORE_SPACE))
           echo "Available space after enhanced cleanup: ${AFTER_SPACE}GB"
           echo "Space recovered in this step: ${SPACE_RECOVERED}GB"
+
+          # Final check - if still less than 8GB, build will likely fail
+          if [ "$AFTER_SPACE" -lt 8 ]; then
+            echo "⚠️ WARNING: Low disk space (${AFTER_SPACE}GB) - build may fail"
+            echo "ENABLE_EMERGENCY_MODE=true" >> $GITHUB_ENV
+          fi
 
           # Simple reporting without environment variables
           echo "=== Enhanced Cleanup Summary ==="
@@ -285,6 +316,8 @@ jobs:
           files: |
             docker-bake.hcl
             ${{ contains(matrix.target, 'optimized') && 'docker-bake-optimized.hcl' || '' }}
+          set: |
+            *.BUILD_SPACE_AWARE=${{ env.ENABLE_EMERGENCY_MODE == 'true' && 'true' || 'false' }}
 
       - name: Build summary for CUDA 12.6
         if: env.SKIP_BUILD == ''
@@ -392,9 +425,9 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
-          remove-large-packages: 'true'
-          remove-cached-tools: 'true'
-          remove-swapfile: 'true'
+          root-reserve-mb: 1024
+          temp-reserve-mb: 100
+          swap-size-mb: 4096
 
       - name: Enhanced disk space cleanup for optimized builds
         if: env.SKIP_BUILD == ''
@@ -593,9 +626,9 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
-          remove-large-packages: 'true'
-          remove-cached-tools: 'true'
-          remove-swapfile: 'true'
+          root-reserve-mb: 1024
+          temp-reserve-mb: 100
+          swap-size-mb: 4096
 
       - name: Enhanced disk space cleanup for CUDA 12.8
         if: env.SKIP_BUILD == ''

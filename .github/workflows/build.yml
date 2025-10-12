@@ -38,30 +38,64 @@ jobs:
       - name: Analyze custom nodes requirements
         id: analysis
         run: |
-          echo "Analyzing custom nodes for dependency conflicts..."
+          echo "=== Starting Custom Nodes Dependency Analysis ==="
+          echo "Timestamp: $(date)"
+          echo "Python version: $(python --version)"
 
-          # Run analysis
-          python scripts/analyze_requirements.py custom_nodes.txt || {
+          # Check if custom_nodes.txt exists
+          if [ ! -f "custom_nodes.txt" ]; then
+            echo "❌ Error: custom_nodes.txt not found"
             echo "has-conflicts=true" >> $GITHUB_OUTPUT
-            echo "conflict-summary=High-severity dependency conflicts detected" >> $GITHUB_OUTPUT
+            echo "conflict-analysis=custom_nodes.txt file missing" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "Found $(wc -l < custom_nodes.txt) custom nodes to analyze"
+
+          # Run analysis with error handling
+          if python scripts/analyze_requirements.py custom_nodes.txt > analysis.log 2>&1; then
+            echo "✅ Analysis completed successfully"
+            echo "Analysis results:"
+            cat analysis.log | tail -20
+
+            # Run dependency resolver
+            echo "=== Running Dependency Resolution ==="
+            if python scripts/dependency_resolver.py custom_nodes_analysis.json dependency_resolution.json > resolver.log 2>&1; then
+              echo "✅ Dependency resolution completed"
+              echo "has-conflicts=false" >> $GITHUB_OUTPUT
+              echo "conflict-summary=No critical conflicts found" >> $GITHUB_OUTPUT
+              echo "analysis-artifact=dependency_resolution.json" >> $GITHUB_OUTPUT
+            else
+              echo "❌ Dependency resolution failed"
+              cat resolver.log
+              echo "has-conflicts=true" >> $GITHUB_OUTPUT
+              echo "conflict-summary=Dependency resolution failed" >> $GITHUB_OUTPUT
+              echo "analysis-artifact=custom_nodes_analysis.json" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+          else
+            echo "❌ Analysis failed"
+            echo "Analysis errors:"
+            cat analysis.log
+            echo "has-conflicts=true" >> $GITHUB_OUTPUT
+            echo "conflict-summary=Dependency analysis failed" >> $GITHUB_OUTPUT
             echo "analysis-artifact=custom_nodes_analysis.json" >> $GITHUB_OUTPUT
             exit 1
-          }
+          fi
 
-          # Run dependency resolver
-          python scripts/dependency_resolver.py custom_nodes_analysis.json dependency_resolution.json
-
-          echo "has-conflicts=false" >> $GITHUB_OUTPUT
-          echo "conflict-summary=No critical conflicts found" >> $GITHUB_OUTPUT
-          echo "analysis-artifact=dependency_resolution.json" >> $GITHUB_OUTPUT
+          echo "=== Analysis Summary ==="
+          echo "Analysis output files:"
+          ls -la *.json *.log || true
 
       - name: Upload analysis artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dependency-analysis
           path: |
             custom_nodes_analysis.json
             dependency_resolution.json
+            analysis.log
+            resolver.log
           retention-days: 30
 
       - name: Comment on conflicts
@@ -129,6 +163,22 @@ jobs:
           echo "Building optimized target: ${{ matrix.target }}-${{ matrix.cuda }}"
           echo "Using optimization: true"
 
+      - name: Check disk space before build
+        if: env.SKIP_BUILD == ''
+        run: |
+          echo "=== Disk Space Analysis ==="
+          df -h
+          echo "Available space: $(df -BG / | tail -1 | awk '{print $4}')GB"
+
+          # Check minimum space requirement (20GB)
+          AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          if [ "$AVAILABLE_SPACE" -lt 20 ]; then
+            echo "⚠️ Warning: Low disk space (${AVAILABLE_SPACE}GB available)"
+            echo "Build may fail due to insufficient disk space"
+          else
+            echo "✅ Sufficient disk space available (${AVAILABLE_SPACE}GB)"
+          fi
+
       - name: Maximize build space
         if: env.SKIP_BUILD == ''
         uses: AdityaGarg8/remove-unwanted-software@v5
@@ -142,8 +192,32 @@ jobs:
           remove-cached-tools: 'true'
           remove-swapfile: 'true'
 
+      - name: Additional cleanup and monitoring
+        if: env.SKIP_BUILD == ''
+        run: |
+          echo "=== Additional Cleanup ==="
+
+          # Clean package manager caches
+          apt-get clean -y
+          rm -rf /var/lib/apt/lists/*
+
+          # Clean npm cache if exists
+          if command -v npm &> /dev/null; then
+            npm cache clean --force
+          fi
+
+          # Clean Python cache
+          find /tmp -name "*.pyc" -delete
+          find /tmp -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+          # Check space after cleanup
+          echo "=== Disk Space After Cleanup ==="
+          df -h
+          AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          echo "Available space after cleanup: ${AVAILABLE_SPACE}GB"
+
       - name: Download analysis artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: dependency-analysis
 

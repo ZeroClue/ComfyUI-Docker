@@ -1,3 +1,5 @@
+[![Build and Push ZeroClue Docker Images (Optimized)](https://github.com/ZeroClue/ComfyUI-Docker/actions/workflows/build.yml/badge.svg)](https://github.com/ZeroClue/ComfyUI-Docker/actions/workflows/build.yml)
+
 # ZeroClue ComfyUI-Docker
 
 > ⚠️ **Auto-updates temporarily disabled** while optimizing the build system.

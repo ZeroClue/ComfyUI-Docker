@@ -10,7 +10,7 @@ on:
       cuda_versions:
         description: 'CUDA versions (comma-separated): 12-4,12-5,12-6,12-8,12-9,13-0'
         required: false
-        default: '12-6,12-8'
+        default: '12-6'
   schedule:
     - cron: "0 */8 * * *"
   push:
@@ -28,11 +28,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Standard variants using original Dockerfile
+          # Standard variants using original Dockerfile (excluding problematic base-12-8)
           - target: base
             cuda: 12-6
-          - target: base
-            cuda: 12-8
           - target: slim
             cuda: 12-6
           - target: slim

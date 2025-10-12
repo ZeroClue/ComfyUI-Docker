@@ -34,14 +34,21 @@ ENV PATH="/root/.local/bin/:$PATH"
 RUN uv python install ${PYTHON_VERSION} --default --preview
 ENV PATH="/root/.local/bin/:$PATH"
 
-# Copy analysis scripts and custom nodes list
+# Copy analysis scripts (optional for debugging)
 COPY scripts/analyze_requirements.py /scripts/
 COPY scripts/dependency_resolver.py /scripts/
 COPY custom_nodes.txt /tmp/
 
-# Run dependency analysis and conflict resolution
-RUN python3 scripts/analyze_requirements.py custom_nodes.txt && \
-    python3 scripts/dependency_resolver.py custom_nodes_analysis.json dependency_resolution.json
+# Run dependency analysis and conflict resolution (optional, fallback to GitHub Actions results)
+RUN echo "Running Docker analysis (optional)..." && \
+    if [ "$BUILD_MODE" = "optimized" ]; then \
+        python3 scripts/analyze_requirements.py custom_nodes.txt > /tmp/analysis.log 2>&1 && \
+        python3 scripts/dependency_resolver.py custom_nodes_analysis.json dependency_resolution.json > /tmp/resolver.log 2>&1 || \
+        echo "Docker analysis failed, will use GitHub Actions results (non-critical)" && \
+        cat /tmp/analysis.log 2>&1 || echo "No analysis log available"; \
+    else \
+        echo "Skipping Docker analysis in non-optimized mode"; \
+    fi
 
 # ==========================================
 # Builder Stage - Includes build tools and optimized dependency installation

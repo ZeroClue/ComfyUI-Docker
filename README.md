@@ -1,6 +1,6 @@
 # ZeroClue ComfyUI-Docker
 
-> 🔄 **Auto-updated every 8 hours** to always include the latest version.
+> ⚠️ **Auto-updates temporarily disabled** while optimizing the build system.
 
 > 💬 Feedback & Issues → [GitHub Issues](https://github.com/ZeroClue/ComfyUI-Docker/issues)
 

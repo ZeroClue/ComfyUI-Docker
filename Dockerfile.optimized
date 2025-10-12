@@ -78,13 +78,13 @@ RUN apt-get update --yes && \
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 
-# Install build dependencies (builder stage only)
+# Install build dependencies (builder stage only) - optimized for space
 RUN apt-get install --yes --no-install-recommends \
         git wget curl bash build-essential cmake ninja-build clang \
-        libgl1 libglib2.0-0 libomp-dev ca-certificates \
-        libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
-        libv4l-dev libxvidcore-dev libx264-dev && \
-    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+        libgl1 libglib2.0-0 libomp-dev ca-certificates && \
+    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* && \
+    # Immediate cleanup to reduce layer size
+    rm -rf /var/log/apt/* /var/lib/dpkg/info/* /var/lib/dpkg/triggers/File /var/cache/debconf/*
 
 # Install the UV tool from astral-sh
 ADD https://astral.sh/uv/install.sh /uv-installer.sh
@@ -96,40 +96,56 @@ RUN uv python install ${PYTHON_VERSION} --default --preview && \
     uv venv --seed /venv
 ENV PATH="/venv/bin:$PATH"
 
-# Install Python packages that need compilation
+# Install Python packages that need compilation - optimized approach
 RUN pip install --no-cache-dir -U \
     pip setuptools wheel && \
-    pip install --no-cache-dir \
+    # Install PyTorch with minimal cache and immediate cleanup
+    pip install --no-cache-dir --no-deps \
     torch==${TORCH_VERSION} torchvision torchaudio \
-    --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
+    --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION} && \
+    # Install dependencies separately for better layer caching
+    pip install --no-cache-dir numpy && \
+    # Clean up immediately to reduce space
+    rm -rf /root/.cache/pip/* 2>/dev/null || true
 
 # Copy analysis results
 COPY --from=analysis /tmp/dependency_resolution.json /tmp/
 COPY scripts/install_custom_nodes.sh /scripts/
 
-# Install ComfyUI
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git /tmp/ComfyUI && \
+# Install ComfyUI with space optimization
+RUN git clone --depth=1 https://github.com/comfyanonymous/ComfyUI.git /tmp/ComfyUI && \
     cd /tmp/ComfyUI && \
-    pip install --no-cache-dir -r requirements.txt
+    # Install requirements with minimal cache
+    pip install --no-cache-dir -r requirements.txt && \
+    # Remove git history to reduce space
+    rm -rf /tmp/ComfyUI/.git && \
+    # Clean pip cache immediately
+    rm -rf /root/.cache/pip/* 2>/dev/null || true
 
-# Clone ComfyUI Manager
+# Clone ComfyUI Manager with space optimization
 RUN cd /tmp/ComfyUI/custom_nodes && \
-    git clone https://github.com/ltdrdata/ComfyUI-Manager.git
+    git clone --depth=1 https://github.com/ltdrdata/ComfyUI-Manager.git && \
+    # Remove git history to reduce space
+    rm -rf /tmp/ComfyUI/custom_nodes/ComfyUI-Manager/.git
 
 # Copy custom nodes list
 COPY custom_nodes.txt /tmp/custom_nodes.txt
 
-# Install custom nodes with optimized dependency resolution
+# Install custom nodes with optimized dependency resolution and space cleanup
 RUN cd /tmp/ComfyUI/custom_nodes && \
     if [ -f "/tmp/dependency_resolution.json" ] && [ "$BUILD_MODE" = "optimized" ] && ! grep -q '"fallback".*true' /tmp/dependency_resolution.json; then \
         echo "Using optimized dependency installation..." && \
         /scripts/install_custom_nodes.sh optimized true; \
     else \
         echo "Using standard dependency installation..." && \
-        xargs -n 1 git clone --recursive < /tmp/custom_nodes.txt && \
+        xargs -n 1 git clone --depth=1 --recursive < /tmp/custom_nodes.txt && \
         find /tmp/ComfyUI/custom_nodes -name "requirements.txt" -exec pip install --no-cache-dir -r {} \; && \
         find /tmp/ComfyUI/custom_nodes -name "install.py" -exec python {} \; ; \
-    fi
+    fi && \
+    # Space optimization: remove all git histories and caches
+    find /tmp/ComfyUI/custom_nodes -name ".git" -type d -exec rm -rf {} + 2>/dev/null || true && \
+    rm -rf /root/.cache/pip/* 2>/dev/null || true && \
+    rm -rf /tmp/* 2>/dev/null || true
 
 # Pre-compile Python files for better startup performance
 RUN python -m compileall /tmp/ComfyUI && \
@@ -152,6 +168,7 @@ ARG INSTALL_DEV_TOOLS=true
 ARG INSTALL_SCIENCE_PACKAGES=true
 ARG INSTALL_CODE_SERVER=true
 ARG BUILD_MODE=optimized
+ARG BUILD_SPACE_AWARE=false
 
 # Set basic environment variables
 ENV SHELL=/bin/bash
@@ -191,20 +208,24 @@ RUN apt-get update --yes && \
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 
-# Install essential runtime packages
+# Install essential runtime packages with immediate space optimization
 RUN apt-get install --yes --no-install-recommends \
         git wget curl bash nginx-light rsync sudo binutils ffmpeg lshw nano tzdata file \
         libgl1 libglib2.0-0 \
         openssh-server ca-certificates && \
-    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* && \
+    # Aggressive immediate cleanup to reduce layer size
+    rm -rf /var/log/apt/* /var/lib/dpkg/info/* /var/lib/dpkg/triggers/File /var/cache/debconf/*
 
-# Install video processing packages with error handling
+# Install video processing packages with error handling and immediate cleanup
 RUN echo "Installing video processing packages..." && \
     apt-get install --yes --no-install-recommends \
         libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
         libv4l-dev libxvidcore-dev libx264-dev || \
     echo "Warning: Some video packages failed to install (non-critical)" && \
-    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* && \
+    # Immediate cleanup to minimize layer size
+    rm -rf /var/log/apt/* /var/lib/dpkg/info/* /var/cache/debconf/*
 
 # Install the UV tool from astral-sh
 ADD https://astral.sh/uv/install.sh /uv-installer.sh
@@ -282,9 +303,10 @@ RUN echo 'cat /etc/zeroclue.txt' >> /root/.bashrc
 RUN echo 'echo -e "\nFor detailed documentation and guides, please visit:\n\033[1;34mhttps://docs.runpod.io/\033[0m and \033[1;34mhttps://blog.runpod.io/\033[0m\n\n"' >> /root/.bashrc
 
 # ==========================================
-# Post-build optimization (moderate cleanup)
+# Post-build optimization (moderate cleanup with space-aware logic)
 # ==========================================
 RUN echo "Performing post-build optimization..." && \
+    echo "Space-aware build: $BUILD_SPACE_AWARE" && \
     # Clean pip cache (safe cleanup with high impact)
     pip cache purge || echo "Warning: pip cache purge failed (non-critical)" && \
     # Remove temporary files and build artifacts (safe cleanup)
@@ -294,8 +316,26 @@ RUN echo "Performing post-build optimization..." && \
     # Remove package manager caches (safe cleanup)
     apt-get autoremove -y 2>/dev/null || echo "Warning: autoremove failed (non-critical)" && \
     apt-get clean 2>/dev/null || echo "Warning: apt-get clean failed (non-critical)" && \
-    # Remove man pages and documentation (optional - can be disabled for debugging)
-    rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base 2>/dev/null || echo "Warning: Documentation removal failed (non-critical)" && \
+    # Space-aware additional cleanup
+    if [ "$BUILD_SPACE_AWARE" = "true" ]; then \
+        echo "Performing aggressive space-aware cleanup..." && \
+        # Remove additional documentation and non-essential files
+        rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base /usr/share/info 2>/dev/null || true && \
+        # Remove Python cache and compiled files aggressively
+        find /usr -name "*.pyc" -delete 2>/dev/null || true && \
+        find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true && \
+        # Remove large static libraries that aren't needed at runtime
+        find /usr -name "*.a" -delete 2>/dev/null || true && \
+        find /usr -name "*.la" -delete 2>/dev/null || true && \
+        # Remove locale data except essential ones
+        find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en*' -exec rm -rf {} + 2>/dev/null || true && \
+        # Remove timezone data except essential ones
+        rm -rf /usr/share/zoneinfo ! -name 'UTC' ! -name 'Etc/*' 2>/dev/null || true && \
+        echo "Aggressive cleanup completed"; \
+    else \
+        # Standard cleanup
+        rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base 2>/dev/null || echo "Warning: Documentation removal failed (non-critical)"; \
+    fi && \
     echo "Post-build optimization complete"
 
 # Set entrypoint to the start script

@@ -1,35 +1,120 @@
-name: Build and Push ZeroClue Docker Images
+name: Build and Push ZeroClue Docker Images (Optimized)
 
 on:
-  workflow_dispatch:
-    inputs:
-      targets:
-        description: 'Build targets (comma-separated): base,slim,minimal,production,ultra-slim'
-        required: false
-        default: 'base,slim,minimal,production,ultra-slim'
-      cuda_versions:
-        description: 'CUDA versions (comma-separated): 12-4,12-5,12-6,12-8,12-9,13-0'
-        required: false
-        default: '12-6,12-8'
   # schedule:
   #   - cron: "0 */8 * * *"
   push:
     branches: [main]
     paths:
       - 'Dockerfile'
+      - 'Dockerfile.optimized'
       - 'docker-bake.hcl'
+      - 'docker-bake-optimized.hcl'
       - 'scripts/**'
       - 'custom_nodes.txt'
       - '.github/workflows/build.yml'
+      - '.github/workflows/build-legacy.yml'
 
 jobs:
+  dependency-analysis:
+    runs-on: ubuntu-latest
+    outputs:
+      has-conflicts: ${{ steps.analysis.outputs.has-conflicts }}
+      conflict-summary: ${{ steps.analysis.outputs.conflict-summary }}
+      analysis-artifact: ${{ steps.analysis.outputs.analysis-artifact }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Analyze custom nodes requirements
+        id: analysis
+        run: |
+          echo "Analyzing custom nodes for dependency conflicts..."
+
+          # Run analysis
+          python scripts/analyze_requirements.py custom_nodes.txt || {
+            echo "has-conflicts=true" >> $GITHUB_OUTPUT
+            echo "conflict-summary=High-severity dependency conflicts detected" >> $GITHUB_OUTPUT
+            echo "analysis-artifact=custom_nodes_analysis.json" >> $GITHUB_OUTPUT
+            exit 1
+          }
+
+          # Run dependency resolver
+          python scripts/dependency_resolver.py custom_nodes_analysis.json dependency_resolution.json
+
+          echo "has-conflicts=false" >> $GITHUB_OUTPUT
+          echo "conflict-summary=No critical conflicts found" >> $GITHUB_OUTPUT
+          echo "analysis-artifact=dependency_resolution.json" >> $GITHUB_OUTPUT
+
+      - name: Upload analysis artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-analysis
+          path: |
+            custom_nodes_analysis.json
+            dependency_resolution.json
+          retention-days: 30
+
+      - name: Comment on conflicts
+        if: steps.analysis.outputs.has-conflicts == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const analysis = JSON.parse(fs.readFileSync('custom_nodes_analysis.json', 'utf8'));
+
+            const comment = `## ⚠️ Dependency Conflicts Detected
+
+            **High-severity conflicts found:** ${analysis.summary.high_severity_conflicts}
+
+            **Most critical conflicts:**
+            ${analysis.conflicts.slice(0, 5).map(c =>
+              `- **${c.dependency}**: ${c.node1} (${c.version1}) vs ${c.node2} (${c.version2})`
+            ).join('\n')}
+
+            **Recommendations:**
+            ${analysis.recommendations.map(r => `- ${r}`).join('\n')}
+
+            Please resolve these conflicts before proceeding with the build.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
   bake:
     runs-on: ubuntu-latest
+    needs: dependency-analysis
+    if: needs.dependency-analysis.outputs.has-conflicts != 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Existing variants
+          # Optimized variants using Dockerfile.optimized
+          - target: base-optimized
+            cuda: 12-6
+          - target: base-optimized
+            cuda: 12-8
+          - target: slim-optimized
+            cuda: 12-6
+          - target: slim-optimized
+            cuda: 12-8
+          - target: production-optimized
+            cuda: 12-6
+          - target: production-optimized
+            cuda: 12-8
+          # Keep some standard variants for compatibility
           - target: base
             cuda: 12-6
           - target: base
@@ -37,36 +122,12 @@ jobs:
           - target: slim
             cuda: 12-6
           - target: slim
-            cuda: 12-8
-          - target: minimal
-            cuda: 12-6
-          - target: minimal
-            cuda: 12-8
-          # New production variants
-          - target: production
-            cuda: 12-6
-          - target: production
-            cuda: 12-8
-          # New ultra-slim variants
-          - target: ultra-slim
-            cuda: 12-6
-          - target: ultra-slim
             cuda: 12-8
     steps:
       - name: Check if should run
         run: |
-          TARGETS="${{ github.event.inputs.targets || 'base,slim,minimal,production,ultra-slim' }}"
-          CUDA="${{ github.event.inputs.cuda_versions || '12-6,12-8' }}"
-
-          if [[ ",$TARGETS," != *",${{ matrix.target }},"* ]]; then
-            echo "SKIP_BUILD=true" >> $GITHUB_ENV
-            echo "Skipping ${{ matrix.target }}-${{ matrix.cuda }} (not in targets list)"
-          elif [[ ",$CUDA," != *",${{ matrix.cuda }},"* ]]; then
-            echo "SKIP_BUILD=true" >> $GITHUB_ENV
-            echo "Skipping ${{ matrix.target }}-${{ matrix.cuda }} (not in CUDA list)"
-          else
-            echo "Building ${{ matrix.target }}-${{ matrix.cuda }}"
-          fi
+          echo "Building optimized target: ${{ matrix.target }}-${{ matrix.cuda }}"
+          echo "Using optimization: true"
 
       - name: Maximize build space
         if: env.SKIP_BUILD == ''
@@ -81,9 +142,21 @@ jobs:
           remove-cached-tools: 'true'
           remove-swapfile: 'true'
 
-      - name: Checkout
+      - name: Download analysis artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dependency-analysis
+
+      - name: Set build optimization args
         if: env.SKIP_BUILD == ''
-        uses: actions/checkout@v4
+        run: |
+          if [ -f "dependency_resolution.json" ]; then
+            echo "BUILD_OPTIMIZED=true" >> $GITHUB_ENV
+            echo "Using optimized dependency resolution"
+          else
+            echo "BUILD_OPTIMIZED=false" >> $GITHUB_ENV
+            echo "Using standard dependency installation"
+          fi
 
       - name: Docker login
         if: env.SKIP_BUILD == ''
@@ -107,12 +180,18 @@ jobs:
         with:
           targets: ${{ matrix.target }}-${{ matrix.cuda }}
           push: true
+          load: false
 
       - name: Build summary
         if: env.SKIP_BUILD == ''
         run: |
-          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Optimized Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Target**: ${{ matrix.target }}" >> $GITHUB_STEP_SUMMARY
           echo "- **CUDA Version**: ${{ matrix.cuda }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Repository**: zeroclue/comfyui" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Date**: ${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Mode**: Optimized with dependency analysis" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.dependency-analysis.outputs.conflict-summary }}" ]; then
+            echo "- **Dependency Analysis**: ${{ needs.dependency-analysis.outputs.conflict-summary }}" >> $GITHUB_STEP_SUMMARY
+          fi

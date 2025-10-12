@@ -203,15 +203,16 @@ jobs:
 
       - name: Maximize build disk space
         if: env.SKIP_BUILD == ''
-        uses: jlumbroto/free-disk-space@main
+        uses: easimon/maximize-build-space@v7
         with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+          remove-large-packages: 'true'
+          remove-cached-tools: 'true'
+          remove-swapfile: 'true'
 
       - name: Enhanced disk space cleanup
         if: env.SKIP_BUILD == ''
@@ -384,15 +385,16 @@ jobs:
 
       - name: Maximize build disk space for optimized builds
         if: env.SKIP_BUILD == ''
-        uses: jlumbroto/free-disk-space@main
+        uses: easimon/maximize-build-space@v7
         with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+          remove-large-packages: 'true'
+          remove-cached-tools: 'true'
+          remove-swapfile: 'true'
 
       - name: Enhanced disk space cleanup for optimized builds
         if: env.SKIP_BUILD == ''
@@ -584,15 +586,16 @@ jobs:
 
       - name: Maximize build disk space for CUDA 12.8
         if: env.SKIP_BUILD == ''
-        uses: jlumbroto/free-disk-space@main
+        uses: easimon/maximize-build-space@v7
         with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+          remove-large-packages: 'true'
+          remove-cached-tools: 'true'
+          remove-swapfile: 'true'
 
       - name: Enhanced disk space cleanup for CUDA 12.8
         if: env.SKIP_BUILD == ''

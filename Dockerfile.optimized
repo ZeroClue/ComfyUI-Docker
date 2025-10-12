@@ -121,7 +121,7 @@ COPY custom_nodes.txt /tmp/custom_nodes.txt
 
 # Install custom nodes with optimized dependency resolution
 RUN cd /tmp/ComfyUI/custom_nodes && \
-    if [ -f "/tmp/dependency_resolution.json" ] && [ "$BUILD_MODE" = "optimized" ]; then \
+    if [ -f "/tmp/dependency_resolution.json" ] && [ "$BUILD_MODE" = "optimized" ] && ! grep -q '"fallback".*true' /tmp/dependency_resolution.json; then \
         echo "Using optimized dependency installation..." && \
         /scripts/install_custom_nodes.sh optimized true; \
     else \

@@ -131,7 +131,7 @@ RUN cd /tmp/ComfyUI/custom_nodes && \
 # Copy custom nodes list
 COPY custom_nodes.txt /tmp/custom_nodes.txt
 
-# Install custom nodes with optimized dependency resolution and space cleanup
+# Install custom nodes with optimized dependency resolution and selective cleanup
 RUN cd /tmp/ComfyUI/custom_nodes && \
     if [ -f "/tmp/dependency_resolution.json" ] && [ "$BUILD_MODE" = "optimized" ] && ! grep -q '"fallback".*true' /tmp/dependency_resolution.json; then \
         echo "Using optimized dependency installation..." && \
@@ -142,10 +142,11 @@ RUN cd /tmp/ComfyUI/custom_nodes && \
         find /tmp/ComfyUI/custom_nodes -name "requirements.txt" -exec pip install --no-cache-dir -r {} \; && \
         find /tmp/ComfyUI/custom_nodes -name "install.py" -exec python {} \; ; \
     fi && \
-    # Space optimization: remove all git histories and caches
+    # Selective cleanup: remove git histories and caches only (preserve ComfyUI)
     find /tmp/ComfyUI/custom_nodes -name ".git" -type d -exec rm -rf {} + 2>/dev/null || true && \
     rm -rf /root/.cache/pip/* 2>/dev/null || true && \
-    rm -rf /tmp/* 2>/dev/null || true
+    # Remove other temporary files but keep /tmp/ComfyUI intact for later stages
+    rm -rf /tmp/pip-* /tmp/*~ /tmp/.ssh/* /tmp/go-build* /tmp/tmp* 2>/dev/null || true
 
 # Pre-compile Python files for better startup performance
 RUN python -m compileall /tmp/ComfyUI && \
@@ -247,6 +248,14 @@ RUN pip install --no-cache-dir -U \
     huggingface_hub hf_transfer \
     numpy requests tqdm pillow pyyaml \
     triton
+
+# Post-copy cleanup: remove temporary files and build artifacts from /tmp
+RUN echo "Performing post-copy cleanup..." && \
+    # Remove git histories from ComfyUI (already copied to /ComfyUI)
+    find /ComfyUI/custom_nodes -name ".git" -type d -exec rm -rf {} + 2>/dev/null || true && \
+    # Remove any remaining temporary files
+    rm -rf /tmp/pip-* /tmp/*~ /tmp/.ssh/* /tmp/go-build* /tmp/tmp* 2>/dev/null || true && \
+    echo "Post-copy cleanup complete"
 
 # Conditionally install development and science packages
 RUN if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \

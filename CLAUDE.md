@@ -643,3 +643,4 @@ cat /tmp/custom_nodes_install.log
 # Check GitHub Actions build logs
 # Actions tab → Select workflow → View build logs
 ```
+- trim the commit message

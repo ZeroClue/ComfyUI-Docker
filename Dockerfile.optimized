@@ -45,9 +45,11 @@ RUN echo "Running Docker analysis (optional)..." && \
         python3 scripts/analyze_requirements.py custom_nodes.txt > /tmp/analysis.log 2>&1 && \
         python3 scripts/dependency_resolver.py custom_nodes_analysis.json dependency_resolution.json > /tmp/resolver.log 2>&1 || \
         echo "Docker analysis failed, will use GitHub Actions results (non-critical)" && \
-        cat /tmp/analysis.log 2>&1 || echo "No analysis log available"; \
+        cat /tmp/analysis.log 2>&1 || echo "No analysis log available" && \
+        echo '{"fallback": true, "message": "Using GitHub Actions analysis results"}' > /tmp/dependency_resolution.json; \
     else \
-        echo "Skipping Docker analysis in non-optimized mode"; \
+        echo "Skipping Docker analysis in non-optimized mode" && \
+        echo '{"fallback": true, "message": "Analysis not required in non-optimized mode"}' > /tmp/dependency_resolution.json; \
     fi
 
 # ==========================================

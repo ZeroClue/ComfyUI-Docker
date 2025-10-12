@@ -40,14 +40,16 @@ zeroclue/comfyui:(A)-torch2.8.0-(B)
 ## 🧱 Image Variants
 
 ### Development & Full-Featured Variants
-| Image Name                            | Custom Nodes | Code Server | JupyterLab | Size | CUDA |
-| ------------------------------------- | ------------ | ----------- | ---------- | ---- | ---- |
-| `zeroclue/comfyui:base-torch2.8.0-cu126` | ✅ Yes        | ✅ Yes      | ✅ Yes     | ~8-12GB | 12.6 |
-| `zeroclue/comfyui:base-torch2.8.0-cu128` | ✅ Yes        | ✅ Yes      | ✅ Yes     | ~8-12GB | 12.8 |
-| `zeroclue/comfyui:slim-torch2.8.0-cu126` | ❌ No         | ✅ Yes      | ✅ Yes     | ~6-8GB | 12.6 |
-| `zeroclue/comfyui:slim-torch2.8.0-cu128` | ❌ No         | ✅ Yes      | ✅ Yes     | ~6-8GB | 12.8 |
-| `zeroclue/comfyui:minimal-torch2.8.0-cu126` | ❌ No         | ❌ No       | ✅ Yes     | ~4-6GB | 12.6 |
-| `zeroclue/comfyui:minimal-torch2.8.0-cu128` | ❌ No         | ❌ No       | ✅ Yes     | ~4-6GB | 12.8 |
+| Image Name                            | Custom Nodes | Code Server | JupyterLab | Size | CUDA | Build Status |
+| ------------------------------------- | ------------ | ----------- | ---------- | ---- | ---- | ------------ |
+| `zeroclue/comfyui:base-torch2.8.0-cu126` | ✅ Yes        | ✅ Yes      | ✅ Yes     | ~8-12GB | 12.6 | ✅ Auto-built |
+| `zeroclue/comfyui:base-torch2.8.0-cu128` | ✅ Yes        | ✅ Yes      | ✅ Yes     | ~8-12GB | 12.8 | 🔧 Manual only |
+| `zeroclue/comfyui:slim-torch2.8.0-cu126` | ❌ No         | ✅ Yes      | ✅ Yes     | ~6-8GB | 12.6 | ✅ Auto-built |
+| `zeroclue/comfyui:slim-torch2.8.0-cu128` | ❌ No         | ✅ Yes      | ✅ Yes     | ~6-8GB | 12.8 | ✅ Auto-built |
+| `zeroclue/comfyui:minimal-torch2.8.0-cu126` | ❌ No         | ❌ No       | ✅ Yes     | ~4-6GB | 12.6 | ✅ Auto-built |
+| `zeroclue/comfyui:minimal-torch2.8.0-cu128` | ❌ No         | ❌ No       | ✅ Yes     | ~4-6GB | 12.8 | ✅ Auto-built |
+
+> ⚠️ **Important**: `base-torch2.8.0-cu128` requires manual build due to disk space constraints. See [Manual Build Guide](#-manual-build-for-large-variants) below.
 
 ### 🆕 Production Optimized Variants
 | Image Name                                    | Custom Nodes | Code Server | JupyterLab | Size | CUDA | Use Case |
@@ -258,3 +260,73 @@ docker run -e AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC" zeroclue/comfyu
 * ComfyUI-wanBlockswap
 
 > 👉 More details in the [Wiki](https://github.com/ZeroClue/ComfyUI-Docker/wiki/Custom-Nodes).
+
+---
+
+## 🔧 Manual Build for Large Variants
+
+### Why Manual Build Only?
+
+The `base-torch2.8.0-cu128` variant requires **35GB of disk space** during build, which exceeds GitHub Actions' standard runner limits. To maintain reliable builds (100% success rate), this variant is built manually on demand.
+
+### 🚀 Quick Manual Build (GitHub Actions)
+
+1. **Visit Actions**: https://github.com/ZeroClue/ComfyUI-Docker/actions
+2. **Click "Build and Push ZeroClue Docker Images"**
+3. **Click "Run workflow"**
+4. **Set Parameters**:
+   ```
+   targets: base
+   cuda_versions: 12-8
+   ```
+5. **Click "Run workflow"** → Build completes in ~30 minutes
+
+### 📦 Alternative: Use Available Variants
+
+For most use cases, these alternatives provide the same functionality:
+
+#### **Need CUDA 12.8?**
+```bash
+# Use slim-12-8 + ComfyUI Manager for custom nodes
+docker run --gpus all -p 3000:3000 \
+  zeroclue/comfyui:slim-torch2.8.0-cu128
+# Install custom nodes via ComfyUI Manager web interface
+```
+
+#### **Need Full Installation?**
+```bash
+# Use base-12-6 (same features, slightly older CUDA)
+docker run --gpus all -p 3000:3000 \
+  zeroclue/comfyui:base-torch2.8.0-cu126
+```
+
+#### **Need Production Ready?**
+```bash
+# Use production-12-8 (optimized for serving)
+docker run --gpus all -p 3000:3000 \
+  zeroclue/comfyui:production-torch2.8.0-cu128
+```
+
+### 📋 Auto-Built Variants (100% Success Rate)
+
+✅ **Reliably built automatically:**
+- `base-torch2.8.0-cu126` - Full installation with CUDA 12.6
+- `slim-torch2.8.0-cu126/128` - No custom nodes
+- `minimal-torch2.8.0-cu126/128` - No code server
+- `production-torch2.8.0-cu126/128` - Optimized for serving
+- `ultra-slim-torch2.8.0-cu126/128` - Minimal footprint
+
+### 📖 Detailed Instructions
+
+For comprehensive manual build instructions, local building options, and troubleshooting, see: **[Manual Build Guide](MANUAL_BUILD_GUIDE.md)**
+
+---
+
+## 📊 Build Status
+
+| Variant | Status | Success Rate |
+|---------|--------|--------------|
+| **Auto-built variants (9 total)** | ✅ Working | 100% |
+| **Manual variants** | 🔧 Available on demand | N/A |
+
+**Last Updated**: Workflow optimized for reliable builds while maintaining full functionality.

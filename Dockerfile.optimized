@@ -9,7 +9,7 @@ ARG RUNTIME_BASE_IMAGE=nvidia/cuda:12.6.3-runtime-ubuntu24.04
 # ==========================================
 # Analysis Stage - Dependency analysis and conflict resolution
 # ==========================================
-FROM ${BASE_IMAGE} as analysis
+FROM ${BASE_IMAGE} AS analysis
 
 # Set build environment variables
 ARG PYTHON_VERSION=3.11
@@ -46,7 +46,7 @@ RUN python3 scripts/analyze_requirements.py custom_nodes.txt && \
 # ==========================================
 # Builder Stage - Includes build tools and optimized dependency installation
 # ==========================================
-FROM ${BASE_IMAGE} as builder
+FROM ${BASE_IMAGE} AS builder
 
 # Set the shell and enable pipefail for better error handling
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -129,7 +129,7 @@ RUN python -m compileall /tmp/ComfyUI && \
 # ==========================================
 # Runtime Stage - Production optimized with moderate cleanup
 # ==========================================
-FROM ${RUNTIME_BASE_IMAGE} as runtime
+FROM ${RUNTIME_BASE_IMAGE} AS runtime
 
 # Set the shell and enable pipefail for better error handling
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]

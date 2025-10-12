@@ -195,7 +195,11 @@ jobs:
       - name: Additional cleanup and monitoring
         if: env.SKIP_BUILD == ''
         run: |
-          echo "=== Additional User-space Cleanup ==="
+          echo "=== Enhanced Cleanup and Space Monitoring ==="
+
+          # Check space before additional cleanup
+          BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          echo "Available space before cleanup: ${BEFORE_SPACE}GB"
 
           # Clean npm cache if exists
           if command -v npm &> /dev/null; then
@@ -211,15 +215,50 @@ jobs:
             pip cache purge || true
           fi
 
-          # Clean temporary files in user directories
+          # Clean Docker build cache (safe operations)
+          docker system prune -f --volumes || true
+          docker builder prune -f || true
+
+          # Clean temporary files and caches
           rm -rf ~/.cache/* 2>/dev/null || true
           rm -rf /tmp/pip-* 2>/dev/null || true
+          rm -rf /tmp/*~ 2>/dev/null || true
+          rm -rf /tmp/.ssh/* 2>/dev/null || true
+
+          # Clean GitHub Actions specific caches
+          rm -rf /home/runner/.cache/* 2>/dev/null || true
+          rm -rf /home/runner/work/_temp/* 2>/dev/null || true
+
+          # Clean system logs and temp files (user accessible)
+          find /var/log -name "*.log" -type f -truncate -s 0 2>/dev/null || true
+          find /tmp -type f -atime +1 -delete 2>/dev/null || true
+
+          # Clean package manager caches
+          if command -v apt-get &> /dev/null; then
+            apt-get autoremove -y 2>/dev/null || true
+          fi
 
           # Check space after cleanup
-          echo "=== Disk Space After Cleanup ==="
+          echo "=== Disk Space After Enhanced Cleanup ==="
           df -h
           AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           echo "Available space after cleanup: ${AVAILABLE_SPACE}GB"
+
+          # Calculate space recovered
+          SPACE_RECOVERED=$((AVAILABLE_SPACE - BEFORE_SPACE))
+          echo "Space recovered: ${SPACE_RECOVERED}GB"
+
+          # Fail if critically low space (<10GB)
+          if [ "$AVAILABLE_SPACE" -lt 10 ]; then
+            echo "❌ CRITICAL: Insufficient disk space (${AVAILABLE_SPACE}GB)"
+            echo "Build will likely fail due to disk space constraints"
+            exit 1
+          elif [ "$AVAILABLE_SPACE" -lt 15 ]; then
+            echo "⚠️ WARNING: Low disk space (${AVAILABLE_SPACE}GB)"
+            echo "Consider monitoring build closely"
+          else
+            echo "✅ Sufficient disk space available (${AVAILABLE_SPACE}GB)"
+          fi
 
       - name: Download analysis artifacts
         uses: actions/download-artifact@v4
@@ -260,6 +299,9 @@ jobs:
           targets: ${{ matrix.target }}-${{ matrix.cuda }}
           push: true
           load: false
+          files: |
+            docker-bake.hcl
+            ${{ contains(matrix.target, 'optimized') && 'docker-bake-optimized.hcl' || '' }}
 
       - name: Build summary
         if: env.SKIP_BUILD == ''

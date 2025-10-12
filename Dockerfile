@@ -9,7 +9,7 @@ ARG RUNTIME_BASE_IMAGE=nvidia/cuda:12.6.3-runtime-ubuntu24.04
 # ==========================================
 # Builder Stage - Includes build tools
 # ==========================================
-FROM ${BASE_IMAGE} as builder
+FROM ${BASE_IMAGE} AS builder
 
 # Set the shell and enable pipefail for better error handling
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -53,7 +53,7 @@ RUN pip install --no-cache-dir -U \
 # ==========================================
 # Runtime Stage - Production optimized
 # ==========================================
-FROM ${RUNTIME_BASE_IMAGE} as runtime
+FROM ${RUNTIME_BASE_IMAGE} AS runtime
 
 # Set the shell and enable pipefail for better error handling
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]

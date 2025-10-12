@@ -1,6 +1,6 @@
 # Custom Nodes
 
-The **base** images include 23 carefully selected custom nodes for ComfyUI. These nodes provide enhanced functionality for AI image and video generation workflows.
+The **base** images include 24 carefully selected custom nodes for ComfyUI. These nodes provide enhanced functionality for AI image and video generation workflows, from basic utilities to advanced model optimization.
 
 ## Included Custom Nodes
 
@@ -15,7 +15,7 @@ The **base** images include 23 carefully selected custom nodes for ComfyUI. Thes
 | **ComfyUI-Impact-Pack** | Advanced conditioning nodes | Enhanced control |
 | **ComfyUI-Impact-Subpack** | Additional Impact nodes | Extended functionality |
 
-### Video Generation
+### Video Generation & Processing
 
 | Node | Description | Purpose |
 |------|-------------|---------|
@@ -24,7 +24,7 @@ The **base** images include 23 carefully selected custom nodes for ComfyUI. Thes
 | **ComfyUI-Frame-Interpolation** | Frame rate enhancement | Smooth video output |
 | **ComfyUI-wanBlockswap** | WAN model optimization | Memory-efficient generation |
 
-### Model Optimization
+### Model Optimization & Performance
 
 | Node | Description | Purpose |
 |------|-------------|---------|
@@ -32,21 +32,177 @@ The **base** images include 23 carefully selected custom nodes for ComfyUI. Thes
 | **ComfyUI-TensorRT** | TensorRT acceleration | GPU optimization |
 | **ComfyUI-MultiGPU** | Multi-GPU support | Distributed processing |
 
-### Advanced Features
+### Image Enhancement & Processing
+
+| Node | Description | Purpose |
+|------|-------------|---------|
+| **ComfyUI_UltimateSDUpscale** | Advanced image upscaling | High-resolution output |
+| **ComfyUI-Image-Saver** | Enhanced image saving | Better file management |
+| **ComfyUI-Crystools** | Crystal generation tools | Specialized effects |
+
+### Workflow Enhancement & Utilities
 
 | Node | Description | Purpose |
 |------|-------------|---------|
 | **ComfyUI-KJNodes** | Advanced workflow nodes | Complex operations |
 | **ComfyUI-mxToolkit** | Math and logic nodes | Computational workflows |
-| **ComfyUI_TensorRT** | NVIDIA TensorRT integration | Performance acceleration |
-| **ComfyUI_UltimateSDUpscale** | Image upscaling | High-resolution output |
 | **ComfyUI-Custom-Scripts** | Custom functionality | Extended features |
 | **ComfyUI_JPS-Nodes** | Specialized operations | Unique workflows |
 | **cg-use-everywhere** | Node connection utility | Flexible connections |
-| **ComfyUI-Crystools** | Crystal generation tools | Specialized effects |
 | **rgthree-comfy** | Utility nodes | Workflow helpers |
-| **ComfyUI-Image-Saver** | Enhanced image saving | Better file management |
+| **ComfyUI-KJNodes** | Additional advanced nodes | Extended capabilities |
+
+### Text & Prompt Management
+
+| Node | Description | Purpose |
+|------|-------------|---------|
+| **comfyui-prompt-reader-node** | Prompt analysis tools | Text processing |
 | **comfy-ex-tagcomplete** | Auto-completion | Faster workflow building |
+
+### Connectivity & Integration
+
+| Node | Description | Purpose |
+|------|-------------|---------|
+| **ComfyUI-Openrouter_node** | External API integration | Cloud model access |
+| **ComfyUI-KJNodes** | Network and connectivity | External services |
+
+### Development & Quality of Life
+
+| Node | Description | Purpose |
+|------|-------------|---------|
+| **ComfyUI-Custom-Scripts** | Development tools | Custom workflows |
+| **ComfyUI-JPS-Nodes** | Debugging utilities | Development support |
+
+## Detailed Node Information
+
+### Video Generation & Processing
+
+#### **ComfyUI-WanVideoWrapper**
+- **Repository**: kijai/ComfyUI-WanVideoWrapper
+- **Purpose**: Primary interface for WAN 2.2 video generation models
+- **Key Features**:
+  - Text-to-Video (T2V) generation
+  - Image-to-Video (I2V) conversion
+  - Support for multiple model formats (FP8, GGUF)
+  - LoRA integration for style and speed enhancement
+- **Dependencies**: PyTorch, transformers, diffusers
+- **Usage**: Core node for all WAN video generation workflows
+
+#### **ComfyUI-VideoHelperSuite**
+- **Repository**: Kosinkadink/ComfyUI-VideoHelperSuite
+- **Purpose**: Comprehensive video processing and format conversion
+- **Key Features**:
+  - Video format conversion (MP4, GIF, WebM)
+  - Frame extraction and manipulation
+  - Video concatenation and splitting
+  - Metadata handling
+- **Dependencies**: OpenCV, imageio, ffmpeg
+- **Usage**: Post-processing and format handling for video outputs
+
+#### **ComfyUI-Frame-Interpolation**
+- **Repository**: Fannovel16/ComfyUI-Frame-Interpolation
+- **Purpose**: Increase frame rate and smooth video output
+- **Key Features**:
+  - Frame interpolation algorithms (RIFE, FILM)
+  - Motion compensation
+  - Adjustable smoothness settings
+  - Multiple interpolation methods
+- **Dependencies**: PyTorch, OpenCV, numpy
+- **Usage**: Enhance video quality by increasing frame rate
+
+#### **ComfyUI-wanBlockswap**
+- **Repository**: orssorbit/ComfyUI-wanBlockswap
+- **Purpose**: Memory optimization for large WAN models
+- **Key Features**:
+  - Block-wise model loading
+  - Memory usage reduction (30-50%)
+  - Maintains quality while reducing VRAM requirements
+  - Compatible with all WAN model variants
+- **Dependencies**: Custom CUDA kernels, PyTorch
+- **Usage**: Enable larger models on limited VRAM systems
+
+### Model Optimization & Performance
+
+#### **ComfyUI-GGUF**
+- **Repository**: city96/ComfyUI-GGUF
+- **Purpose**: Support for GGUF quantized models
+- **Key Features**:
+  - Load GGUF quantized diffusion models
+  - Significant memory reduction (50-70%)
+  - Support for various quantization levels (Q4, Q8, etc.)
+  - Maintains good quality with lower memory usage
+- **Dependencies**: ggml-python, PyTorch
+- **Usage**: Use quantized models for memory efficiency
+
+#### **ComfyUI-TensorRT**
+- **Repository**: comfyanonymous/ComfyUI_TensorRT
+- **Purpose**: NVIDIA TensorRT acceleration
+- **Key Features**:
+  - Convert models to TensorRT engines
+  - 2-5x faster inference speed
+  - Optimized for NVIDIA GPUs
+  - Support for dynamic shapes
+- **Dependencies**: TensorRT, PyTorch, CUDA
+- **Usage**: Maximum performance on NVIDIA hardware
+
+#### **ComfyUI-MultiGPU**
+- **Repository**: pollockjj/ComfyUI-MultiGPU
+- **Purpose**: Distributed processing across multiple GPUs
+- **Key Features**:
+  - Automatic workload distribution
+  - Load balancing across GPUs
+  - Memory pooling
+  - Support for different GPU configurations
+- **Dependencies**: PyTorch distributed, NCCL
+- **Usage**: Scale processing across multiple GPUs
+
+### Core Workflow Enhancement
+
+#### **ComfyUI-Easy-Use**
+- **Repository**: yolain/ComfyUI-Easy-Use
+- **Purpose**: Simplify complex operations with user-friendly nodes
+- **Key Features**:
+  - Simplified sampling and generation nodes
+  - Automatic prompt enhancement
+  - Easy model switching
+  - Pre-configured workflows
+- **Dependencies**: transformers, diffusers
+- **Usage**: Beginner-friendly alternative to complex nodes
+
+#### **ComfyUI-Impact-Pack**
+- **Repository**: ltdrdata/ComfyUI-Impact-Pack
+- **Purpose**: Advanced conditioning and control mechanisms
+- **Key Features**:
+  - Detail transfer nodes
+  - Advanced conditioning methods
+  - Regional prompting
+  - Batch processing utilities
+- **Dependencies**: PyTorch, OpenCV
+- **Usage**: Fine-grained control over generation process
+
+#### **efficiency-nodes-comfyui**
+- **Repository**: jags111/efficiency-nodes-comfyui
+- **Purpose**: Performance optimization and workflow efficiency
+- **Key Features**:
+  - Memory-efficient sampling
+  - Batch processing optimization
+  - Cached computations
+  - Smart workflow routing
+- **Dependencies**: PyTorch, numpy
+- **Usage**: Optimize workflow performance and memory usage
+
+### Connectivity & Integration
+
+#### **ComfyUI-Openrouter_node**
+- **Repository**: gabe-init/ComfyUI-Openrouter_node
+- **Purpose**: Integration with OpenRouter API for external model access
+- **Key Features**:
+  - Access to cloud-based language models
+  - API key management
+  - Model selection interface
+  - Cost tracking and limits
+- **Dependencies**: requests, openai
+- **Usage**: Connect to external language models via OpenRouter
 
 ## WAN 2.2 Video Generation
 
@@ -226,3 +382,4 @@ python /workspace/ComfyUI/main.py --version
 
 # Check node versions
 ls /workspace/ComfyUI/custom_nodes/*/
+```

@@ -23,7 +23,7 @@ function "tag" {
     result = ["${DOCKERHUB_REPO_NAME}:${tag}-torch${TORCH_VERSION}-${cuda}${EXTRA_TAG}"]
 }
 
-# Common optimized base configuration
+# Common optimized base configuration with caching optimization
 target "_common_optimized" {
     dockerfile = "Dockerfile.optimized"
     context = "."
@@ -35,6 +35,15 @@ target "_common_optimized" {
         INSTALL_DEV_TOOLS        = "true"
         INSTALL_SCIENCE_PACKAGES = "true"
     }
+    # Enhanced cache management for better layer reuse
+    cache-from = [
+        "type=gha,mode=max"
+    ]
+    cache-to = [
+        "type=gha,mode=max,scope=optimized"
+    ]
+    # Reduce parallelism for space-constrained environments
+    platforms = ["linux/amd64"]
 }
 
 # Runtime CUDA targets for optimized variants
@@ -62,6 +71,16 @@ target "_cu128_optimized" {
         BASE_IMAGE         = "nvidia/cuda:12.8.1-devel-ubuntu24.04"
         RUNTIME_BASE_IMAGE = "nvidia/cuda:12.8.1-runtime-ubuntu24.04"
         CUDA_VERSION       = "cu128"
+    }
+    # Override cache scope for CUDA 12.8 to use more aggressive caching
+    cache-to = [
+        "type=gha,mode=max,scope=cu128-optimized"
+    ]
+    # Add build labels for monitoring
+    labels = {
+        "com.zeroclue.build.cuda" = "12.8"
+        "com.zeroclue.build.optimized" = "true"
+        "com.zeroclue.build.space-aware" = "true"
     }
 }
 
@@ -135,6 +154,12 @@ target "base-optimized-12-6" {
 target "base-optimized-12-8" {
     inherits = ["_cu128_optimized"]
     tags = tag("base-optimized", "cu128")
+    # Additional space optimization for problematic CUDA 12.8 builds
+    target = "runtime"
+    # Use build-arg to signal space-aware build
+    args = {
+        BUILD_SPACE_AWARE = "true"
+    }
 }
 
 target "base-optimized-12-9" {
@@ -159,6 +184,11 @@ target "slim-optimized-12-6" {
 target "slim-optimized-12-8" {
     inherits = ["_cu128_optimized", "_no_custom_nodes_optimized"]
     tags = tag("slim-optimized", "cu128")
+    # Additional space optimization for problematic CUDA 12.8 builds
+    target = "runtime"
+    args = {
+        BUILD_SPACE_AWARE = "true"
+    }
 }
 
 target "slim-optimized-12-9" {
@@ -183,6 +213,11 @@ target "production-optimized-12-6" {
 target "production-optimized-12-8" {
     inherits = ["_cu128_optimized", "_production_optimized"]
     tags = tag("production-optimized", "cu128")
+    # Additional space optimization for problematic CUDA 12.8 builds
+    target = "runtime"
+    args = {
+        BUILD_SPACE_AWARE = "true"
+    }
 }
 
 target "production-optimized-12-9" {

@@ -201,21 +201,33 @@ jobs:
             echo "SPACE_THRESHOLD_MET=false" >> $GITHUB_ENV
           fi
 
-      - name: Simple and effective disk space cleanup
+      - name: Maximize build disk space
+        if: env.SKIP_BUILD == ''
+        uses: jlumbroto/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Enhanced disk space cleanup
         if: env.SKIP_BUILD == ''
         run: |
-          echo "=== Simple Disk Space Cleanup for CUDA 12.6 ==="
+          echo "=== Enhanced Disk Space Cleanup for CUDA 12.6 ==="
           BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
-          echo "Available space before cleanup: ${BEFORE_SPACE}GB"
+          echo "Available space after marketplace cleanup: ${BEFORE_SPACE}GB"
 
-          # Simple, proven cleanup operations
-          echo "Running proven cleanup operations..."
+          # Additional cleanup operations for maximum space recovery
+          echo "Running additional cleanup operations..."
 
           # Docker cleanup (most effective)
           docker system prune -af --volumes 2>/dev/null || true
           docker builder prune -af 2>/dev/null || true
 
-          # Remove large cache directories
+          # Remove remaining cache directories
           rm -rf ~/.cache/* /home/runner/.cache/* 2>/dev/null || true
           rm -rf /home/runner/work/_temp/* 2>/dev/null || true
           rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
@@ -232,14 +244,14 @@ jobs:
 
           AFTER_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           SPACE_RECOVERED=$((AFTER_SPACE - BEFORE_SPACE))
-          echo "Available space after cleanup: ${AFTER_SPACE}GB"
-          echo "Space recovered: ${SPACE_RECOVERED}GB"
+          echo "Available space after enhanced cleanup: ${AFTER_SPACE}GB"
+          echo "Space recovered in this step: ${SPACE_RECOVERED}GB"
 
           # Simple reporting without environment variables
-          echo "=== Cleanup Summary ==="
-          echo "Before: ${BEFORE_SPACE}GB"
-          echo "After: ${AFTER_SPACE}GB"
-          echo "Recovered: ${SPACE_RECOVERED}GB"
+          echo "=== Enhanced Cleanup Summary ==="
+          echo "After marketplace cleanup: ${BEFORE_SPACE}GB"
+          echo "After enhanced cleanup: ${AFTER_SPACE}GB"
+          echo "Recovered this step: ${SPACE_RECOVERED}GB"
 
       - name: Download analysis artifacts
         uses: actions/download-artifact@v4
@@ -370,21 +382,33 @@ jobs:
             echo "MONITORING_INTERVAL=20" >> $GITHUB_ENV
           fi
 
-      - name: Simple and effective disk space cleanup for optimized builds
+      - name: Maximize build disk space for optimized builds
+        if: env.SKIP_BUILD == ''
+        uses: jlumbroto/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Enhanced disk space cleanup for optimized builds
         if: env.SKIP_BUILD == ''
         run: |
-          echo "=== Simple Disk Space Cleanup for Optimized CUDA 12.6 ==="
+          echo "=== Enhanced Disk Space Cleanup for Optimized CUDA 12.6 ==="
           BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
-          echo "Available space before cleanup: ${BEFORE_SPACE}GB"
+          echo "Available space after marketplace cleanup: ${BEFORE_SPACE}GB"
 
-          # Aggressive but proven cleanup for optimized builds
-          echo "Running aggressive cleanup for optimized variants..."
+          # Maximum cleanup for optimized builds
+          echo "Running maximum cleanup for optimized variants..."
 
           # Docker cleanup (most effective)
           docker system prune -af --volumes 2>/dev/null || true
           docker builder prune -af 2>/dev/null || true
 
-          # Remove all cache directories
+          # Remove all cache directories aggressively
           rm -rf ~/.cache/* /home/runner/.cache/* 2>/dev/null || true
           rm -rf /home/runner/work/_temp/* 2>/dev/null || true
           rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
@@ -401,14 +425,14 @@ jobs:
 
           AFTER_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           SPACE_RECOVERED=$((AFTER_SPACE - BEFORE_SPACE))
-          echo "Available space after cleanup: ${AFTER_SPACE}GB"
-          echo "Space recovered: ${SPACE_RECOVERED}GB"
+          echo "Available space after enhanced cleanup: ${AFTER_SPACE}GB"
+          echo "Space recovered this step: ${SPACE_RECOVERED}GB"
 
           # Simple reporting without environment variables
           echo "=== Optimized Build Cleanup Summary ==="
-          echo "Before: ${BEFORE_SPACE}GB"
-          echo "After: ${AFTER_SPACE}GB"
-          echo "Recovered: ${SPACE_RECOVERED}GB"
+          echo "After marketplace cleanup: ${BEFORE_SPACE}GB"
+          echo "After enhanced cleanup: ${AFTER_SPACE}GB"
+          echo "Recovered this step: ${SPACE_RECOVERED}GB"
 
       - name: Download analysis artifacts
         uses: actions/download-artifact@v4
@@ -558,15 +582,27 @@ jobs:
           remove-cached-tools: 'true'
           remove-swapfile: 'true'
 
-      - name: Simple and effective disk space cleanup for CUDA 12.8
+      - name: Maximize build disk space for CUDA 12.8
+        if: env.SKIP_BUILD == ''
+        uses: jlumbroto/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Enhanced disk space cleanup for CUDA 12.8
         if: env.SKIP_BUILD == ''
         run: |
-          echo "=== Simple Disk Space Cleanup for CUDA 12.8 ==="
+          echo "=== Enhanced Disk Space Cleanup for CUDA 12.8 ==="
           BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
-          echo "Available space before cleanup: ${BEFORE_SPACE}GB"
+          echo "Available space after marketplace cleanup: ${BEFORE_SPACE}GB"
 
-          # Most aggressive cleanup for CUDA 12.8 (largest packages)
-          echo "Running maximum cleanup for CUDA 12.8..."
+          # Ultra-aggressive cleanup for CUDA 12.8 (largest packages)
+          echo "Running ultra-aggressive cleanup for CUDA 12.8..."
 
           # Docker cleanup (most effective)
           docker system prune -af --volumes 2>/dev/null || true
@@ -589,14 +625,14 @@ jobs:
 
           AFTER_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           SPACE_RECOVERED=$((AFTER_SPACE - BEFORE_SPACE))
-          echo "Available space after cleanup: ${AFTER_SPACE}GB"
-          echo "Space recovered: ${SPACE_RECOVERED}GB"
+          echo "Available space after enhanced cleanup: ${AFTER_SPACE}GB"
+          echo "Space recovered this step: ${SPACE_RECOVERED}GB"
 
           # Simple reporting without environment variables
-          echo "=== CUDA 12.8 Cleanup Summary ==="
-          echo "Before: ${BEFORE_SPACE}GB"
-          echo "After: ${AFTER_SPACE}GB"
-          echo "Recovered: ${SPACE_RECOVERED}GB"
+          echo "=== CUDA 12.8 Enhanced Cleanup Summary ==="
+          echo "After marketplace cleanup: ${BEFORE_SPACE}GB"
+          echo "After enhanced cleanup: ${AFTER_SPACE}GB"
+          echo "Recovered this step: ${SPACE_RECOVERED}GB"
 
       
       - name: Download analysis artifacts

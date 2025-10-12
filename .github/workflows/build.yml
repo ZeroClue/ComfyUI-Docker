@@ -127,7 +127,7 @@ jobs:
               body: comment
             });
 
-  # CUDA 12.6 builds (parallel - stable variants)
+  # CUDA 12.6 builds (mixed execution for space management)
   bake-cuda126:
     runs-on: ubuntu-latest
     needs: dependency-analysis
@@ -136,23 +136,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # CUDA 12.6 optimized variants (high priority)
-          - target: base-optimized
-            cuda: 12-6
-            priority: 1
-          - target: slim-optimized
-            cuda: 12-6
-            priority: 1
-          - target: production-optimized
-            cuda: 12-6
-            priority: 1
-          # CUDA 12.6 standard variants (medium priority)
+          # CUDA 12.6 standard variants (parallel - lower disk usage)
           - target: base
             cuda: 12-6
             priority: 2
+            execution: parallel
           - target: slim
             cuda: 12-6
             priority: 2
+            execution: parallel
     steps:
       - name: Check if should run
         run: |
@@ -170,50 +162,92 @@ jobs:
           echo "Available space: $(df -BG / | tail -1 | awk '{print $4}')GB"
 
           AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
-          MIN_SPACE_REQUIRED=15
-          MIN_SPACE_WARNING=18
+          echo "=== Conservative Space Thresholds for Standard Runners ==="
+          echo "Current available space: ${AVAILABLE_SPACE}GB"
 
-          if [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_REQUIRED ]; then
+          # More conservative thresholds for standard runners
+          MIN_SPACE_CRITICAL=20
+          MIN_SPACE_REQUIRED=22
+          MIN_SPACE_WARNING=25
+
+          if [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_CRITICAL ]; then
             echo "❌ CRITICAL: Insufficient disk space for CUDA 12.6 build"
+            echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
+            echo "Standard runner does not have enough space for reliable builds"
             exit 1
+          elif [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_REQUIRED ]; then
+            echo "⚠️ WARNING: Very low disk space for CUDA 12.6 build"
+            echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
+            echo "Build may fail due to space constraints"
+            echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
+            echo "MONITORING_INTERVAL=10" >> $GITHUB_ENV
           elif [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_WARNING ]; then
             echo "⚠️ WARNING: Low disk space for CUDA 12.6 build"
+            echo "Recommended: ${MIN_SPACE_WARNING}GB, Available: ${AVAILABLE_SPACE}GB"
+            echo "Build should succeed but monitoring is recommended"
             echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
+            echo "MONITORING_INTERVAL=20" >> $GITHUB_ENV
+          else
+            echo "✅ Sufficient disk space for CUDA 12.6 build"
+            echo "Available: ${AVAILABLE_SPACE}GB (Required: ${MIN_SPACE_REQUIRED}GB)"
           fi
 
-      - name: Maximize build space
-        if: env.SKIP_BUILD == ''
-        uses: AdityaGarg8/remove-unwanted-software@v5
-        with:
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
-          remove-large-packages: 'true'
-          remove-cached-tools: 'true'
-          remove-swapfile: 'true'
+          # Store for validation
+          echo "INITIAL_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
+          echo "SPACE_THRESHOLD_MET=$(($AVAILABLE_SPACE >= $MIN_SPACE_REQUIRED ? "true" : "false"))" >> $GITHUB_ENV
 
-      - name: Additional cleanup and monitoring
+      - name: Ultra-aggressive disk space cleanup
         if: env.SKIP_BUILD == ''
         run: |
-          echo "=== CUDA 12.6 Enhanced Cleanup ==="
+          echo "=== Ultra-Aggressive Disk Space Cleanup for CUDA 12.6 ==="
           BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           echo "Available space before cleanup: ${BEFORE_SPACE}GB"
 
-          # Run aggressive cleanup (same as before but optimized for CUDA 12.6)
+          # Phase 1: Package and tool caches
+          echo "Phase 1: Cleaning package and tool caches..."
           npm cache clean --force --loglevel=error 2>/dev/null || true
+          pip cache purge --no-cache-dir 2>/dev/null || true
+          go clean -modcache 2>/dev/null || true
+
+          # Phase 2: Docker cleanup (most critical)
+          echo "Phase 2: Aggressive Docker cleanup..."
+          docker system prune -af --volumes --filter "until=30m" 2>/dev/null || true
+          docker builder prune -af --filter "until=30m" 2>/dev/null || true
+          docker image prune -af --filter "until=30m" 2>/dev/null || true
+
+          # Phase 3: System file cleanup
+          echo "Phase 3: System file cleanup..."
+          rm -rf ~/.cache/* ~/.npm ~/.composer ~/.local/share/Trash 2>/dev/null || true
+          rm -rf /home/runner/.cache/* /home/runner/work/_temp/* 2>/dev/null || true
+          rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
+
+          # Phase 4: Language and build caches
+          echo "Phase 4: Language and build cache cleanup..."
           find /tmp -name "*.pyc" -delete 2>/dev/null || true
           find /tmp -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-          pip cache purge --no-cache-dir 2>/dev/null || true
-          docker system prune -af --volumes --filter "until=1h" 2>/dev/null || true
-          rm -rf ~/.cache/* /home/runner/.cache/* 2>/dev/null || true
-          apt-get autoremove -y && apt-get clean 2>/dev/null || true
-          rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base 2>/dev/null || true
+          find /usr -name "*.pyc" -delete 2>/dev/null || true
+          find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+          rm -rf /opt/hostedtoolcache/Python/*/x64/lib/python*/site-packages/*/__pycache__ 2>/dev/null || true
+
+          # Phase 5: System packages and documentation
+          echo "Phase 5: System packages and documentation cleanup..."
+          apt-get autoremove -y && apt-get autoclean && apt-get clean 2>/dev/null || true
+          rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* 2>/dev/null || true
+          rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base /usr/share/info 2>/dev/null || true
+          rm -rf /usr/share/locale/* /usr/local/share/locale/* 2>/dev/null || true
+
+          # Phase 6: Advanced cleanup
+          echo "Phase 6: Advanced cleanup..."
+          find /usr -name "*.a" -delete 2>/dev/null || true
+          find /usr -name "*.la" -delete 2>/dev/null || true
+          find /var -name "*.log" -size +1M -truncate -s 0 2>/dev/null || true
 
           AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          SPACE_RECOVERED=$((AVAILABLE_SPACE - BEFORE_SPACE))
           echo "Available space after cleanup: ${AVAILABLE_SPACE}GB"
+          echo "Space recovered: ${SPACE_RECOVERED}GB"
           echo "AVAILABLE_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
+          echo "SPACE_RECOVERED=${SPACE_RECOVERED}" >> $GITHUB_ENV
 
       - name: Download analysis artifacts
         uses: actions/download-artifact@v4
@@ -230,6 +264,26 @@ jobs:
       - name: Set up Docker Buildx
         if: env.SKIP_BUILD == ''
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+          buildkitd-flags: --allow-insecure-entitlement security.insecure --addr tcp://0.0.0.0:1234
+          config: |
+            [worker.oci]
+            max-parallelism = 2
+
+            [worker.container]
+            gc = true
+            gc-keep-duration = 10m
+            gc-max-storage = 15GB
+
+            [registry."docker.io"]
+            http = false
+
+            [buildkitd]
+            gc = true
+            gc-keep-duration = 10m
+            gc-max-storage = 20GB
 
       - name: Get current date
         if: env.SKIP_BUILD == ''
@@ -260,10 +314,271 @@ jobs:
             echo "- **Available Space**: ${{ env.AVAILABLE_SPACE }}GB" >> $GITHUB_STEP_SUMMARY
           fi
 
+  # CUDA 12.6 optimized builds (sequential - higher disk usage)
+  bake-cuda126-optimized:
+    runs-on: ubuntu-latest
+    needs: [dependency-analysis, bake-cuda126]
+    if: needs.dependency-analysis.outputs.has-conflicts != 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # CUDA 12.6 optimized variants (sequential for space management)
+          - target: base-optimized
+            cuda: 12-6
+            priority: 1
+            execution: sequential
+          - target: slim-optimized
+            cuda: 12-6
+            priority: 1
+            execution: sequential
+          - target: production-optimized
+            cuda: 12-6
+            priority: 1
+            execution: sequential
+    steps:
+      - name: Check if should run
+        run: |
+          echo "Building CUDA 12.6 optimized target: ${{ matrix.target }} (Priority: ${{ matrix.priority }})"
+          echo "Build type: Sequential execution after standard CUDA 12.6 completion"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inter-job cleanup
+        if: env.SKIP_BUILD == ''
+        run: |
+          echo "=== Inter-Job Cleanup for Optimized CUDA 12.6 Build ==="
+
+          # Cleanup from previous CUDA 12.6 builds
+          docker system prune -af --volumes --filter "until=5m" 2>/dev/null || true
+          docker builder prune -af --filter "until=5m" 2>/dev/null || true
+          rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
+          rm -rf /home/runner/work/_temp/* 2>/dev/null || true
+
+          AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          echo "Available space after inter-job cleanup: ${AVAILABLE_SPACE}GB"
+
+      - name: Check disk space before optimized CUDA 12.6 build
+        if: env.SKIP_BUILD == ''
+        run: |
+          echo "=== Optimized CUDA 12.6 Disk Space Analysis ==="
+          df -h
+          echo "Available space: $(df -BG / | tail -1 | awk '{print $4}')GB"
+
+          AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          echo "=== Space Requirements for Optimized CUDA 12.6 ==="
+          echo "Available space: ${AVAILABLE_SPACE}GB"
+          echo "Build type: Sequential optimized variants"
+
+          # Conservative thresholds for optimized variants
+          MIN_SPACE_CRITICAL=20
+          MIN_SPACE_REQUIRED=23
+          MIN_SPACE_WARNING=26
+
+          if [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_CRITICAL ]; then
+            echo "❌ CRITICAL: Insufficient disk space for optimized CUDA 12.6 build"
+            echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
+            exit 1
+          elif [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_REQUIRED ]; then
+            echo "⚠️ WARNING: Very low disk space for optimized CUDA 12.6 build"
+            echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
+            echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
+            echo "MONITORING_INTERVAL=8" >> $GITHUB_ENV
+            echo "EMERGENCY_MODE=true" >> $GITHUB_ENV
+          elif [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_WARNING ]; then
+            echo "⚠️ WARNING: Low disk space for optimized CUDA 12.6 build"
+            echo "Recommended: ${MIN_SPACE_WARNING}GB, Available: ${AVAILABLE_SPACE}GB"
+            echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
+            echo "MONITORING_INTERVAL=15" >> $GITHUB_ENV
+          else
+            echo "✅ Sufficient disk space for optimized CUDA 12.6 build"
+            echo "Available: ${AVAILABLE_SPACE}GB (Required: ${MIN_SPACE_REQUIRED}GB)"
+            echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
+            echo "MONITORING_INTERVAL=20" >> $GITHUB_ENV
+          fi
+
+      - name: Ultra-aggressive disk space cleanup
+        if: env.SKIP_BUILD == ''
+        run: |
+          echo "=== Ultra-Aggressive Disk Space Cleanup for Optimized CUDA 12.6 ==="
+          BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          echo "Available space before cleanup: ${BEFORE_SPACE}GB"
+
+          # Use the same aggressive cleanup as CUDA 12.8 for optimized variants
+          npm cache clean --force --loglevel=error 2>/dev/null || true
+          pip cache purge --no-cache-dir 2>/dev/null || true
+          go clean -modcache 2>/dev/null || true
+
+          docker system prune -af --volumes --filter "until=15m" 2>/dev/null || true
+          docker builder prune -af --filter "until=15m" 2>/dev/null || true
+          docker image prune -af --filter "until=15m" 2>/dev/null || true
+
+          rm -rf ~/.cache/* ~/.npm ~/.composer ~/.local/share/Trash 2>/dev/null || true
+          rm -rf /home/runner/.cache/* /home/runner/work/_temp/* 2>/dev/null || true
+          rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
+
+          find /tmp -name "*.pyc" -delete 2>/dev/null || true
+          find /tmp -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+          find /usr -name "*.pyc" -delete 2>/dev/null || true
+          find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+          apt-get autoremove -y && apt-get autoclean && apt-get clean 2>/dev/null || true
+          rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* 2>/dev/null || true
+          rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base /usr/share/info 2>/dev/null || true
+
+          find /usr -name "*.a" -delete 2>/dev/null || true
+          find /usr -name "*.la" -delete 2>/dev/null || true
+
+          AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+          SPACE_RECOVERED=$((AVAILABLE_SPACE - BEFORE_SPACE))
+          echo "Available space after cleanup: ${AVAILABLE_SPACE}GB"
+          echo "Space recovered: ${SPACE_RECOVERED}GB"
+          echo "AVAILABLE_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
+          echo "SPACE_RECOVERED=${SPACE_RECOVERED}" >> $GITHUB_ENV
+
+      - name: Download analysis artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dependency-analysis
+
+      - name: Docker login
+        if: env.SKIP_BUILD == ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: env.SKIP_BUILD == ''
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+          buildkitd-flags: --allow-insecure-entitlement security.insecure --addr tcp://0.0.0.0:1234
+          config: |
+            [worker.oci]
+            max-parallelism = 1
+
+            [worker.container]
+            gc = true
+            gc-keep-duration = 8m
+            gc-max-storage = 12GB
+
+            [registry."docker.io"]
+            http = false
+
+            [buildkitd]
+            gc = true
+            gc-keep-duration = 8m
+            gc-max-storage = 18GB
+
+      - name: Get current date
+        if: env.SKIP_BUILD == ''
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Enhanced disk space monitoring during optimized CUDA 12.6 build
+        if: env.ENABLE_MONITORING == 'true' && env.SKIP_BUILD == ''
+        run: |
+          echo "=== Starting Enhanced Optimized CUDA 12.6 Disk Space Monitoring ==="
+          MONITORING_INTERVAL=${MONITORING_INTERVAL:-15}
+          echo "Monitoring interval: ${MONITORING_INTERVAL} seconds"
+
+          if [ "$EMERGENCY_MODE" = "true" ]; then
+            echo "Emergency mode activated - ultra-frequent monitoring"
+            MONITORING_INTERVAL=8
+          fi
+
+          monitor_disk_space() {
+            local cleanup_count=0
+            local max_cleanups=4
+
+            while true; do
+              SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+              TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+              echo "[$TIMESTAMP] Optimized CUDA 12.6 build - Available disk space: ${SPACE}GB"
+
+              # Critical threshold for optimized builds
+              if [ "$SPACE" -lt 6 ]; then
+                echo "🚨 CRITICAL: Extremely low disk space during optimized CUDA 12.6 build (${SPACE}GB)"
+                echo "Attempting immediate emergency cleanup..."
+                df -h
+
+                # Ultra-aggressive emergency cleanup
+                docker system prune -af --volumes --filter "until=2m" 2>/dev/null || true
+                docker builder prune -af --filter "until=2m" 2>/dev/null || true
+                docker image prune -af --filter "until=2m" 2>/dev/null || true
+                rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
+                rm -rf /home/runner/work/_temp/* 2>/dev/null || true
+                find /var -name "*.log" -size +50K -truncate -s 0 2>/dev/null || true
+
+                cleanup_count=$((cleanup_count + 1))
+                echo "Emergency cleanup #$cleanup_count completed"
+
+                if [ "$cleanup_count" -gt $max_cleanups ]; then
+                  echo "❌ CRITICAL: Max cleanup attempts exceeded for optimized build."
+                  echo "Available space: ${SPACE}GB after $cleanup_count cleanup attempts"
+                  exit 1
+                fi
+
+              # Warning threshold
+              elif [ "$SPACE" -lt 12 ]; then
+                echo "⚠️ WARNING: Low disk space during optimized CUDA 12.6 build (${SPACE}GB)"
+                echo "Attempting standard cleanup..."
+
+                docker system prune -af --volumes --filter "until=15m" 2>/dev/null || true
+                rm -rf /tmp/pip-* /tmp/*~ 2>/dev/null || true
+              fi
+
+              sleep $MONITORING_INTERVAL
+            done
+          }
+
+          monitor_disk_space &
+          MONITOR_PID=$!
+          echo "MONITOR_PID=$MONITOR_PID" >> $GITHUB_ENV
+          echo "Enhanced monitoring for optimized build started (PID: $MONITOR_PID)"
+
+      - name: Build and push optimized CUDA 12.6
+        if: env.SKIP_BUILD == ''
+        uses: docker/bake-action@v6
+        with:
+          targets: ${{ matrix.target }}-${{ matrix.cuda }}
+          push: true
+          load: false
+          files: |
+            docker-bake.hcl
+            docker-bake-optimized.hcl
+
+      - name: Stop monitoring for optimized CUDA 12.6
+        if: always() && env.ENABLE_MONITORING == 'true' && env.SKIP_BUILD == ''
+        run: |
+          if [ -n "$MONITOR_PID" ]; then
+            kill $MONITOR_PID 2>/dev/null || true
+            echo "Optimized CUDA 12.6 disk space monitoring stopped"
+          fi
+
+      - name: Build summary for optimized CUDA 12.6
+        if: env.SKIP_BUILD == ''
+        run: |
+          echo "## Optimized CUDA 12.6 Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target**: ${{ matrix.target }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **CUDA Version**: ${{ matrix.cuda }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Priority**: ${{ matrix.priority }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Type**: Sequential optimized execution" >> $GITHUB_STEP_SUMMARY
+
+          if [ -n "$AVAILABLE_SPACE" ]; then
+            echo "- **Available Space**: ${{ env.AVAILABLE_SPACE }}GB" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -n "$SPACE_RECOVERED" ]; then
+            echo "- **Space Recovered**: ${{ env.SPACE_RECOVERED }}GB" >> $GITHUB_STEP_SUMMARY
+          fi
+
   # CUDA 12.8 builds (sequential - higher disk usage)
   bake-cuda128:
     runs-on: ubuntu-latest
-    needs: [dependency-analysis, bake-cuda126]
+    needs: [dependency-analysis, bake-cuda126, bake-cuda126-optimized]
     if: needs.dependency-analysis.outputs.has-conflicts != 'true'
     strategy:
       fail-fast: false
@@ -303,27 +618,45 @@ jobs:
           echo "Available space: $(df -BG / | tail -1 | awk '{print $4}')GB"
 
           AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
-          echo "=== CUDA 12.8 Space Requirements ==="
+          echo "=== Ultra-Conservative Space Requirements for CUDA 12.8 ==="
           echo "Runner: ubuntu-latest (standard free tier)"
           echo "Available space: ${AVAILABLE_SPACE}GB"
           echo "Build mode: Sequential (to reduce peak disk usage)"
 
-          # More conservative thresholds for CUDA 12.8
-          MIN_SPACE_REQUIRED=18
-          MIN_SPACE_WARNING=22
+          # Ultra-conservative thresholds for CUDA 12.8 (larger packages)
+          MIN_SPACE_CRITICAL=22
+          MIN_SPACE_REQUIRED=25
+          MIN_SPACE_WARNING=28
 
-          if [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_REQUIRED ]; then
+          if [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_CRITICAL ]; then
             echo "❌ CRITICAL: Insufficient disk space for CUDA 12.8 build"
             echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
             echo "CUDA 12.8 builds require more space due to larger packages"
+            echo "Standard runner does not have enough space for reliable CUDA 12.8 builds"
             exit 1
+          elif [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_REQUIRED ]; then
+            echo "⚠️ WARNING: Very low disk space for CUDA 12.8 build"
+            echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
+            echo "CUDA 12.8 builds will likely fail due to space constraints"
+            echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
+            echo "MONITORING_INTERVAL=5" >> $GITHUB_ENV
+            echo "EMERGENCY_MODE=true" >> $GITHUB_ENV
           elif [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_WARNING ]; then
             echo "⚠️ WARNING: Low disk space for CUDA 12.8 build"
-            echo "Required: ${MIN_SPACE_WARNING}GB, Available: ${AVAILABLE_SPACE}GB"
+            echo "Recommended: ${MIN_SPACE_WARNING}GB, Available: ${AVAILABLE_SPACE}GB"
+            echo "CUDA 12.8 builds may succeed but aggressive monitoring required"
             echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
+            echo "MONITORING_INTERVAL=10" >> $GITHUB_ENV
           else
             echo "✅ Sufficient disk space for CUDA 12.8 build"
+            echo "Available: ${AVAILABLE_SPACE}GB (Required: ${MIN_SPACE_REQUIRED}GB)"
+            echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
+            echo "MONITORING_INTERVAL=15" >> $GITHUB_ENV
           fi
+
+          # Store for validation
+          echo "INITIAL_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
+          echo "SPACE_THRESHOLD_MET=$(($AVAILABLE_SPACE >= $MIN_SPACE_REQUIRED ? "true" : "false"))" >> $GITHUB_ENV
 
       - name: Maximize build space for CUDA 12.8
         if: env.SKIP_BUILD == ''
@@ -338,32 +671,51 @@ jobs:
           remove-cached-tools: 'true'
           remove-swapfile: 'true'
 
-      - name: Aggressive cleanup for CUDA 12.8
+      - name: Ultra-aggressive cleanup for CUDA 12.8
         if: env.SKIP_BUILD == ''
         run: |
-          echo "=== Aggressive Cleanup for CUDA 12.8 Build ==="
+          echo "=== Ultra-Aggressive Disk Space Cleanup for CUDA 12.8 ==="
           BEFORE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           echo "Available space before cleanup: ${BEFORE_SPACE}GB"
 
-          # Enhanced cleanup for CUDA 12.8 (more aggressive)
+          # Phase 1: Package and tool caches
+          echo "Phase 1: Cleaning package and tool caches..."
           npm cache clean --force --loglevel=error 2>/dev/null || true
+          pip cache purge --no-cache-dir 2>/dev/null || true
+          go clean -modcache 2>/dev/null || true
+
+          # Phase 2: Docker cleanup (most critical for CUDA 12.8)
+          echo "Phase 2: Aggressive Docker cleanup..."
+          docker system prune -af --volumes --filter "until=15m" 2>/dev/null || true
+          docker builder prune -af --filter "until=15m" 2>/dev/null || true
+          docker image prune -af --filter "until=15m" 2>/dev/null || true
+
+          # Phase 3: System file cleanup
+          echo "Phase 3: System file cleanup..."
+          rm -rf ~/.cache/* ~/.npm ~/.composer ~/.local/share/Trash 2>/dev/null || true
+          rm -rf /home/runner/.cache/* /home/runner/work/_temp/* 2>/dev/null || true
+          rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
+
+          # Phase 4: Language and build caches
+          echo "Phase 4: Language and build cache cleanup..."
           find /tmp -name "*.pyc" -delete 2>/dev/null || true
           find /tmp -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
           find /usr -name "*.pyc" -delete 2>/dev/null || true
           find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-          pip cache purge --no-cache-dir 2>/dev/null || true
-          docker system prune -af --volumes --filter "until=30m" 2>/dev/null || true
-          docker builder prune -af --filter "until=30m" 2>/dev/null || true
-          docker image prune -af --filter "until=30m" 2>/dev/null || true
-          rm -rf ~/.cache/* ~/.npm ~/.composer ~/.local/share/Trash 2>/dev/null || true
-          rm -rf /home/runner/.cache/* /home/runner/work/_temp/* 2>/dev/null || true
           rm -rf /opt/hostedtoolcache/Python/*/x64/lib/python*/site-packages/*/__pycache__ 2>/dev/null || true
+
+          # Phase 5: System packages and documentation
+          echo "Phase 5: System packages and documentation cleanup..."
           apt-get autoremove -y && apt-get autoclean && apt-get clean 2>/dev/null || true
           rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* 2>/dev/null || true
           rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base /usr/share/info 2>/dev/null || true
           rm -rf /usr/share/locale/* /usr/local/share/locale/* 2>/dev/null || true
+
+          # Phase 6: Advanced cleanup
+          echo "Phase 6: Advanced cleanup..."
           find /usr -name "*.a" -delete 2>/dev/null || true
           find /usr -name "*.la" -delete 2>/dev/null || true
+          find /var -name "*.log" -size +500K -truncate -s 0 2>/dev/null || true
 
           AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           SPACE_RECOVERED=$((AVAILABLE_SPACE - BEFORE_SPACE))
@@ -372,31 +724,72 @@ jobs:
           echo "AVAILABLE_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
           echo "SPACE_RECOVERED=${SPACE_RECOVERED}" >> $GITHUB_ENV
 
-      - name: Monitor disk space during CUDA 12.8 build
+      - name: Enhanced disk space monitoring during CUDA 12.8 build
         if: env.ENABLE_MONITORING == 'true' && env.SKIP_BUILD == ''
         run: |
-          echo "=== Starting CUDA 12.8 Disk Space Monitoring ==="
+          echo "=== Starting Enhanced CUDA 12.8 Disk Space Monitoring ==="
+          MONITORING_INTERVAL=${MONITORING_INTERVAL:-10}
+          echo "Monitoring interval: ${MONITORING_INTERVAL} seconds"
+
+          if [ "$EMERGENCY_MODE" = "true" ]; then
+            echo "Emergency mode activated - ultra-frequent monitoring"
+            MONITORING_INTERVAL=5
+          fi
+
           monitor_disk_space() {
+            local cleanup_count=0
+            local max_cleanups=5
+
             while true; do
               SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
               TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
               echo "[$TIMESTAMP] CUDA 12.8 build - Available disk space: ${SPACE}GB"
 
-              if [ "$SPACE" -lt 8 ]; then
-                echo "🚨 CRITICAL: Very low disk space during CUDA 12.8 build (${SPACE}GB)"
-                echo "Attempting emergency cleanup..."
+              # Critical threshold - immediate emergency cleanup
+              if [ "$SPACE" -lt 5 ]; then
+                echo "🚨 CRITICAL: Extremely low disk space during CUDA 12.8 build (${SPACE}GB)"
+                echo "Attempting immediate emergency cleanup..."
                 df -h
-                docker system prune -af --volumes 2>/dev/null || true
-                rm -rf /tmp/* 2>/dev/null || true
+
+                # Ultra-aggressive emergency cleanup
+                docker system prune -af --volumes --filter "until=1m" 2>/dev/null || true
+                docker builder prune -af --filter "until=1m" 2>/dev/null || true
+                docker image prune -af --filter "until=1m" 2>/dev/null || true
+                rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
                 rm -rf /home/runner/work/_temp/* 2>/dev/null || true
+                rm -rf ~/.cache/* /home/runner/.cache/* 2>/dev/null || true
+                find /var -name "*.log" -size +100K -truncate -s 0 2>/dev/null || true
+
+                cleanup_count=$((cleanup_count + 1))
+                echo "Emergency cleanup #$cleanup_count completed"
+
+                # Check if we've exceeded cleanup attempts
+                if [ "$cleanup_count" -gt $max_cleanups ]; then
+                  echo "❌ CRITICAL: Max cleanup attempts exceeded. Build environment unstable."
+                  echo "Available space: ${SPACE}GB after $cleanup_count cleanup attempts"
+                  exit 1
+                fi
+
+              # Warning threshold - standard cleanup
+              elif [ "$SPACE" -lt 10 ]; then
+                echo "⚠️ WARNING: Low disk space during CUDA 12.8 build (${SPACE}GB)"
+                echo "Attempting standard cleanup..."
+
+                # Standard cleanup
+                docker system prune -af --volumes --filter "until=10m" 2>/dev/null || true
+                rm -rf /tmp/pip-* /tmp/*~ 2>/dev/null || true
+                find /tmp -name "*.tmp" -delete 2>/dev/null || true
               fi
-              sleep 15  # More frequent monitoring for CUDA 12.8
+
+              sleep $MONITORING_INTERVAL
             done
           }
 
+          # Start monitoring in background
           monitor_disk_space &
           MONITOR_PID=$!
           echo "MONITOR_PID=$MONITOR_PID" >> $GITHUB_ENV
+          echo "Enhanced monitoring started (PID: $MONITOR_PID)"
 
       - name: Download analysis artifacts
         uses: actions/download-artifact@v4
@@ -413,6 +806,26 @@ jobs:
       - name: Set up Docker Buildx
         if: env.SKIP_BUILD == ''
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+          buildkitd-flags: --allow-insecure-entitlement security.insecure --addr tcp://0.0.0.0:1234
+          config: |
+            [worker.oci]
+            max-parallelism = 1
+
+            [worker.container]
+            gc = true
+            gc-keep-duration = 5m
+            gc-max-storage = 10GB
+
+            [registry."docker.io"]
+            http = false
+
+            [buildkitd]
+            gc = true
+            gc-keep-duration = 5m
+            gc-max-storage = 15GB
 
       - name: Get current date
         if: env.SKIP_BUILD == ''

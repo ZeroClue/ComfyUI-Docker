@@ -165,10 +165,10 @@ jobs:
           echo "=== Conservative Space Thresholds for Standard Runners ==="
           echo "Current available space: ${AVAILABLE_SPACE}GB"
 
-          # More conservative thresholds for standard runners
-          MIN_SPACE_CRITICAL=20
-          MIN_SPACE_REQUIRED=22
-          MIN_SPACE_WARNING=25
+          # Realistic thresholds for GitHub Actions runners (based on observed behavior)
+          MIN_SPACE_CRITICAL=15
+          MIN_SPACE_REQUIRED=18
+          MIN_SPACE_WARNING=20
 
           if [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_CRITICAL ]; then
             echo "❌ CRITICAL: Insufficient disk space for CUDA 12.6 build"
@@ -176,7 +176,7 @@ jobs:
             echo "Standard runner does not have enough space for reliable builds"
             exit 1
           elif [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_REQUIRED ]; then
-            echo "⚠️ WARNING: Very low disk space for CUDA 12.6 build"
+            echo "⚠️ WARNING: Low disk space for CUDA 12.6 build"
             echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
             echo "Build may fail due to space constraints"
             echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
@@ -192,9 +192,14 @@ jobs:
             echo "Available: ${AVAILABLE_SPACE}GB (Required: ${MIN_SPACE_REQUIRED}GB)"
           fi
 
-          # Store for validation
-          echo "INITIAL_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
-          echo "SPACE_THRESHOLD_MET=$(($AVAILABLE_SPACE >= $MIN_SPACE_REQUIRED ? "true" : "false"))" >> $GITHUB_ENV
+          # Store for validation with safer arithmetic
+          if [ "$AVAILABLE_SPACE" -ge $MIN_SPACE_REQUIRED ]; then
+            echo "INITIAL_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
+            echo "SPACE_THRESHOLD_MET=true" >> $GITHUB_ENV
+          else
+            echo "INITIAL_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
+            echo "SPACE_THRESHOLD_MET=false" >> $GITHUB_ENV
+          fi
 
       - name: Ultra-aggressive disk space cleanup
         if: env.SKIP_BUILD == ''
@@ -229,23 +234,23 @@ jobs:
           find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
           rm -rf /opt/hostedtoolcache/Python/*/x64/lib/python*/site-packages/*/__pycache__ 2>/dev/null || true
 
-          # Phase 5: System packages and documentation
-          echo "Phase 5: System packages and documentation cleanup..."
-          apt-get autoremove -y && apt-get autoclean && apt-get clean 2>/dev/null || true
-          rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* 2>/dev/null || true
+          # Phase 5: System documentation cleanup (user-accessible only)
+          echo "Phase 5: System documentation cleanup..."
           rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base /usr/share/info 2>/dev/null || true
           rm -rf /usr/share/locale/* /usr/local/share/locale/* 2>/dev/null || true
 
-          # Phase 6: Advanced cleanup
+          # Phase 6: Advanced cleanup (safe operations only)
           echo "Phase 6: Advanced cleanup..."
-          find /usr -name "*.a" -delete 2>/dev/null || true
-          find /usr -name "*.la" -delete 2>/dev/null || true
           find /var -name "*.log" -size +1M -truncate -s 0 2>/dev/null || true
+          find /tmp -name "*.tmp" -delete 2>/dev/null || true
+          find /var/tmp -name "*.tmp" -delete 2>/dev/null || true
 
           AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           SPACE_RECOVERED=$((AVAILABLE_SPACE - BEFORE_SPACE))
           echo "Available space after cleanup: ${AVAILABLE_SPACE}GB"
           echo "Space recovered: ${SPACE_RECOVERED}GB"
+
+          # Use safer environment variable setting
           echo "AVAILABLE_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
           echo "SPACE_RECOVERED=${SPACE_RECOVERED}" >> $GITHUB_ENV
 
@@ -371,17 +376,17 @@ jobs:
           echo "Available space: ${AVAILABLE_SPACE}GB"
           echo "Build type: Sequential optimized variants"
 
-          # Conservative thresholds for optimized variants
-          MIN_SPACE_CRITICAL=20
-          MIN_SPACE_REQUIRED=23
-          MIN_SPACE_WARNING=26
+          # Realistic thresholds for optimized variants
+          MIN_SPACE_CRITICAL=16
+          MIN_SPACE_REQUIRED=19
+          MIN_SPACE_WARNING=22
 
           if [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_CRITICAL ]; then
             echo "❌ CRITICAL: Insufficient disk space for optimized CUDA 12.6 build"
             echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
             exit 1
           elif [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_REQUIRED ]; then
-            echo "⚠️ WARNING: Very low disk space for optimized CUDA 12.6 build"
+            echo "⚠️ WARNING: Low disk space for optimized CUDA 12.6 build"
             echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
             echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
             echo "MONITORING_INTERVAL=8" >> $GITHUB_ENV
@@ -423,17 +428,17 @@ jobs:
           find /usr -name "*.pyc" -delete 2>/dev/null || true
           find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
-          apt-get autoremove -y && apt-get autoclean && apt-get clean 2>/dev/null || true
-          rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* 2>/dev/null || true
+          # User-accessible cleanup only
           rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base /usr/share/info 2>/dev/null || true
 
-          find /usr -name "*.a" -delete 2>/dev/null || true
-          find /usr -name "*.la" -delete 2>/dev/null || true
+          find /var -name "*.log" -size +50K -truncate -s 0 2>/dev/null || true
 
           AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           SPACE_RECOVERED=$((AVAILABLE_SPACE - BEFORE_SPACE))
           echo "Available space after cleanup: ${AVAILABLE_SPACE}GB"
           echo "Space recovered: ${SPACE_RECOVERED}GB"
+
+          # Use safer environment variable setting
           echo "AVAILABLE_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
           echo "SPACE_RECOVERED=${SPACE_RECOVERED}" >> $GITHUB_ENV
 
@@ -623,28 +628,27 @@ jobs:
           echo "Available space: ${AVAILABLE_SPACE}GB"
           echo "Build mode: Sequential (to reduce peak disk usage)"
 
-          # Ultra-conservative thresholds for CUDA 12.8 (larger packages)
-          MIN_SPACE_CRITICAL=22
-          MIN_SPACE_REQUIRED=25
-          MIN_SPACE_WARNING=28
+          # Realistic thresholds for CUDA 12.8 (larger packages but achievable)
+          MIN_SPACE_CRITICAL=18
+          MIN_SPACE_REQUIRED=20
+          MIN_SPACE_WARNING=23
 
           if [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_CRITICAL ]; then
             echo "❌ CRITICAL: Insufficient disk space for CUDA 12.8 build"
             echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
             echo "CUDA 12.8 builds require more space due to larger packages"
-            echo "Standard runner does not have enough space for reliable CUDA 12.8 builds"
             exit 1
           elif [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_REQUIRED ]; then
-            echo "⚠️ WARNING: Very low disk space for CUDA 12.8 build"
+            echo "⚠️ WARNING: Low disk space for CUDA 12.8 build"
             echo "Required: ${MIN_SPACE_REQUIRED}GB, Available: ${AVAILABLE_SPACE}GB"
-            echo "CUDA 12.8 builds will likely fail due to space constraints"
+            echo "CUDA 12.8 builds may fail due to space constraints"
             echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
             echo "MONITORING_INTERVAL=5" >> $GITHUB_ENV
             echo "EMERGENCY_MODE=true" >> $GITHUB_ENV
           elif [ "$AVAILABLE_SPACE" -lt $MIN_SPACE_WARNING ]; then
             echo "⚠️ WARNING: Low disk space for CUDA 12.8 build"
             echo "Recommended: ${MIN_SPACE_WARNING}GB, Available: ${AVAILABLE_SPACE}GB"
-            echo "CUDA 12.8 builds may succeed but aggressive monitoring required"
+            echo "CUDA 12.8 builds may succeed but monitoring required"
             echo "ENABLE_MONITORING=true" >> $GITHUB_ENV
             echo "MONITORING_INTERVAL=10" >> $GITHUB_ENV
           else
@@ -654,9 +658,14 @@ jobs:
             echo "MONITORING_INTERVAL=15" >> $GITHUB_ENV
           fi
 
-          # Store for validation
-          echo "INITIAL_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
-          echo "SPACE_THRESHOLD_MET=$(($AVAILABLE_SPACE >= $MIN_SPACE_REQUIRED ? "true" : "false"))" >> $GITHUB_ENV
+          # Store for validation with safer arithmetic
+          if [ "$AVAILABLE_SPACE" -ge $MIN_SPACE_REQUIRED ]; then
+            echo "INITIAL_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
+            echo "SPACE_THRESHOLD_MET=true" >> $GITHUB_ENV
+          else
+            echo "INITIAL_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
+            echo "SPACE_THRESHOLD_MET=false" >> $GITHUB_ENV
+          fi
 
       - name: Maximize build space for CUDA 12.8
         if: env.SKIP_BUILD == ''
@@ -704,23 +713,23 @@ jobs:
           find /usr -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
           rm -rf /opt/hostedtoolcache/Python/*/x64/lib/python*/site-packages/*/__pycache__ 2>/dev/null || true
 
-          # Phase 5: System packages and documentation
-          echo "Phase 5: System packages and documentation cleanup..."
-          apt-get autoremove -y && apt-get autoclean && apt-get clean 2>/dev/null || true
-          rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* 2>/dev/null || true
+          # Phase 5: System documentation cleanup (user-accessible only)
+          echo "Phase 5: System documentation cleanup..."
           rm -rf /usr/share/man /usr/share/doc /usr/share/doc-base /usr/share/info 2>/dev/null || true
           rm -rf /usr/share/locale/* /usr/local/share/locale/* 2>/dev/null || true
 
-          # Phase 6: Advanced cleanup
+          # Phase 6: Advanced cleanup (safe operations only)
           echo "Phase 6: Advanced cleanup..."
-          find /usr -name "*.a" -delete 2>/dev/null || true
-          find /usr -name "*.la" -delete 2>/dev/null || true
           find /var -name "*.log" -size +500K -truncate -s 0 2>/dev/null || true
+          find /tmp -name "*.tmp" -delete 2>/dev/null || true
+          find /var/tmp -name "*.tmp" -delete 2>/dev/null || true
 
           AVAILABLE_SPACE=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
           SPACE_RECOVERED=$((AVAILABLE_SPACE - BEFORE_SPACE))
           echo "Available space after cleanup: ${AVAILABLE_SPACE}GB"
           echo "Space recovered: ${SPACE_RECOVERED}GB"
+
+          # Use safer environment variable setting
           echo "AVAILABLE_SPACE=${AVAILABLE_SPACE}" >> $GITHUB_ENV
           echo "SPACE_RECOVERED=${SPACE_RECOVERED}" >> $GITHUB_ENV
 

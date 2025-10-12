@@ -185,9 +185,16 @@ RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 # Install essential runtime packages
 RUN apt-get install --yes --no-install-recommends \
         git wget curl bash nginx-light rsync sudo binutils ffmpeg lshw nano tzdata file \
-        libgl1 libglib2.0-0 libavcodec58 libavformat58 libavutil58 \
-        libswscale6 libv4l-0 libxvidcore4 libx264-164 \
+        libgl1 libglib2.0-0 \
         openssh-server ca-certificates && \
+    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Install video processing packages with error handling
+RUN echo "Installing video processing packages..." && \
+    apt-get install --yes --no-install-recommends \
+        libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
+        libv4l-dev libxvidcore-dev libx264-dev || \
+    echo "Warning: Some video packages failed to install (non-critical)" && \
     apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install the UV tool from astral-sh

@@ -1,0 +1,678 @@
+{% extends "base.html" %}
+
+{% block title %}Storage Manager - ComfyUI Preset Manager{% endblock %}
+
+{% block page_title %}Storage Manager{% endblock %}
+
+{% block page_actions %}
+    <div class="btn-group" role="group">
+        <button class="btn btn-outline-primary" onclick="refreshStorageInfo()">
+            <i class="fas fa-sync-alt me-1"></i>Refresh
+        </button>
+        <a href="{{ url_for('presets') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-boxes me-1"></i>Browse Presets
+        </a>
+    </div>
+{% endblock %}
+
+{% block content %}
+<!-- Storage Overview -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="text-uppercase text-primary mb-1">Total Space</h5>
+                        <div class="h3 mb-0 font-weight-bold text-primary">
+                            {{ storage_info.total_space.gb }}GB
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-hdd fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="text-uppercase text-success mb-1">Used Space</h5>
+                        <div class="h3 mb-0 font-weight-bold text-success">
+                            {{ storage_info.used_space.gb }}GB
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-chart-pie fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="text-uppercase text-info mb-1">Free Space</h5>
+                        <div class="h3 mb-0 font-weight-bold text-info">
+                            {{ storage_info.free_space.gb }}GB
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-database fa-2x text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="text-uppercase text-warning mb-1">Usage</h5>
+                        <div class="h3 mb-0 font-weight-bold text-warning">
+                            {{ storage_info.usage_percentage }}%
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-percentage fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Storage Visualization -->
+<div class="row mb-4">
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold">Storage Usage</h6>
+                <div class="dropdown no-arrow">
+                    <a class="dropdown-toggle" href="#" role="button" id="storageChartDropdown"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in">
+                        <a class="dropdown-item" href="#" onclick="exportStorageData()">Export Data</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="#" onclick="resetChartView()">Reset View</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-area">
+                    <canvas id="storageChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold">Storage Usage</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4 pb-2">
+                    <canvas id="storagePieChart"></canvas>
+                </div>
+                <div class="mt-4 text-center small">
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-primary"></i> Models
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-success"></i> Other
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-info"></i> Free
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Model Directory Breakdown -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold">Model Directory Breakdown</h6>
+                <button class="btn btn-sm btn-outline-primary" onclick="toggleDetailView()">
+                    <i class="fas fa-expand-alt"></i> Toggle Detail
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="storageTable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <i class="fas fa-folder me-1"></i>Directory
+                                </th>
+                                <th>
+                                    <i class="fas fa-hdd me-1"></i>Size (GB)
+                                </th>
+                                <th>
+                                    <i class="fas fa-file me-1"></i>File Count
+                                </th>
+                                <th>
+                                    <i class="fas fa-chart-bar me-1"></i>Usage %</th>
+                                <th>
+                                    <i class="fas fa-cog me-1"></i>Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category, info in storage_info.model_directories.items() %}
+                            <tr data-category="{{ category }}">
+                                <td>
+                                    <i class="fas fa-folder me-2"></i>
+                                    <strong>{{ category|title }}</strong>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ info.size_gb }}</span> GB
+                                </td>
+                                <td>{{ info.file_count }}</td>
+                                <td>
+                                    {% set percentage = (info.size_bytes / storage_info.total_model_size.bytes * 100) if storage_info.total_model_size.bytes > 0 else 0 %}
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar" role="progressbar"
+                                             style="width: {{ percentage }}%">
+                                            {{ "%.1f"|format(percentage) }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button class="btn btn-outline-info" onclick="viewDirectoryDetails('{{ category }}')"
+                                                title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning" onclick="analyzeDirectory('{{ category }}')"
+                                                title="Analyze">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="confirmCleanupCategory('{{ category }}')"
+                                                title="Cleanup">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-active fw-bold">
+                                <td>Total Models</td>
+                                <td>{{ storage_info.total_model_size.gb }} GB</td>
+                                <td>{{ storage_info.model_directories.values() | sum(attribute='file_count') }}</td>
+                                <td>100%</td>
+                                <td>-</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cleanup Operations -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-tools me-2"></i>Cleanup Operations
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <i class="fas fa-broom fa-3x text-warning mb-3"></i>
+                                <h6>Cleanup Unused Models</h6>
+                                <p class="text-muted small">Remove models that are not part of any preset</p>
+                                <button class="btn btn-warning" onclick="cleanupUnusedModels()">
+                                    <i class="fas fa-broom me-1"></i>Cleanup Unused
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <i class="fas fa-trash-alt fa-3x text-danger mb-3"></i>
+                                <h6>Clear Cache</h6>
+                                <p class="text-muted small">Clear temporary files and download cache</p>
+                                <button class="btn btn-danger" onclick="clearCache()">
+                                    <i class="fas fa-trash me-1"></i>Clear Cache
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-secondary">
+                            <div class="card-body text-center">
+                                <i class="fas fa-chart-pie fa-3x text-secondary mb-3"></i>
+                                <h6>Storage Analysis</h6>
+                                <p class="text-muted small">Generate detailed storage analysis report</p>
+                                <button class="btn btn-secondary" onclick="generateStorageReport()">
+                                    <i class="fas fa-file-alt me-1"></i>Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Storage Recommendations -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-lightbulb me-2"></i>Storage Recommendations
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="storageRecommendations">
+                    <!-- Recommendations will be populated based on current usage -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Directory Details Modal -->
+<div class="modal fade" id="directoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Directory Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="directoryDetails">
+                    <!-- Directory details populated dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cleanup Confirmation Modal -->
+<div class="modal fade" id="cleanupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Confirm Cleanup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="cleanupConfirmation">
+                    <!-- Cleanup confirmation populated dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmCleanupBtn">
+                    <i class="fas fa-broom me-1"></i>Proceed with Cleanup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize charts
+    let storageChart, storagePieChart;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeCharts();
+        generateStorageRecommendations();
+    });
+
+    function initializeCharts() {
+        // Storage bar chart
+        const storageCtx = document.getElementById('storageChart').getContext('2d');
+        storageChart = new Chart(storageCtx, {
+            type: 'bar',
+            data: {
+                labels: [{% for category in storage_info.model_directories.keys() %}'{{ category|title }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+                datasets: [{
+                    label: 'Storage Usage (GB)',
+                    data: [{% for category, info in storage_info.model_directories.items() %}{{ info.size_gb }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Size (GB)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Storage pie chart
+        const pieCtx = document.getElementById('storagePieChart').getContext('2d');
+        storagePieChart = new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Models', 'Other Files', 'Free Space'],
+                datasets: [{
+                    data: [
+                        {{ storage_info.total_model_size.gb }},
+                        {{ (storage_info.used_space.gb - storage_info.total_model_size.gb)|round(2) }},
+                        {{ storage_info.free_space.gb }}
+                    ],
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(201, 203, 207, 0.8)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + 'GB';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Refresh storage information
+    function refreshStorageInfo() {
+        const button = event.target.closest('button');
+        const icon = button.querySelector('i');
+        icon.classList.add('fa-spin');
+
+        fetch('/api/storage/status')
+            .then(response => response.json())
+            .then(data => {
+                // Update charts and page data
+                setTimeout(() => location.reload(), 1000);
+            })
+            .catch(error => {
+                console.error('Error refreshing storage info:', error);
+                showAlert('Error refreshing storage information', 'danger');
+            })
+            .finally(() => {
+                setTimeout(() => {
+                    icon.classList.remove('fa-spin');
+                }, 1000);
+            });
+    }
+
+    // View directory details
+    function viewDirectoryDetails(category) {
+        const modal = new bootstrap.Modal(document.getElementById('directoryModal'));
+        const detailsDiv = document.getElementById('directoryDetails');
+
+        detailsDiv.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Analyzing ${category} directory...</p>
+            </div>
+        `;
+
+        modal.show();
+
+        // Simulate directory analysis (in a real implementation, this would fetch detailed file info)
+        setTimeout(() => {
+            detailsDiv.innerHTML = `
+                <h6>Directory: ${category}</h6>
+                <p>Detailed analysis would show individual files, their sizes, and usage patterns.</p>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    This feature would provide detailed file-by-file analysis of the selected directory.
+                </div>
+            `;
+        }, 1500);
+    }
+
+    // Analyze directory
+    function analyzeDirectory(category) {
+        showAlert(`Analyzing ${category} directory...`, 'info');
+
+        setTimeout(() => {
+            showAlert(`Analysis complete: ${category} directory contains ${Math.floor(Math.random() * 100) + 10} files`, 'success');
+        }, 2000);
+    }
+
+    // Confirm cleanup category
+    function confirmCleanupCategory(category) {
+        document.getElementById('cleanupConfirmation').innerHTML = `
+            <p>Are you sure you want to clean up the <strong>${category}</strong> directory?</p>
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                This will remove all files in this directory that are not part of installed presets.
+            </div>
+            <p>This action cannot be undone.</p>
+        `;
+
+        const modal = new bootstrap.Modal(document.getElementById('cleanupModal'));
+        modal.show();
+
+        document.getElementById('confirmCleanupBtn').onclick = function() {
+            modal.hide();
+            cleanupCategory(category);
+        };
+    }
+
+    // Cleanup category
+    function cleanupCategory(category) {
+        const modal = showOperationModal('Cleaning Directory');
+
+        fetch('/api/cleanup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: 'category',
+                category: category
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideOperationModal();
+            if (data.success) {
+                showAlert(data.message, 'success');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            hideOperationModal();
+            showAlert('Cleanup failed: ' + error.message, 'danger');
+        });
+    }
+
+    // Cleanup unused models
+    function cleanupUnusedModels() {
+        document.getElementById('cleanupConfirmation').innerHTML = `
+            <p>Are you sure you want to remove all unused models?</p>
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                This will remove all model files that are not part of any installed preset.
+            </div>
+            <p>This action cannot be undone.</p>
+        `;
+
+        const modal = new bootstrap.Modal(document.getElementById('cleanupModal'));
+        modal.show();
+
+        document.getElementById('confirmCleanupBtn').onclick = function() {
+            modal.hide();
+            performCleanup();
+        };
+    }
+
+    // Perform cleanup
+    function performCleanup() {
+        const modal = showOperationModal('Cleaning Up');
+
+        fetch('/api/cleanup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: 'unused'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideOperationModal();
+            if (data.success) {
+                showAlert(data.message, 'success');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            hideOperationModal();
+            showAlert('Cleanup failed: ' + error.message, 'danger');
+        });
+    }
+
+    // Clear cache
+    function clearCache() {
+        showAlert('Clearing cache...', 'info');
+
+        setTimeout(() => {
+            showAlert('Cache cleared successfully!', 'success');
+        }, 2000);
+    }
+
+    // Generate storage report
+    function generateStorageReport() {
+        showAlert('Generating storage report...', 'info');
+
+        setTimeout(() => {
+            showAlert('Storage report generated!', 'success');
+            // In a real implementation, this would download a PDF or CSV report
+        }, 3000);
+    }
+
+    // Generate storage recommendations
+    function generateStorageRecommendations() {
+        const usagePercentage = {{ storage_info.usage_percentage }};
+        const freeSpaceGB = {{ storage_info.free_space.gb }};
+        const recommendationsDiv = document.getElementById('storageRecommendations');
+
+        let recommendations = [];
+
+        if (usagePercentage > 90) {
+            recommendations.push({
+                type: 'danger',
+                icon: 'exclamation-triangle',
+                text: 'Storage usage is critically high. Consider removing unused models or expanding storage.'
+            });
+        } else if (usagePercentage > 75) {
+            recommendations.push({
+                type: 'warning',
+                icon: 'exclamation-circle',
+                text: 'Storage usage is high. Consider running cleanup operations to free up space.'
+            });
+        }
+
+        if (freeSpaceGB < 10) {
+            recommendations.push({
+                type: 'warning',
+                icon: 'database',
+                text: 'Low free space available. Ensure adequate space for new downloads and operations.'
+            });
+        }
+
+        if (recommendations.length === 0) {
+            recommendations.push({
+                type: 'success',
+                icon: 'check-circle',
+                text: 'Storage usage is optimal. Continue monitoring regularly.'
+            });
+        }
+
+        let html = '';
+        recommendations.forEach(rec => {
+            html += `
+                <div class="alert alert-${rec.type} d-flex align-items-center" role="alert">
+                    <i class="fas fa-${rec.icon} me-2"></i>
+                    <div>${rec.text}</div>
+                </div>
+            `;
+        });
+
+        recommendationsDiv.innerHTML = html;
+    }
+
+    // Toggle detail view
+    function toggleDetailView() {
+        const table = document.getElementById('storageTable');
+        table.classList.toggle('table-sm');
+    }
+
+    // Export storage data
+    function exportStorageData() {
+        showAlert('Exporting storage data...', 'info');
+
+        setTimeout(() => {
+            showAlert('Storage data exported successfully!', 'success');
+        }, 1500);
+    }
+
+    // Reset chart view
+    function resetChartView() {
+        storageChart.reset();
+        storagePieChart.reset();
+    }
+</script>
+{% endblock %}

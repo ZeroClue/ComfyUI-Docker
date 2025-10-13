@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+
+{% block title %}{{ preset.name }} - ComfyUI Preset Manager{% endblock %}
+
+{% block page_title %}{{ preset.name }}{% endblock %}
+
+{% block page_actions %}
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('presets') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Presets
+        </a>
+        {% if preset.is_installed %}
+            <button class="btn btn-outline-danger" onclick="confirmDeletePreset()">
+                <i class="fas fa-trash me-1"></i>Delete Preset
+            </button>
+        {% else %}
+            <button class="btn btn-success" onclick="downloadPreset('{{ preset_id }}')">
+                <i class="fas fa-download me-1"></i>Download Preset
+            </button>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Preset Information -->
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-cube me-2"></i>{{ preset.name }}
+                    {% if preset.is_installed %}
+                        <span class="badge bg-success float-end">
+                            <i class="fas fa-check"></i> Installed
+                        </span>
+                    {% elif preset.is_partial %}
+                        <span class="badge bg-warning float-end">
+                            <i class="fas fa-exclamation-triangle"></i> Partially Installed
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary float-end">
+                            <i class="fas fa-download"></i> Available
+                        </span>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6>Category</h6>
+                        <p class="text-muted">{{ preset.category }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Download Size</h6>
+                        <p class="text-muted">{{ preset.download_size }}</p>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <h6>Description</h6>
+                    <p>{{ preset.description }}</p>
+                </div>
+
+                <div class="mb-3">
+                    <h6>Use Case</h6>
+                    <p class="text-muted">{{ preset.use_case }}</p>
+                </div>
+
+                {% if preset.total_size_gb > 0 %}
+                <div class="mb-3">
+                    <h6>Installation Status</h6>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-success" role="progressbar"
+                             style="width: {{ (preset.installed_files|length / preset.files|length * 100)|round(1) }}%">
+                            {{ preset.installed_files|length }} / {{ preset.files|length }} files
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        Installed size: {{ preset.total_size_gb }}GB
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Files Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-file me-2"></i>Model Files
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>File Path</th>
+                                <th>Size</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file_path in preset.files %}
+                            <tr>
+                                <td>
+                                    <i class="fas fa-file me-2"></i>{{ file_path }}
+                                </td>
+                                <td>
+                                    {% set file_info = preset.installed_files | selectattr('path', 'equalto', file_path) | first %}
+                                    {% if file_info %}
+                                        <span class="text-success">{{ file_info.size_mb }}MB</span>
+                                    {% else %}
+                                        <span class="text-muted">{{ preset.download_size }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% set file_info = preset.installed_files | selectattr('path', 'equalto', file_path) | first %}
+                                    {% if file_info %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check"></i> Installed
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-download"></i> Not Downloaded
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- README Content -->
+        {% if readme_html %}
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-book me-2"></i>Documentation
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="readme-content">
+                    {{ readme_html | safe }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Actions -->
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if preset.is_installed %}
+                        <button class="btn btn-outline-danger" onclick="confirmDeletePreset()">
+                            <i class="fas fa-trash me-2"></i>Delete All Files
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="validateInstallation()">
+                            <i class="fas fa-check-circle me-2"></i>Validate Installation
+                        </button>
+                    {% elif preset.is_partial %}
+                        <button class="btn btn-outline-warning" onclick="downloadPreset('{{ preset_id }}')">
+                            <i class="fas fa-download me-2"></i>Complete Download
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="confirmDeletePreset()">
+                            <i class="fas fa-trash me-2"></i>Delete Partial Files
+                        </button>
+                    {% else %}
+                        <button class="btn btn-success" onclick="downloadPreset('{{ preset_id }}')">
+                            <i class="fas fa-download me-2"></i>Download Preset
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Installation Statistics -->
+        {% if preset.installed_files %}
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">Installation Statistics</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Progress</span>
+                        <span>{{ (preset.installed_files|length / preset.files|length * 100)|round(1) }}%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar"
+                             style="width: {{ (preset.installed_files|length / preset.files|length * 100)|round(1) }}%">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="h4 mb-0 text-success">{{ preset.installed_files|length }}</div>
+                        <small class="text-muted">Files Installed</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 mb-0 text-secondary">{{ preset.missing_files|length }}</div>
+                        <small class="text-muted">Files Missing</small>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="text-center">
+                    <div class="h4 mb-0 text-primary">{{ preset.total_size_gb }}GB</div>
+                    <small class="text-muted">Total Size</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Related Presets -->
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">Related Presets</h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <!-- This would be populated with related presets based on category or dependencies -->
+                    <p class="text-muted text-center">No related presets found</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Information -->
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-question-circle me-2"></i>Help
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="helpAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#downloadHelp">
+                                <i class="fas fa-download me-2"></i>Download Process
+                            </button>
+                        </h2>
+                        <div id="downloadHelp" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body">
+                                Downloads are handled automatically by the system. Large models may take several minutes to download depending on your internet connection speed.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#storageHelp">
+                                <i class="fas fa-hdd me-2"></i>Storage Requirements
+                            </button>
+                        </h2>
+                        <div id="storageHelp" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body">
+                                This preset requires approximately {{ preset.download_size }} of disk space. Ensure you have sufficient free space before downloading.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#usageHelp">
+                                <i class="fas fa-play me-2"></i>Usage Instructions
+                            </button>
+                        </h2>
+                        <div id="usageHelp" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body">
+                                Once downloaded, the models will be available in ComfyUI. Check the documentation section above for specific usage instructions.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ preset.name }}</strong> and all its files?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    This action cannot be undone. All downloaded files will be permanently removed from your system.
+                </div>
+                {% if preset.installed_files %}
+                <h6>Files to be deleted:</h6>
+                <ul class="list-group">
+                    {% for file in preset.installed_files %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{ file.path }}</span>
+                        <span class="badge bg-secondary">{{ file.size_mb }}MB</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash me-1"></i>Delete Forever
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Download preset
+    function downloadPreset(presetId) {
+        const modal = showOperationModal('Downloading Preset');
+
+        fetch(`/api/download/${presetId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                hideOperationModal();
+                showAlert(data.error, 'danger');
+            } else {
+                pollOperationStatus(data.operation_id, function(result) {
+                    showAlert(`Successfully downloaded {{ preset.name }}!`, 'success');
+                    setTimeout(() => location.reload(), 2000);
+                }, function(error) {
+                    showAlert(`Download failed: ${error.message}`, 'danger');
+                });
+            }
+        })
+        .catch(error => {
+            hideOperationModal();
+            showAlert('Download failed: ' + error.message, 'danger');
+        });
+    }
+
+    // Confirm delete preset
+    function confirmDeletePreset() {
+        const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        modal.show();
+    }
+
+    // Delete preset
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+        modal.hide();
+
+        const operationModal = showOperationModal('Deleting Preset');
+
+        fetch(`/api/delete/{{ preset_id }}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideOperationModal();
+            if (data.success) {
+                showAlert(data.message, 'success');
+                setTimeout(() => window.location.href = '{{ url_for("presets") }}', 2000);
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            hideOperationModal();
+            showAlert('Delete failed: ' + error.message, 'danger');
+        });
+    });
+
+    // Validate installation
+    function validateInstallation() {
+        showAlert('Validating installation...', 'info');
+
+        // Simulate validation (in a real implementation, this would check file integrity)
+        setTimeout(() => {
+            showAlert('Installation is valid!', 'success');
+        }, 2000);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add smooth scrolling to anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

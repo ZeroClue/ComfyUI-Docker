@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ComfyUI Preset Manager{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block page_actions %}
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('presets') }}" class="btn btn-outline-primary">
+            <i class="fas fa-plus me-1"></i>Browse Presets
+        </a>
+        <a href="{{ url_for('storage') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-hdd me-1"></i>Storage
+        </a>
+    </div>
+{% endblock %}
+
+{% block content %}
+<!-- Storage Overview -->
+<div class="row mb-4">
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card storage-card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="text-uppercase text-white-50 mb-1">Storage Used</h5>
+                        <div class="h2 mb-0 text-white">
+                            {{ storage_info.used_space.gb }}GB / {{ storage_info.total_space.gb }}GB
+                        </div>
+                        <div class="mt-2">
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-white" role="progressbar"
+                                     style="width: {{ storage_info.usage_percentage }}%">
+                                </div>
+                            </div>
+                            <small class="text-white-50">{{ storage_info.usage_percentage }}% used</small>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-hdd fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="text-uppercase text-primary mb-1">Installed Presets</h5>
+                        <div class="h2 mb-0 font-weight-bold text-primary">
+                            {{ stats.installed_presets }} / {{ stats.total_presets }}
+                        </div>
+                        <small class="text-muted">{{ stats.installation_rate }}% installation rate</small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-boxes fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="text-uppercase text-success mb-1">Model Files</h5>
+                        <div class="h2 mb-0 font-weight-bold text-success">
+                            {{ storage_info.total_model_size.gb }}GB
+                        </div>
+                        <small class="text-muted">Total model size</small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-cube fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Installation Statistics -->
+<div class="row mb-4">
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold">Installation Statistics</h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshStats()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <canvas id="installationChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold">Preset Categories</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold">Popular Presets</h6>
+            </div>
+            <div class="card-body">
+                {% for category_name, presets in categories.items() %}
+                <div class="mb-3">
+                    <h6 class="text-primary">{{ category_name }}</h6>
+                    {% for preset in presets[:3] %}
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div>
+                            <span class="fw-medium">{{ preset.name }}</span>
+                            {% if preset.is_installed %}
+                                <span class="badge bg-success ms-2 status-badge">
+                                    <i class="fas fa-check"></i> Installed
+                                </span>
+                            {% elif preset.is_partial %}
+                                <span class="badge bg-warning ms-2 status-badge">
+                                    <i class="fas fa-exclamation-triangle"></i> Partial
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary ms-2 status-badge">
+                                    <i class="fas fa-download"></i> Available
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary btn-sm"
+                                    onclick="downloadPreset('{{ preset.name.split()[0] }}')"
+                                    {% if preset.is_installed %}disabled{% endif %}>
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <a href="{{ url_for('preset_detail', preset_id=preset.name.split()[0]) }}"
+                               class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-info"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold">Storage by Category</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="storageChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Storage Details -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold">Storage Details</h6>
+                <a href="{{ url_for('storage') }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-cog me-1"></i>Manage Storage
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Size</th>
+                                <th>Files</th>
+                                <th class="text-center">Usage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category, info in storage_info.model_directories.items() %}
+                            <tr>
+                                <td>
+                                    <i class="fas fa-folder me-2"></i>
+                                    {{ category|title }}
+                                </td>
+                                <td>{{ info.size_gb }}GB</td>
+                                <td>{{ info.file_count }} files</td>
+                                <td class="text-center">
+                                    {% set percentage = (info.size_bytes / storage_info.total_model_size.bytes * 100) if storage_info.total_model_size.bytes > 0 else 0 %}
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar" role="progressbar"
+                                             style="width: {{ percentage }}%">
+                                            {{ "%.1f"|format(percentage) }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Installation Statistics Chart
+    const installationCtx = document.getElementById('installationChart').getContext('2d');
+    const installationChart = new Chart(installationCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Installed', 'Partial', 'Not Installed'],
+            datasets: [{
+                label: 'Presets',
+                data: [
+                    {{ stats.installed_presets }},
+                    {{ stats.partial_presets }},
+                    {{ stats.total_presets - stats.installed_presets - stats.partial_presets }}
+                ],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.8)',
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(108, 117, 125, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(108, 117, 125, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // Category Distribution Chart
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    const categoryChart = new Chart(categoryCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for category in categories.keys() %}'{{ category }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                data: [
+                    {% for category_name, presets in categories.items() %}{{ presets|length }}{% if not loop.last %}, {% endif %}{% endfor %}
+                ],
+                backgroundColor: [
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(118, 75, 162, 0.8)',
+                    'rgba(255, 193, 7, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(102, 126, 234, 1)',
+                    'rgba(118, 75, 162, 1)',
+                    'rgba(255, 193, 7, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Storage by Category Chart
+    const storageCtx = document.getElementById('storageChart').getContext('2d');
+    const storageChart = new Chart(storageCtx, {
+        type: 'pie',
+        data: {
+            labels: [{% for category in storage_info.model_directories.keys() %}'{{ category|title }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                data: [{% for category, info in storage_info.model_directories.items() %}{{ info.size_gb }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                    'rgba(255, 159, 64, 0.8)',
+                    'rgba(199, 199, 199, 0.8)',
+                    'rgba(83, 102, 255, 0.8)',
+                    'rgba(255, 99, 255, 0.8)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed + 'GB';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Register charts with theme manager
+    if (typeof themeManager !== 'undefined') {
+        themeManager.registerChart(installationChart);
+        themeManager.registerChart(categoryChart);
+        themeManager.registerChart(storageChart);
+    }
+
+    // Download preset function
+    function downloadPreset(presetName) {
+        const modal = showOperationModal('Downloading Preset');
+
+        fetch(`/api/download/${presetName}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                hideOperationModal();
+                showAlert(data.error, 'danger');
+            } else {
+                pollOperationStatus(data.operation_id, function(result) {
+                    showAlert(`Successfully downloaded ${presetName}!`, 'success');
+                    setTimeout(() => location.reload(), 2000);
+                }, function(error) {
+                    showAlert(`Download failed: ${error.message}`, 'danger');
+                });
+            }
+        })
+        .catch(error => {
+            hideOperationModal();
+            showAlert('Download failed: ' + error.message, 'danger');
+        });
+    }
+
+    // Refresh statistics
+    function refreshStats() {
+        const button = event.target.closest('button');
+        const icon = button.querySelector('i');
+        icon.classList.add('fa-spin');
+
+        fetch('/api/storage/status')
+            .then(response => response.json())
+            .then(data => {
+                // Update charts with new data
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error refreshing stats:', error);
+            })
+            .finally(() => {
+                setTimeout(() => {
+                    icon.classList.remove('fa-spin');
+                }, 1000);
+            });
+    }
+</script>
+{% endblock %}

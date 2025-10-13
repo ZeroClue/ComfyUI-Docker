@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ComfyUI Preset Manager</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        /* Light Theme (Default) */
+        :root {
+            --login-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --login-container-bg: rgba(255, 255, 255, 0.95);
+            --login-text: #333;
+            --login-logo-color: #667eea;
+            --login-input-bg: #ffffff;
+            --login-input-border: #e9ecef;
+            --login-input-focus: #667eea;
+            --login-border-color: #e9ecef;
+            --login-features-border: #e9ecef;
+            --login-features-text: #6c757d;
+            --login-features-icon: #667eea;
+            --login-warning-bg: #fff3cd;
+            --login-warning-border: #ffeaa7;
+            --login-warning-icon: #856404;
+        }
+
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --login-bg: linear-gradient(135deg, #2d3139 0%, #1a1d23 100%);
+            --login-container-bg: rgba(45, 49, 57, 0.95);
+            --login-text: #e9ecef;
+            --login-logo-color: #667eea;
+            --login-input-bg: #343a40;
+            --login-input-border: #495057;
+            --login-input-focus: #667eea;
+            --login-border-color: #495057;
+            --login-features-border: #495057;
+            --login-features-text: #adb5bd;
+            --login-features-icon: #667eea;
+            --login-warning-bg: #3d2f00;
+            --login-warning-border: #5c4a00;
+            --login-warning-icon: #ffc107;
+        }
+
+        body {
+            background: var(--login-bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+        }
+
+        .login-container {
+            background: var(--login-container-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid var(--login-border-color);
+            transition: all 0.3s ease;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo i {
+            font-size: 3rem;
+            color: var(--login-logo-color);
+            margin-bottom: 1rem;
+            transition: color 0.3s ease;
+        }
+
+        .logo h3 {
+            color: var(--login-text);
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .logo p {
+            color: var(--login-features-text);
+            transition: color 0.3s ease;
+        }
+
+        .form-control {
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--login-input-border);
+            background-color: var(--login-input-bg);
+            color: var(--login-text);
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--login-input-focus);
+            background-color: var(--login-input-bg);
+            color: var(--login-text);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .form-label {
+            color: var(--login-text);
+            transition: color 0.3s ease;
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+
+        .input-group-text {
+            background: var(--login-input-bg);
+            border: 2px solid var(--login-input-border);
+            border-right: none;
+            border-radius: 10px 0 0 10px;
+            color: var(--login-text);
+            transition: all 0.3s ease;
+        }
+
+        .form-control.with-icon {
+            border-left: none;
+            border-radius: 0 10px 10px 0;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .features {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--login-features-border);
+        }
+
+        .features small {
+            color: var(--login-features-text);
+            transition: color 0.3s ease;
+        }
+
+        .features i {
+            color: var(--login-features-icon);
+            margin: 0 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .default-password-warning {
+            background-color: var(--login-warning-bg);
+            border: 1px solid var(--login-warning-border);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .default-password-warning i {
+            color: var(--login-warning-icon);
+            margin-right: 0.5rem;
+        }
+
+        .default-password-warning strong {
+            color: var(--login-text);
+        }
+
+        .default-password-warning small {
+            color: var(--login-features-text);
+        }
+
+        /* Theme toggle for login page */
+        .login-theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 8px;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .login-theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .login-theme-toggle i {
+            font-size: 1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .login-theme-toggle:hover i {
+            transform: rotate(20deg);
+        }
+    </style>
+</head>
+<body>
+    <!-- Theme Toggle Button -->
+    <button class="login-theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
+        <i class="fas fa-moon" id="loginThemeIcon"></i>
+    </button>
+
+    <div class="login-container fade-in">
+        <div class="logo">
+            <i class="fas fa-cube"></i>
+            <h3>ComfyUI Preset Manager</h3>
+            <p class="text-muted">Manage your AI models with ease</p>
+        </div>
+
+        {% if error %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endif %}
+
+        {% if using_default_password %}
+            <div class="default-password-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Security Notice:</strong> Using default password for development.
+                <br>
+                <small class="text-muted">
+                    For production use, set the ACCESS_PASSWORD environment variable for better security.
+                </small>
+            </div>
+        {% endif %}
+
+        <form method="POST">
+            <div class="mb-3">
+                <label for="password" class="form-label">
+                    <i class="fas fa-lock me-1"></i>Password
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-key"></i>
+                    </span>
+                    <input type="password" class="form-control with-icon" id="password" name="password"
+                           placeholder="Enter your password{% if using_default_password %} (default: password){% endif %}" required autofocus>
+                </div>
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-login">
+                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                </button>
+            </div>
+        </form>
+
+        <div class="features">
+            <small>
+                <i class="fas fa-download"></i>Download Models
+                <i class="fas fa-trash"></i>Manage Storage
+                <i class="fas fa-chart-pie"></i>Monitor Usage
+            </small>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Theme Management for Login Page
+        class LoginThemeManager {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.loadTheme();
+                this.setupToggle();
+            }
+
+            loadTheme() {
+                // Default to dark theme
+                const savedTheme = localStorage.getItem('theme');
+                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = savedTheme || 'dark'; // Default to dark
+                this.setTheme(theme);
+            }
+
+            setTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                this.updateToggleIcon(theme);
+            }
+
+            updateToggleIcon(theme) {
+                const icon = document.getElementById('loginThemeIcon');
+                if (icon) {
+                    if (theme === 'dark') {
+                        icon.className = 'fas fa-moon';
+                    } else {
+                        icon.className = 'fas fa-sun';
+                    }
+                }
+            }
+
+            setupToggle() {
+                // Toggle function will be available globally
+                window.toggleTheme = () => this.toggle();
+            }
+
+            toggle() {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                this.setTheme(newTheme);
+            }
+        }
+
+        // Initialize theme manager
+        const loginThemeManager = new LoginThemeManager();
+
+        // Auto-focus password field
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('password').focus();
+
+            // Clear error message when user starts typing
+            const passwordField = document.getElementById('password');
+            const errorAlert = document.querySelector('.alert-danger');
+
+            if (errorAlert) {
+                passwordField.addEventListener('input', function() {
+                    errorAlert.style.opacity = '0.5';
+                });
+            }
+        });
+
+        // Add loading state to button
+        document.querySelector('form').addEventListener('submit', function() {
+            const button = document.querySelector('.btn-login');
+            const originalContent = button.innerHTML;
+
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Authenticating...';
+            button.disabled = true;
+
+            // Reset if login fails (after 3 seconds)
+            setTimeout(() => {
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }, 3000);
+        });
+    </script>
+</body>
+</html>

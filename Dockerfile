@@ -130,6 +130,13 @@ RUN pip install --no-cache-dir -U \
     numpy requests tqdm pillow pyyaml \
     triton
 
+# Install Flask web framework for preset manager
+RUN pip install --no-cache-dir \
+    flask>=2.0.0 \
+    python-markdown>=3.0.0 \
+    pygments>=2.10.0 \
+    flask-session>=0.4.0
+
 # Conditionally install development and science packages
 RUN if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \
         echo "Installing development tools..." && \
@@ -175,7 +182,7 @@ RUN if [ "$INSTALL_CODE_SERVER" = "true" ]; then \
         echo "Skipping code-server installation."; \
     fi
 
-EXPOSE 22 3000 8080 8888
+EXPOSE 22 3000 8080 8888 9000
 
 # NGINX Proxy
 COPY proxy/nginx.conf /etc/nginx/nginx.conf
@@ -197,6 +204,15 @@ COPY --chmod=755 scripts/download_presets.sh /
 COPY --chmod=755 scripts/download_image_presets.sh /
 COPY --chmod=755 scripts/download_audio_presets.sh /
 COPY --chmod=755 scripts/install_custom_nodes.sh /
+
+# Copy preset manager web application to /app/
+COPY --chmod=755 scripts/preset_manager_cli.py /app/preset_manager.py
+COPY --chmod=644 scripts/preset_manager/ /app/preset_manager/
+COPY --chmod=644 scripts/templates/ /app/templates/ || true
+COPY --chmod=644 scripts/static/ /app/static/ || true
+
+# Copy README files for preset documentation
+COPY --chmod=644 workspace/docs/presets/ /app/workspace/docs/presets/ || true
 
 # Welcome Message
 #COPY logo/runpod.txt /etc/runpod.txt

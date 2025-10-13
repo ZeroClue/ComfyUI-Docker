@@ -130,6 +130,41 @@ start_code_server() {
     echo "code-server started"
 }
 
+# Start preset manager
+start_preset_manager() {
+    # Check if preset manager should be started (default: true)
+    if [[ "${ENABLE_PRESET_MANAGER,,}" == "false" ]]; then
+        echo "Preset Manager is disabled (ENABLE_PRESET_MANAGER=false). Skipping startup."
+        return
+    fi
+
+    echo "Starting Preset Manager..."
+    mkdir -p /workspace/logs
+    mkdir -p /workspace/docs/presets
+
+    # Copy README files to docs directory if they don't exist
+    if [[ -d /app/workspace/docs/presets ]] && [[ ! -d /workspace/docs/presets ]]; then
+        echo "Copying README files to workspace docs directory..."
+        cp -r /app/workspace/docs/* /workspace/docs/
+    fi
+
+    # Copy templates to the expected location
+    if [[ -d /scripts/templates ]]; then
+        mkdir -p /app/templates
+        cp -r /scripts/templates/* /app/templates/
+    fi
+
+    # Create static directory
+    mkdir -p /app/static
+
+    # Start the preset manager Flask application
+    cd /app
+    export PYTHONPATH="/app:$PYTHONPATH"
+
+    nohup python3 preset_manager.py &> /workspace/logs/preset_manager.log &
+    echo "Preset Manager started on port 9001 (accessible via Nginx on port 9000)"
+}
+
 # ---------------------------------------------------------------------------- #
 #                               Main Program                                   #
 # ---------------------------------------------------------------------------- #
@@ -143,6 +178,7 @@ echo "Pod Started"
 setup_ssh
 start_jupyter
 start_code_server
+start_preset_manager
 export_env_vars
 
 execute_script "/post_start.sh" "Running post-start script..."

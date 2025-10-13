@@ -12,12 +12,13 @@
 
 ## 🔌 Exposed Ports
 
-| Port | Type | Service     |
-| ---- | ---- | ----------- |
-| 22   | TCP  | SSH         |
-| 3000 | HTTP | ComfyUI     |
-| 8080 | HTTP | code-server |
-| 8888 | HTTP | JupyterLab  |
+| Port | Type | Service               |
+| ---- | ---- | --------------------- |
+| 22   | TCP  | SSH                   |
+| 3000 | HTTP | ComfyUI               |
+| 8080 | HTTP | code-server           |
+| 8888 | HTTP | JupyterLab            |
+| 9000 | HTTP | Preset Manager Web UI |
 
 ---
 
@@ -105,6 +106,7 @@ docker run --gpus all \
 | `COMFYUI_EXTRA_ARGS`    | Extra ComfyUI options (e.g. `--fast`)                        | (unset)   |
 | `INSTALL_SAGEATTENTION` | Install [SageAttention2](https://github.com/thu-ml/SageAttention) on start (`True`/`False`) | `False`    |
 | `FORCE_SYNC_ALL`        | Force full resync of venv and ComfyUI on startup (`True`/`False`) | `False`    |
+| `ENABLE_PRESET_MANAGER` | Enable/disable preset manager web interface (`True`/`False`) | `True`     |
 | `PRESET_DOWNLOAD`       | Download video generation model presets at startup (comma-separated list). **See below**. | (unset)   |
 | `IMAGE_PRESET_DOWNLOAD` | Download image generation model presets at startup (comma-separated list). **See below**. | (unset)   |
 | `AUDIO_PRESET_DOWNLOAD` | Download audio generation model presets at startup (comma-separated list). ⚠️ **Experimental** - **See below**. | (unset)   |
@@ -112,6 +114,39 @@ docker run --gpus all \
 > 👉 To set: **Edit Pod/Template** → **Add Environment Variable** (Key/Value).
 
 > ⚠️ SageAttention2 requires **Ampere+ GPUs** and ~5 minutes to install.
+
+---
+
+## 🌐 Preset Manager Web Interface
+
+> **Web-based preset management system** - Browse, install, and manage ComfyUI model presets through an intuitive web interface.
+
+### Quick Access
+
+- **URL**: `http://your-pod-url:9000`
+- **Authentication**: Use `ACCESS_PASSWORD` environment variable (if set)
+- **Features**: Real-time progress tracking, storage analytics, integrated documentation
+
+### Key Capabilities
+
+- **🎛️ Visual Dashboard**: Storage overview and installation statistics
+- **📂 Preset Browser**: Browse 96+ presets by category (Video/Image/Audio)
+- **📖 Documentation Integration**: View full preset READMEs inline
+- **⬇️ One-Click Installation**: Download presets with progress tracking
+- **🗂️ Storage Management**: Monitor disk usage and cleanup unused models
+- **📱 Responsive Design**: Works on desktop and mobile devices
+
+### Usage Examples
+
+```bash
+# Enable preset manager (default - enabled)
+docker run -e ACCESS_PASSWORD=mypassword zeroclue/comfyui:base-torch2.8.0-cu126
+
+# Disable preset manager to save resources
+docker run -e ENABLE_PRESET_MANAGER=False zeroclue/comfyui:base-torch2.8.0-cu126
+```
+
+> 👉 **Complete Guide**: See [PRESET_MANAGER.md](PRESET_MANAGER.md) for detailed documentation, screenshots, and advanced features.
 
 ---
 
@@ -216,11 +251,12 @@ docker run -e AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC" zeroclue/comfyu
 
 ## 📁 Logs
 
-| App         | Log Path                                   |
-| ----------- | ------------------------------------------ |
-| ComfyUI     | `/workspace/ComfyUI/user/comfyui_3000.log` |
-| code-server | `/workspace/logs/code-server.log`          |
-| JupyterLab  | `/workspace/logs/jupyterlab.log`           |
+| App            | Log Path                                      |
+| -------------- | --------------------------------------------- |
+| ComfyUI        | `/workspace/ComfyUI/user/comfyui_3000.log`    |
+| code-server    | `/workspace/logs/code-server.log`             |
+| JupyterLab     | `/workspace/logs/jupyterlab.log`              |
+| Preset Manager | `/workspace/logs/preset_manager.log`          |
 
 ---
 

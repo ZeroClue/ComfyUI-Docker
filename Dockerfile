@@ -205,14 +205,15 @@ COPY --chmod=755 scripts/download_image_presets.sh /
 COPY --chmod=755 scripts/download_audio_presets.sh /
 COPY --chmod=755 scripts/install_custom_nodes.sh /
 
+# Create required directories for preset manager
+RUN mkdir -p /app/templates /app/static /app/workspace/docs/presets
+
 # Copy preset manager web application to /app/
 COPY --chmod=755 scripts/preset_manager_cli.py /app/preset_manager.py
 COPY --chmod=644 scripts/preset_manager/ /app/preset_manager/
-COPY --chmod=644 scripts/templates/ /app/templates/ || true
-COPY --chmod=644 scripts/static/ /app/static/ || true
-
-# Copy README files for preset documentation
-COPY --chmod=644 workspace/docs/presets/ /app/workspace/docs/presets/ || true
+COPY --chmod=644 scripts/templates/ /app/templates/
+COPY --chmod=644 scripts/static/ /app/static/
+COPY --chmod=644 workspace/docs/presets/ /app/workspace/docs/presets/
 
 # Welcome Message
 #COPY logo/runpod.txt /etc/runpod.txt

@@ -142,11 +142,8 @@ start_preset_manager() {
     mkdir -p /workspace/logs
     mkdir -p /workspace/docs/presets
 
-    # Copy README files to docs directory if they don't exist
-    if [[ -d /app/workspace/docs/presets ]] && [[ ! -d /workspace/docs/presets ]]; then
-        echo "Copying README files to workspace docs directory..."
-        cp -r /app/workspace/docs/* /workspace/docs/
-    fi
+    # README files are now read directly from container image at /app/workspace/docs/presets/
+    # This ensures they stay current with container updates and eliminates sync issues
 
     # Copy templates to the expected location
     if [[ -d /scripts/templates ]]; then

@@ -32,4 +32,25 @@ This directory contains screenshots for the Preset Manager documentation.
 📸 **Screenshots Needed**: 5
 📁 **Directory Created**: ✅
 📖 **Documentation Ready**: ✅
-🔄 **Waiting for Screenshots**: ⏳
+🔧 **README Location Fixed**: ✅ (Now reads from container image)
+⏳ **To Generate**: Run container and access http://localhost:9000
+
+## Quick Instructions for Generating Screenshots
+
+1. **Start Container**:
+   ```bash
+   docker run --gpus all -p 9000:9000 -e ACCESS_PASSWORD=mypassword zeroclue/comfyui:base-torch2.8.0-cu126
+   ```
+
+2. **Access Interface**: Open `http://localhost:9000` in browser
+
+3. **Login**: Use the password you set (or leave blank if no ACCESS_PASSWORD)
+
+4. **Capture Screenshots**:
+   - Navigate to Dashboard (home page)
+   - Click "Presets" and capture preset browser
+   - Click any preset to capture details page
+   - Check "Storage" for storage management
+   - Start a download to capture progress tracking
+
+5. **Save Files**: Save as PNG with names from the list above

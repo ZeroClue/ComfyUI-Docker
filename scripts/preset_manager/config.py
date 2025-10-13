@@ -3,7 +3,7 @@ Configuration settings for the ComfyUI Preset Manager
 """
 
 # File paths
-README_BASE_PATH = "/workspace/docs/presets"
+README_BASE_PATH = "/app/workspace/docs/presets"
 WORKSPACE_DIR = "/workspace"
 
 # Default model paths

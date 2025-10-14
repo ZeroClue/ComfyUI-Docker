@@ -695,3 +695,142 @@ class ModelManager:
 
         except Exception as e:
             return False, f"Error during cleanup: {str(e)}"
+
+    def _get_unknown_models(self) -> List[Dict]:
+        """Get models that are not part of any preset"""
+        unknown_models = []
+
+        try:
+            # Get all files that are part of presets
+            preset_files = set()
+            for preset in self.presets.values():
+                for file_path in preset['files']:
+                    preset_files.add(file_path)
+
+            # Find all model files in the directories
+            model_extensions = ('.safetensors', '.pth', '.pt', '.bin', '.ckpt', '.gguf')
+
+            for category in MODEL_PATHS.keys():
+                category_path = MODEL_PATHS[category]
+                if os.path.exists(category_path):
+                    for dirpath, dirnames, filenames in os.walk(category_path):
+                        for filename in filenames:
+                            if filename.lower().endswith(model_extensions):
+                                # Get relative path from base_dir
+                                full_path = os.path.join(dirpath, filename)
+                                relative_path = os.path.relpath(full_path, self.base_dir)
+
+                                # Skip if this file is part of a preset
+                                if relative_path not in preset_files:
+                                    try:
+                                        size = os.path.getsize(full_path)
+                                        unknown_models.append({
+                                            'filename': filename,
+                                            'relative_path': relative_path,
+                                            'full_path': full_path,
+                                            'category': category,
+                                            'size_bytes': size,
+                                            'size_mb': round(size / (1024 * 1024), 2),
+                                            'size_gb': round(size / (1024 * 1024 * 1024), 2)
+                                        })
+                                    except Exception as e:
+                                        print(f"Error getting size for {filename}: {e}")
+
+            # Sort by size (largest first)
+            unknown_models.sort(key=lambda x: x['size_bytes'], reverse=True)
+
+        except Exception as e:
+            print(f"Error getting unknown models: {e}")
+
+        return unknown_models
+
+    def create_github_issue_data(self, model_info: Dict) -> Dict:
+        """Create formatted data for GitHub issue creation"""
+        try:
+            # Determine model type from category and filename
+            model_type = self._guess_model_type(model_info)
+
+            # Create issue title
+            title = f"Add preset for {model_info['filename']}"
+
+            # Create issue body with template
+            body = f"""## Model Information
+- **Filename**: `{model_info['filename']}`
+- **Category**: {model_info['category']}
+- **Size**: {model_info['size_gb']}GB ({model_info['size_mb']:.0f}MB)
+- **Type**: {model_type}
+- **Path**: `{model_info['relative_path']}`
+
+## Suggested Preset Details
+Please add preset information for this model:
+
+- **Preset Name**: [Suggest a descriptive name]
+- **Description**: [Describe what this model does]
+- **Use Case**: [Primary use case for this model]
+- **Download Size**: {model_info['size_gb']}GB
+- **Required Files**:
+  - `{model_info['relative_path']}`
+
+## Additional Context
+- This model was detected in the user's ComfyUI installation
+- The model appears to be {model_type.lower()}
+- File size suggests it's a substantial model worth tracking
+
+## System Information
+- Environment: RunPod
+- Model Directory: /workspace/ComfyUI/models/
+- Detection Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC
+"""
+
+            return {
+                'title': title,
+                'body': body,
+                'labels': ['preset-request', 'enhancement'],
+                'model_info': model_info
+            }
+
+        except Exception as e:
+            print(f"Error creating GitHub issue data: {e}")
+            return {
+                'title': f"Add preset for {model_info['filename']}",
+                'body': f"Please add preset support for model: {model_info['filename']} ({model_info['size_gb']}GB)",
+                'labels': ['preset-request', 'enhancement'],
+                'model_info': model_info
+            }
+
+    def _guess_model_type(self, model_info: Dict) -> str:
+        """Guess model type from filename and category"""
+        filename_lower = model_info['filename'].lower()
+        category = model_info['category']
+
+        # Video generation indicators
+        if any(indicator in filename_lower for indicator in ['wan', 'ltxv', 'mochi', 'hunyuan', 's2v', 'ti2v', 'i2v']):
+            return 'Video Generation Model'
+
+        # Image generation indicators
+        if any(indicator in filename_lower for indicator in ['flux', 'sdxl', 'juggernaut', 'realistic', 'qwen', 'sd_', 'stable']):
+            return 'Image Generation Model'
+
+        # Audio generation indicators
+        if any(indicator in filename_lower for indicator in ['musicgen', 'bark', 'tts', 'audio', 'ace']):
+            return 'Audio Generation Model'
+
+        # Category-based fallback
+        if category == 'diffusion_models':
+            return 'Diffusion Model'
+        elif category == 'checkpoints':
+            return 'Checkpoint Model'
+        elif category == 'loras':
+            return 'LoRA Model'
+        elif category == 'vae':
+            return 'VAE Model'
+        elif category == 'text_encoders':
+            return 'Text Encoder Model'
+        elif category == 'audio':
+            return 'Audio Model'
+        elif category == 'TTS':
+            return 'Text-to-Speech Model'
+        elif category == 'audio_encoders':
+            return 'Audio Encoder Model'
+        else:
+            return 'Unknown Model Type'

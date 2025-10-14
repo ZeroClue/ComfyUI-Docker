@@ -74,6 +74,25 @@
             </div>
         </div>
     </div>
+
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="text-uppercase text-warning mb-1">Unknown Models</h5>
+                        <div class="h3 mb-0 font-weight-bold text-warning" id="unknownModelsCount">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                        <small class="text-muted">Not tracked by presets</small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-question-circle fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Storage Visualization -->
@@ -213,6 +232,37 @@
     </div>
 </div>
 
+<!-- Unknown Models Section -->
+<div class="row mb-4" id="unknownModelsSection" style="display: none;">
+    <div class="col-12" id="unknown-models">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-warning text-dark d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-question-circle me-2"></i>Unknown Models
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshUnknownModels()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    These models are installed but not tracked by any preset. You can help improve the preset manager by reporting these models to create new presets.
+                </div>
+
+                <div id="unknownModelsList">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading unknown models...</span>
+                        </div>
+                        <p class="mt-2">Scanning for unknown models...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Cleanup Operations -->
 <div class="row mb-4">
     <div class="col-12">
@@ -323,6 +373,31 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-warning" id="confirmCleanupBtn">
                     <i class="fas fa-broom me-1"></i>Proceed with Cleanup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GitHub Issue Reporting Modal -->
+<div class="modal fade" id="reportModelModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fab fa-github me-2"></i>Report Model for Preset Creation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="reportModelContent">
+                    <!-- Model reporting content populated dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="createGithubIssueBtn" disabled>
+                    <i class="fab fa-github me-1"></i>Create GitHub Issue
                 </button>
             </div>
         </div>
@@ -670,6 +745,291 @@
     function resetChartView() {
         storageChart.reset();
         storagePieChart.reset();
+    }
+
+    // Unknown Models functionality
+    let unknownModelsData = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadUnknownModels();
+    });
+
+    // Load unknown models
+    function loadUnknownModels() {
+        fetch('/api/unknown-models')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    unknownModelsData = data.unknown_models;
+                    updateUnknownModelsDisplay(data);
+                } else {
+                    console.error('Failed to load unknown models:', data.error);
+                    document.getElementById('unknownModelsCount').innerHTML = 'Error';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading unknown models:', error);
+                document.getElementById('unknownModelsCount').innerHTML = 'Error';
+            });
+    }
+
+    // Update unknown models display
+    function updateUnknownModelsDisplay(data) {
+        const countElement = document.getElementById('unknownModelsCount');
+        const sectionElement = document.getElementById('unknownModelsSection');
+        const listElement = document.getElementById('unknownModelsList');
+
+        // Update count
+        countElement.innerHTML = data.count;
+
+        // Show section if there are unknown models
+        if (data.count > 0) {
+            sectionElement.style.display = 'block';
+
+            // Generate HTML for unknown models list
+            let html = '<div class="row">';
+
+            data.unknown_models.forEach(model => {
+                html += `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card border-warning h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-1">${model.filename}</h6>
+                                    <span class="badge bg-warning text-dark">${model.category}</span>
+                                </div>
+                                <p class="card-text small text-muted">
+                                    <i class="fas fa-folder me-1"></i>${model.relative_path}<br>
+                                    <i class="fas fa-hdd me-1"></i>${model.size_gb} GB (${model.size_mb.toFixed(0)} MB)
+                                </p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">Type: ${getModelTypeDisplay(model)}</small>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="reportModel('${model.relative_path}')"
+                                            title="Report this model for preset creation">
+                                        <i class="fab fa-github"></i> Report
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            // Add summary section
+            const totalSize = data.unknown_models.reduce((sum, model) => sum + model.size_bytes, 0);
+            const totalSizeGB = (totalSize / (1024 ** 3)).toFixed(2);
+
+            html = `
+                <div class="alert alert-warning mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Found <strong>${data.count}</strong> unknown models totaling <strong>${totalSizeGB}GB</strong>.
+                    Help improve the preset manager by reporting these models for preset creation.
+                </div>
+                <div class="row">
+                    ${data.unknown_models.map(model => `
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-warning h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="card-title mb-1">${model.filename}</h6>
+                                        <span class="badge bg-warning text-dark">${model.category}</span>
+                                    </div>
+                                    <p class="card-text small text-muted">
+                                        <i class="fas fa-folder me-1"></i>${model.relative_path}<br>
+                                        <i class="fas fa-hdd me-1"></i>${model.size_gb} GB (${model.size_mb.toFixed(0)} MB)
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">Type: ${getModelTypeDisplay(model)}</small>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="reportModel('${model.relative_path}')"
+                                                title="Report this model for preset creation">
+                                            <i class="fab fa-github"></i> Report
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            listElement.innerHTML = html;
+        } else {
+            sectionElement.style.display = 'none';
+        }
+    }
+
+    // Get model type display
+    function getModelTypeDisplay(model) {
+        const filename = model.filename.toLowerCase();
+        if (filename.includes('wan') || filename.includes('ltxv') || filename.includes('mochi')) {
+            return 'Video';
+        } else if (filename.includes('flux') || filename.includes('sdxl') || filename.includes('juggernaut') || filename.includes('qwen')) {
+            return 'Image';
+        } else if (filename.includes('musicgen') || filename.includes('bark') || filename.includes('ace')) {
+            return 'Audio';
+        }
+        return 'Other';
+    }
+
+    // Refresh unknown models
+    function refreshUnknownModels() {
+        const listElement = document.getElementById('unknownModelsList');
+        listElement.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Refreshing...</span>
+                </div>
+                <p class="mt-2">Refreshing unknown models...</p>
+            </div>
+        `;
+
+        loadUnknownModels();
+    }
+
+    // Report model for preset creation
+    function reportModel(modelPath) {
+        const modal = new bootstrap.Modal(document.getElementById('reportModelModal'));
+        const contentDiv = document.getElementById('reportModelContent');
+        const createBtn = document.getElementById('createGithubIssueBtn');
+
+        // Show loading state
+        contentDiv.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Preparing issue...</span>
+                </div>
+                <p class="mt-2">Preparing GitHub issue...</p>
+            </div>
+        `;
+
+        createBtn.disabled = true;
+        modal.show();
+
+        // Get issue data from API
+        fetch('/api/report-model', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model_path: modelPath
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayIssuePreview(data.issue_data, createBtn);
+            } else {
+                contentDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error: ${data.error}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error preparing issue:', error);
+            contentDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error preparing GitHub issue: ${error.message}
+                </div>
+            `;
+        });
+    }
+
+    // Display issue preview
+    function displayIssuePreview(issueData, createBtn) {
+        const contentDiv = document.getElementById('reportModelContent');
+
+        contentDiv.innerHTML = `
+            <div class="mb-3">
+                <h6>Model Information</h6>
+                <div class="border rounded p-3 bg-light">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Filename:</strong> <code>${issueData.model_info.filename}</code><br>
+                            <strong>Category:</strong> ${issueData.model_info.category}<br>
+                            <strong>Size:</strong> ${issueData.model_info.size_gb}GB<br>
+                            <strong>Type:</strong> ${issueData.model_info.model_type}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Path:</strong> <code>${issueData.model_info.relative_path}</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <h6>GitHub Issue Preview</h6>
+                <div class="border rounded p-3 bg-light">
+                    <h6 class="text-primary">${issueData.title}</h6>
+                    <div class="mb-2">
+                        <span class="badge bg-secondary me-1">preset-request</span>
+                        <span class="badge bg-secondary">enhancement</span>
+                    </div>
+                    <div class="text-muted small">
+                        <pre class="mb-0">${issueData.body.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Click "Create GitHub Issue" to open GitHub with this pre-filled issue. You can review and edit it before submitting.
+            </div>
+        `;
+
+        // Enable create button and set up click handler
+        createBtn.disabled = false;
+        createBtn.onclick = function() {
+            createGitHubIssue(issueData);
+        };
+    }
+
+    // Create GitHub issue
+    function createGitHubIssue(issueData) {
+        const createBtn = document.getElementById('createGithubIssueBtn');
+        const originalText = createBtn.innerHTML;
+
+        createBtn.disabled = true;
+        createBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creating Issue...';
+
+        // Construct GitHub issue URL
+        const githubUrl = 'https://github.com/zeroclue/comfyui-docker/issues/new';
+        const params = new URLSearchParams({
+            title: issueData.title,
+            body: issueData.body,
+            labels: issueData.labels.join(',')
+        });
+
+        const fullUrl = `${githubUrl}?${params.toString()}`;
+
+        // Open GitHub issue in new tab
+        window.open(fullUrl, '_blank');
+
+        // Update button and close modal after delay
+        setTimeout(() => {
+            createBtn.innerHTML = '<i class="fas fa-check me-1"></i>Issue Created!';
+            createBtn.classList.remove('btn-primary');
+            createBtn.classList.add('btn-success');
+
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('reportModelModal'));
+                modal.hide();
+
+                // Reset button
+                createBtn.innerHTML = originalText;
+                createBtn.disabled = false;
+                createBtn.classList.remove('btn-success');
+                createBtn.classList.add('btn-primary');
+
+                showAlert('GitHub issue created successfully! Thank you for contributing.', 'success');
+            }, 1500);
+        }, 1000);
     }
 </script>
 {% endblock %}

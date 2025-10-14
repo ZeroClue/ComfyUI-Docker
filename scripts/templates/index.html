@@ -76,6 +76,32 @@
             </div>
         </div>
     </div>
+
+    <div class="col-xl-4 col-md-6 mb-4">
+        <a href="{{ url_for('storage') }}#unknown-models" class="card-link">
+            <div class="card border-left-warning shadow h-100 py-2 clickable-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="text-uppercase text-warning mb-1">Unknown Models</h5>
+                            <div class="h2 mb-0 font-weight-bold text-warning" id="unknownModelsCount">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                            <small class="text-muted">Not tracked by presets</small>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-question-circle fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-center">
+                        <small class="text-info">
+                            <i class="fas fa-arrow-right me-1"></i>Click to view details
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
 </div>
 
 <!-- Installation Statistics -->
@@ -217,6 +243,34 @@
 {% endblock %}
 
 {% block extra_js %}
+<style>
+    .card-link {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .card-link:hover {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .clickable-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .clickable-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+        background-color: rgba(255, 193, 7, 0.05);
+    }
+
+    .clickable-card:hover .fa-question-circle {
+        color: #f39c12 !important;
+        transform: scale(1.1);
+        transition: transform 0.3s ease;
+    }
+</style>
 <script>
     // Installation Statistics Chart
     const installationCtx = document.getElementById('installationChart').getContext('2d');
@@ -337,6 +391,28 @@
         themeManager.registerChart(installationChart);
         themeManager.registerChart(categoryChart);
         themeManager.registerChart(storageChart);
+    }
+
+    // Load unknown models count
+    document.addEventListener('DOMContentLoaded', function() {
+        loadUnknownModelsCount();
+    });
+
+    function loadUnknownModelsCount() {
+        fetch('/api/unknown-models')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('unknownModelsCount').innerHTML = data.count;
+                } else {
+                    console.error('Failed to load unknown models count:', data.error);
+                    document.getElementById('unknownModelsCount').innerHTML = '0';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading unknown models count:', error);
+                document.getElementById('unknownModelsCount').innerHTML = '0';
+            });
     }
 
     // Download preset function

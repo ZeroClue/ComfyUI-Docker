@@ -19,6 +19,7 @@ on:
       - 'Dockerfile'
       - 'docker-bake.hcl'
       - 'scripts/**'
+      - 'config/**'
       - 'custom_nodes.txt'
 
 jobs:

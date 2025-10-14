@@ -9,9 +9,16 @@ This is the main entry point that imports from the organized preset-manager pack
 import sys
 import os
 
-# Add the current directory to the Python path to access preset-manager package
+# When running from /app/, ensure /app/ is in Python path to access preset_manager package
+# This fixes the import issue when script is copied to /app/preset_manager.py
+app_dir = '/app/'
+if app_dir not in sys.path:
+    sys.path.insert(0, app_dir)
+
+# Also add the script directory for development/testing
 script_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, script_dir)
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
 
 from preset_manager.web_interface import PresetManagerWeb
 

@@ -243,34 +243,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<style>
-    .card-link {
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .card-link:hover {
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .clickable-card {
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-    .clickable-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
-        background-color: rgba(255, 193, 7, 0.05);
-    }
-
-    .clickable-card:hover .fa-question-circle {
-        color: #f39c12 !important;
-        transform: scale(1.1);
-        transition: transform 0.3s ease;
-    }
-</style>
 <script>
     // Initialize charts with error handling
     function initializeCharts() {
@@ -421,39 +393,12 @@
             }
     });
 
-            // Delay chart registration to prevent recursion during initialization
-            setTimeout(() => {
-                if (typeof themeManager !== 'undefined') {
-                    try {
-                        themeManager.registerChart(installationChart);
-                        console.log('Installation chart registered');
-                    } catch (e) {
-                        console.warn('Failed to register installation chart:', e);
-                    }
-                }
-            }, 300);
-
-            setTimeout(() => {
-                if (typeof themeManager !== 'undefined') {
-                    try {
-                        themeManager.registerChart(categoryChart);
-                        console.log('Category chart registered');
-                    } catch (e) {
-                        console.warn('Failed to register category chart:', e);
-                    }
-                }
-            }, 400);
-
-            setTimeout(() => {
-                if (typeof themeManager !== 'undefined') {
-                    try {
-                        themeManager.registerChart(storageChart);
-                        console.log('Storage chart registered');
-                    } catch (e) {
-                        console.warn('Failed to register storage chart:', e);
-                    }
-                }
-            }, 500);
+            // Register charts with theme manager
+            if (typeof themeManager !== 'undefined') {
+                themeManager.registerChart(installationChart);
+                themeManager.registerChart(categoryChart);
+                themeManager.registerChart(storageChart);
+            }
 
             console.log('Charts initialized successfully');
 

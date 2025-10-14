@@ -118,7 +118,7 @@ ACCESS_PASSWORD="your-password"
 
 ### Text-to-Video (T2V)
 1. **Load WAN 2.2 Model**: Use preset loader
-2. **Text Prompt**: Describe your video content
+2. **Text Prompt**: Describe your video
 3. **Settings**: 720p, 24fps, 5-10 seconds
 4. **Generate**: Queue prompt (takes 2-5 minutes)
 
@@ -151,12 +151,6 @@ ACCESS_PASSWORD="your-password"
 - 64GB+ system RAM recommended
 
 ---
-
-**Key Takeaways**:
-1. Use A40 GPU for serious video generation
-2. Start with `base` template, switch to `slim` for production
-3. WAN 2.2 models are large - allocate 100GB+ storage
-4. Video generation takes time - be patient
 
 Happy video creating! 🎬
 

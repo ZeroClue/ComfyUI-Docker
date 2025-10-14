@@ -131,11 +131,10 @@ RUN pip install --no-cache-dir -U \
     triton
 
 # Install Flask web framework for preset manager
-RUN pip install --no-cache-dir \
-    flask>=2.0.0 \
-    python-markdown>=3.0.0 \
-    pygments>=2.10.0 \
-    flask-session>=0.4.0
+RUN pip install --no-cache-dir -U \
+    flask python-markdown \
+    pygments Flask Flask-Session \
+    markdown
 
 # Conditionally install development and science packages
 RUN if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \

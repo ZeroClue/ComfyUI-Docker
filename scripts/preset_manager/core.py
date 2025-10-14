@@ -480,9 +480,13 @@ class ModelManager:
 
     def _is_runpod_environment(self) -> bool:
         """Check if running in RunPod environment"""
+        print(f"[DEBUG] Checking for RunPod environment...")
+
         # Check for RunPod environment variables
         runpod_vars = [key for key in os.environ.keys() if key.startswith('RUNPOD_')]
+        print(f"[DEBUG] Found RUNPOD environment variables: {runpod_vars}")
         if runpod_vars:
+            print(f"[DEBUG] Detected RunPod environment via environment variables")
             return True
 
         # Check for RunPod network volume mount
@@ -490,24 +494,36 @@ class ModelManager:
             # Check if /workspace is a network mount (NFS, etc.)
             result = subprocess.run(['df', '-T', '/workspace'],
                                   capture_output=True, text=True, timeout=10)
+            print(f"[DEBUG] df -T /workspace return code: {result.returncode}")
+            print(f"[DEBUG] df -T /workspace stdout: {result.stdout}")
+            print(f"[DEBUG] df -T /workspace stderr: {result.stderr}")
+
             if result.returncode == 0:
                 output = result.stdout
                 # Look for network filesystem types or RunPod-specific mounts
                 if any(fs in output for fs in ['nfs', 'cifs', 'fuse', 'runpod']):
+                    print(f"[DEBUG] Detected RunPod environment via filesystem type")
                     return True
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[DEBUG] Exception checking df -T: {e}")
 
+        print(f"[DEBUG] Not detected as RunPod environment")
         return False
 
     def _get_runpod_storage_info(self) -> Dict:
         """Get storage information using df command for RunPod network volumes"""
+        print(f"[DEBUG] Getting RunPod storage info...")
         try:
             # Use df to get accurate network volume size
             result = subprocess.run(['df', '-h', '/workspace'],
                                   capture_output=True, text=True, timeout=10)
 
+            print(f"[DEBUG] df -h /workspace return code: {result.returncode}")
+            print(f"[DEBUG] df -h /workspace stdout: '{result.stdout}'")
+            print(f"[DEBUG] df -h /workspace stderr: '{result.stderr}'")
+
             if result.returncode != 0:
+                print(f"[DEBUG] df command failed, falling back to filesystem method")
                 # Fallback to filesystem method
                 return self._get_filesystem_storage_info()
 
@@ -517,24 +533,32 @@ class ModelManager:
             # /dev/nvme1n1   100G   25G   75G  25% /workspace
 
             lines = result.stdout.strip().split('\n')
+            print(f"[DEBUG] df output lines: {lines}")
+
             if len(lines) < 2:
+                print(f"[DEBUG] df output has less than 2 lines, falling back")
                 return self._get_filesystem_storage_info()
 
             # Skip header, get data line
             data_line = lines[1]
             parts = data_line.split()
+            print(f"[DEBUG] df data line parts: {parts}")
 
             if len(parts) < 4:
+                print(f"[DEBUG] df data line has less than 4 parts, falling back")
                 return self._get_filesystem_storage_info()
 
             # Parse sizes (convert from human readable format)
             size_str = parts[1]
             used_str = parts[2]
             avail_str = parts[3]
+            print(f"[DEBUG] Parsed sizes - Size: '{size_str}', Used: '{used_str}', Avail: '{avail_str}'")
 
             def parse_size(size_str: str) -> int:
                 """Parse human readable size string to bytes"""
+                print(f"[DEBUG] Parsing size: '{size_str}'")
                 if not size_str:
+                    print(f"[DEBUG] Size string is empty, returning 0")
                     return 0
 
                 # Remove any commas and spaces
@@ -542,13 +566,17 @@ class ModelManager:
 
                 # Match pattern like "100G", "25G", "1.5T", "500M"
                 match = re.match(r'^(\d+\.?\d*)([KMGT]?)(i?B?)?$', size_str.upper())
+                print(f"[DEBUG] Regex match result: {match}")
                 if not match:
+                    print(f"[DEBUG] No regex match, returning 0")
                     return 0
 
                 number, unit = match.groups()[:2]
+                print(f"[DEBUG] Parsed number: '{number}', unit: '{unit}'")
                 try:
                     number = float(number)
                 except ValueError:
+                    print(f"[DEBUG] Failed to parse number, returning 0")
                     return 0
 
                 multipliers = {
@@ -559,11 +587,14 @@ class ModelManager:
                     'T': 1024**4
                 }
 
-                return int(number * multipliers.get(unit, 1))
+                result = int(number * multipliers.get(unit, 1))
+                print(f"[DEBUG] Size parsing result: {result} bytes")
+                return result
 
             total_space = parse_size(size_str)
             used_space = parse_size(used_str)
             free_space = parse_size(avail_str)
+            print(f"[DEBUG] Final parsed sizes - Total: {total_space}, Used: {used_space}, Free: {free_space}")
 
             # Add RunPod-specific metadata
             return {
@@ -594,11 +625,16 @@ class ModelManager:
 
     def _get_filesystem_storage_info(self) -> Dict:
         """Get storage information using filesystem stats (original method)"""
+        print(f"[DEBUG] Getting filesystem storage info for: {self.base_dir}")
         try:
             statvfs = os.statvfs(self.base_dir)
+            print(f"[DEBUG] statvfs results - f_frsize: {statvfs.f_frsize}, f_blocks: {statvfs.f_blocks}, f_bavail: {statvfs.f_bavail}")
+
             total_space = statvfs.f_frsize * statvfs.f_blocks
             free_space = statvfs.f_frsize * statvfs.f_bavail
             used_space = total_space - free_space
+
+            print(f"[DEBUG] Filesystem sizes - Total: {total_space}, Free: {free_space}, Used: {used_space}")
 
             return {
                 'total_space': {
@@ -654,14 +690,23 @@ class ModelManager:
 
     def get_storage_info(self) -> Dict:
         """Get comprehensive storage information with RunPod support"""
+        print(f"[DEBUG] === GET STORAGE INFO START ===")
         try:
             # Detect if running in RunPod environment
-            if self._is_runpod_environment():
-                return self._get_runpod_storage_info()
+            is_runpod = self._is_runpod_environment()
+            print(f"[DEBUG] Is RunPod environment: {is_runpod}")
+
+            if is_runpod:
+                result = self._get_runpod_storage_info()
             else:
-                return self._get_filesystem_storage_info()
+                result = self._get_filesystem_storage_info()
+
+            print(f"[DEBUG] Final storage result: {result}")
+            print(f"[DEBUG] === GET STORAGE INFO END ===")
+            return result
 
         except Exception as e:
+            print(f"[DEBUG] Exception in get_storage_info: {e}")
             print(f"Error getting storage info: {e}")
             # Fallback to basic filesystem method
             return self._get_filesystem_storage_info()

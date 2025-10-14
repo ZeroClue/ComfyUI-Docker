@@ -23,17 +23,12 @@
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col">
-                        <h5 class="text-uppercase text-white-50 mb-1">Storage Used</h5>
+                        <h5 class="text-uppercase text-white-50 mb-1">Storage Used by Models</h5>
                         <div class="h2 mb-0 text-white">
-                            {{ storage_info.used_space.gb }}GB / {{ storage_info.total_space.gb }}GB
+                            {{ storage_info.models_used.gb }}GB
                         </div>
                         <div class="mt-2">
-                            <div class="progress" style="height: 8px;">
-                                <div class="progress-bar bg-white" role="progressbar"
-                                     style="width: {{ storage_info.usage_percentage }}%">
-                                </div>
-                            </div>
-                            <small class="text-white-50">{{ storage_info.usage_percentage }}% used</small>
+                            <small class="text-white-50">Total model storage in {{ storage_info.models_directory }}</small>
                         </div>
                     </div>
                     <div class="col-auto">

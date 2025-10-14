@@ -18,15 +18,16 @@
 {% block content %}
 <!-- Storage Overview -->
 <div class="row mb-4">
-    <div class="col-xl-3 col-md-6 mb-4">
+    <div class="col-xl-4 col-md-6 mb-4">
         <div class="card border-left-primary shadow h-100 py-2">
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col">
-                        <h5 class="text-uppercase text-primary mb-1">Total Space</h5>
+                        <h5 class="text-uppercase text-primary mb-1">Models Storage</h5>
                         <div class="h3 mb-0 font-weight-bold text-primary">
-                            {{ storage_info.total_space.gb }}GB
+                            {{ storage_info.models_used.gb }}GB
                         </div>
+                        <small class="text-muted">{{ storage_info.models_directory }}</small>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-hdd fa-2x text-primary"></i>
@@ -36,54 +37,38 @@
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6 mb-4">
+    <div class="col-xl-4 col-md-6 mb-4">
         <div class="card border-left-success shadow h-100 py-2">
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col">
-                        <h5 class="text-uppercase text-success mb-1">Used Space</h5>
+                        <h5 class="text-uppercase text-success mb-1">Total Files</h5>
                         <div class="h3 mb-0 font-weight-bold text-success">
-                            {{ storage_info.used_space.gb }}GB
+                            {{ storage_info.model_directories.values() | sum(attribute='file_count') }}
                         </div>
+                        <small class="text-muted">Model files</small>
                     </div>
                     <div class="col-auto">
-                        <i class="fas fa-chart-pie fa-2x text-success"></i>
+                        <i class="fas fa-file fa-2x text-success"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6 mb-4">
+    <div class="col-xl-4 col-md-6 mb-4">
         <div class="card border-left-info shadow h-100 py-2">
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col">
-                        <h5 class="text-uppercase text-info mb-1">Free Space</h5>
+                        <h5 class="text-uppercase text-info mb-1">Categories</h5>
                         <div class="h3 mb-0 font-weight-bold text-info">
-                            {{ storage_info.free_space.gb }}GB
+                            {{ storage_info.model_directories.keys() | length }}
                         </div>
+                        <small class="text-muted">Model directories</small>
                     </div>
                     <div class="col-auto">
-                        <i class="fas fa-database fa-2x text-info"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-warning shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col">
-                        <h5 class="text-uppercase text-warning mb-1">Usage</h5>
-                        <div class="h3 mb-0 font-weight-bold text-warning">
-                            {{ storage_info.usage_percentage }}%
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-percentage fa-2x text-warning"></i>
+                        <i class="fas fa-folder fa-2x text-info"></i>
                     </div>
                 </div>
             </div>
@@ -385,22 +370,24 @@
             }
         });
 
-        // Storage pie chart
+        // Storage pie chart - now only shows model categories
         const pieCtx = document.getElementById('storagePieChart').getContext('2d');
         storagePieChart = new Chart(pieCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Models', 'Other Files', 'Free Space'],
+                labels: [{% for category in storage_info.model_directories.keys() %}'{{ category|title }}'{% if not loop.last %}, {% endif %}{% endfor %}],
                 datasets: [{
-                    data: [
-                        {{ storage_info.total_model_size.gb }},
-                        {{ (storage_info.used_space.gb - storage_info.total_model_size.gb)|round(2) }},
-                        {{ storage_info.free_space.gb }}
-                    ],
+                    data: [{% for category, info in storage_info.model_directories.items() %}{{ info.size_gb }}{% if not loop.last %}, {% endif %}{% endfor %}],
                     backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)',
                         'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 206, 86, 0.8)',
                         'rgba(75, 192, 192, 0.8)',
-                        'rgba(201, 203, 207, 0.8)'
+                        'rgba(153, 102, 255, 0.8)',
+                        'rgba(255, 159, 64, 0.8)',
+                        'rgba(199, 199, 199, 0.8)',
+                        'rgba(83, 102, 255, 0.8)',
+                        'rgba(255, 99, 255, 0.8)'
                     ],
                     borderWidth: 1
                 }]
@@ -605,31 +592,41 @@
 
     // Generate storage recommendations
     function generateStorageRecommendations() {
-        const usagePercentage = {{ storage_info.usage_percentage }};
-        const freeSpaceGB = {{ storage_info.free_space.gb }};
+        const totalModelSizeGB = {{ storage_info.models_used.gb }};
+        const totalFiles = {{ storage_info.model_directories.values() | sum(attribute='file_count') }};
         const recommendationsDiv = document.getElementById('storageRecommendations');
 
         let recommendations = [];
 
-        if (usagePercentage > 90) {
-            recommendations.push({
-                type: 'danger',
-                icon: 'exclamation-triangle',
-                text: 'Storage usage is critically high. Consider removing unused models or expanding storage.'
-            });
-        } else if (usagePercentage > 75) {
+        if (totalModelSizeGB > 80) {
             recommendations.push({
                 type: 'warning',
-                icon: 'exclamation-circle',
-                text: 'Storage usage is high. Consider running cleanup operations to free up space.'
+                icon: 'exclamation-triangle',
+                text: 'Large model storage detected. Consider removing unused models to optimize space.'
             });
         }
 
-        if (freeSpaceGB < 10) {
+        if (totalFiles > 100) {
             recommendations.push({
-                type: 'warning',
-                icon: 'database',
-                text: 'Low free space available. Ensure adequate space for new downloads and operations.'
+                type: 'info',
+                icon: 'file-alt',
+                text: 'High number of model files. Consider organizing or archiving older models.'
+            });
+        }
+
+        // Check for any empty directories
+        const emptyCategories = [];
+        {% for category, info in storage_info.model_directories.items() %}
+        if ({{ info.file_count }} === 0) {
+            emptyCategories.push('{{ category|title }}');
+        }
+        {% endfor %}
+
+        if (emptyCategories.length > 0) {
+            recommendations.push({
+                type: 'info',
+                icon: 'folder',
+                text: 'Empty model directories detected: ' + emptyCategories.join(', ') + '.'
             });
         }
 
@@ -637,7 +634,7 @@
             recommendations.push({
                 type: 'success',
                 icon: 'check-circle',
-                text: 'Storage usage is optimal. Continue monitoring regularly.'
+                text: 'Model storage is well organized. Continue monitoring model usage.'
             });
         }
 

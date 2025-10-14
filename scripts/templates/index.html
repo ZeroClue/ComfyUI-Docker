@@ -78,29 +78,29 @@
     </div>
 
     <div class="col-xl-4 col-md-6 mb-4">
-        <a href="{{ url_for('storage') }}#unknown-models" class="card-link">
-            <div class="card border-left-warning shadow h-100 py-2 clickable-card">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <h5 class="text-uppercase text-warning mb-1">Unknown Models</h5>
-                            <div class="h2 mb-0 font-weight-bold text-warning" id="unknownModelsCount">
-                                <i class="fas fa-spinner fa-spin"></i>
-                            </div>
-                            <small class="text-muted">Not tracked by presets</small>
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="text-uppercase text-warning mb-1">Unknown Models</h5>
+                        <div class="h2 mb-0 font-weight-bold text-warning" id="unknownModelsCount">
+                            <i class="fas fa-spinner fa-spin"></i>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-question-circle fa-2x text-warning"></i>
-                        </div>
+                        <small class="text-muted">Not tracked by presets</small>
                     </div>
-                    <div class="mt-2 text-center">
-                        <small class="text-info">
-                            <i class="fas fa-arrow-right me-1"></i>Click to view details
-                        </small>
+                    <div class="col-auto">
+                        <i class="fas fa-question-circle fa-2x text-warning"></i>
                     </div>
                 </div>
+                <div class="mt-2 text-center">
+                    <a href="{{ url_for('storage') }}#unknown-models" class="text-info text-decoration-none">
+                        <small>
+                            <i class="fas fa-arrow-right me-1"></i>Click to view details
+                        </small>
+                    </a>
+                </div>
             </div>
-        </a>
+        </div>
     </div>
 </div>
 

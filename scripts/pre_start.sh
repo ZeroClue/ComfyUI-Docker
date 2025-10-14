@@ -148,6 +148,27 @@ else
     fi
 fi
 
+# Update preset configurations from GitHub
+echo "**** checking for preset configuration updates... ****"
+if [ -f /scripts/preset_updater.py ]; then
+    # Check if we should force preset updates
+    FORCE_PRESET_UPDATE=false
+    if [ "${FORCE_SYNC_ALL,,}" = "true" ]; then
+        echo "FORCE_SYNC_ALL is enabled, forcing preset configuration update..."
+        FORCE_PRESET_UPDATE=true
+    fi
+
+    # Run preset updater
+    echo "**** updating preset configurations from GitHub... ****"
+    if python3 /scripts/preset_updater.py update --force=$FORCE_PRESET_UPDATE; then
+        echo "**** preset configuration update completed successfully ****"
+    else
+        echo "**** preset configuration update failed, continuing with existing configuration ****"
+    fi
+else
+    echo "**** preset updater not found, skipping configuration update ****"
+fi
+
 
 if [ "${INSTALL_SAGEATTENTION,,}" = "true" ]; then
     if pip show sageattention > /dev/null 2>&1; then
@@ -171,16 +192,62 @@ if [ "${INSTALL_CUSTOM_NODES,,}" = "true" ]; then
     fi
 fi
 
-/download_presets.sh --quiet "${PRESET_DOWNLOAD}"
+# Unified preset download handling
+echo "**** checking for preset downloads... ****"
+if [ -f /scripts/unified_preset_downloader.py ]; then
+    # Check if any preset download variables are set
+    PRESET_VARS_SET=false
 
-# Download image generation presets if specified
-if [ -n "${IMAGE_PRESET_DOWNLOAD}" ]; then
-    echo "**** IMAGE_PRESET_DOWNLOAD is set. Downloading image generation presets... ****"
-    /download_image_presets.sh --quiet "${IMAGE_PRESET_DOWNLOAD}"
-fi
+    if [ -n "${PRESET_DOWNLOAD}" ] || [ -n "${IMAGE_PRESET_DOWNLOAD}" ] || [ -n "${AUDIO_PRESET_DOWNLOAD}" ] || [ -n "${UNIFIED_PRESET_DOWNLOAD}" ]; then
+        PRESET_VARS_SET=true
+    fi
 
-# Download audio generation presets if specified
-if [ -n "${AUDIO_PRESET_DOWNLOAD}" ]; then
-    echo "**** AUDIO_PRESET_DOWNLOAD is set. Downloading audio generation presets... ****"
-    /download_audio_presets.sh --quiet "${AUDIO_PRESET_DOWNLOAD}"
+    if [ "$PRESET_VARS_SET" = "true" ]; then
+        echo "**** downloading presets using unified downloader... ****"
+
+        # Show environment status for debugging
+        python3 /scripts/unified_preset_downloader.py status
+
+        # Download all specified presets
+        if python3 /scripts/unified_preset_downloader.py download --quiet; then
+            echo "**** unified preset download completed successfully ****"
+        else
+            echo "**** unified preset download failed, attempting fallback to legacy scripts ****"
+
+            # Fallback to legacy script downloads
+            if [ -n "${PRESET_DOWNLOAD}" ]; then
+                echo "**** downloading video presets using legacy script ****"
+                /download_presets.sh --quiet "${PRESET_DOWNLOAD}"
+            fi
+
+            if [ -n "${IMAGE_PRESET_DOWNLOAD}" ]; then
+                echo "**** downloading image presets using legacy script ****"
+                /download_image_presets.sh --quiet "${IMAGE_PRESET_DOWNLOAD}"
+            fi
+
+            if [ -n "${AUDIO_PRESET_DOWNLOAD}" ]; then
+                echo "**** downloading audio presets using legacy script ****"
+                /download_audio_presets.sh --quiet "${AUDIO_PRESET_DOWNLOAD}"
+            fi
+        fi
+    else
+        echo "**** no preset download variables set, skipping downloads ****"
+    fi
+else
+    echo "**** unified preset downloader not found, using legacy script approach ****"
+
+    # Legacy fallback - download individual preset types
+    /download_presets.sh --quiet "${PRESET_DOWNLOAD}"
+
+    # Download image generation presets if specified
+    if [ -n "${IMAGE_PRESET_DOWNLOAD}" ]; then
+        echo "**** IMAGE_PRESET_DOWNLOAD is set. Downloading image generation presets... ****"
+        /download_image_presets.sh --quiet "${IMAGE_PRESET_DOWNLOAD}"
+    fi
+
+    # Download audio generation presets if specified
+    if [ -n "${AUDIO_PRESET_DOWNLOAD}" ]; then
+        echo "**** AUDIO_PRESET_DOWNLOAD is set. Downloading audio generation presets... ****"
+        /download_audio_presets.sh --quiet "${AUDIO_PRESET_DOWNLOAD}"
+    fi
 fi

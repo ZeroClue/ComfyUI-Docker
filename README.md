@@ -8,6 +8,10 @@
 
 > 🚀 This Docker image is maintained by ZeroClue and designed for both cloud deployment and local use.
 
+> 💰 If you're feeling generous and this has value to you, consider donating. 
+
+> 🤍 Sign-up at runpod using my referrer link and you can get between $5 and $500 in your account. [Runpod](https://runpod.io?ref=lnnwdl3q)
+
 > 🌟 **Original Project**: This is a customised fork of the excellent [somb1/ComfyUI-Docker](https://github.com/somb1/ComfyUI-Docker) project. All credit goes to the original maintainers for creating this powerful ComfyUI distribution.
 
 ## 🔌 Exposed Ports

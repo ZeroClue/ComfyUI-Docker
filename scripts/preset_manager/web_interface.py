@@ -219,6 +219,63 @@ class PresetManagerWeb:
             storage_info = self.model_manager.get_storage_info()
             return jsonify(storage_info)
 
+        @self.app.route('/api/unknown-models')
+        def get_unknown_models():
+            """Get unknown models not tracked by presets"""
+            try:
+                unknown_models = self.model_manager._get_unknown_models()
+                return jsonify({
+                    'success': True,
+                    'unknown_models': unknown_models,
+                    'count': len(unknown_models)
+                })
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+
+        @self.app.route('/api/report-model', methods=['POST'])
+        def report_model():
+            """Create GitHub issue data for reporting an unknown model"""
+            try:
+                data = request.get_json()
+                if not data or 'model_path' not in data:
+                    return jsonify({
+                        'success': False,
+                        'error': 'model_path is required'
+                    }), 400
+
+                model_path = data['model_path']
+
+                # Find the model in unknown models
+                unknown_models = self.model_manager._get_unknown_models()
+                model_info = None
+                for model in unknown_models:
+                    if model['relative_path'] == model_path or model['full_path'] == model_path:
+                        model_info = model
+                        break
+
+                if not model_info:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Model not found in unknown models'
+                    }), 404
+
+                # Create GitHub issue data
+                issue_data = self.model_manager.create_github_issue_data(model_info)
+
+                return jsonify({
+                    'success': True,
+                    'issue_data': issue_data
+                })
+
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+
     def _download_preset(self, operation_id: str, preset: Dict):
         """Download preset in background thread"""
         try:

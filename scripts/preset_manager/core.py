@@ -511,260 +511,85 @@ class ModelManager:
         return False
 
     def _get_runpod_storage_info(self) -> Dict:
-        """Get storage information using df command for RunPod network volumes"""
-        print(f"[DEBUG] Getting RunPod storage info...")
+        """Get storage information focusing on model storage only for RunPod"""
+        print(f"[DEBUG] Getting RunPod storage info (models only)...")
         try:
-            # Check for custom volume size override
-            volume_size_gb = os.environ.get('RUNPOD_VOLUME_SIZE_GB')
-            if volume_size_gb:
-                try:
-                    volume_size_bytes = int(float(volume_size_gb) * 1024**3)
-                    print(f"[DEBUG] Using custom volume size: {volume_size_gb} GB = {volume_size_bytes} bytes")
+            # Focus on model storage only - get actual size of models directory
+            model_size_info = self._get_total_model_size()
+            model_directories = self._get_model_directories_info()
 
-                    # Get used space from du command for accuracy
-                    used_result = subprocess.run(['du', '-sb', '/workspace'],
-                                              capture_output=True, text=True, timeout=30)
-                    used_space = 0
-                    if used_result.returncode == 0:
-                        try:
-                            used_space = int(used_result.stdout.split()[0])
-                            print(f"[DEBUG] Used space from du: {used_space} bytes")
-                        except (IndexError, ValueError):
-                            print(f"[DEBUG] Failed to parse du output: {used_result.stdout}")
-                            used_space = 0
+            print(f"[DEBUG] Model storage size: {model_size_info}")
+            print(f"[DEBUG] Model directories: {model_directories}")
 
-                    free_space = max(0, volume_size_bytes - used_space)
-                    usage_percentage = round((used_space / volume_size_bytes) * 100, 2) if volume_size_bytes > 0 else 0
-
-                    return {
-                        'total_space': {
-                            'bytes': volume_size_bytes,
-                            'gb': round(volume_size_bytes / (1024**3), 2)
-                        },
-                        'used_space': {
-                            'bytes': used_space,
-                            'gb': round(used_space / (1024**3), 2)
-                        },
-                        'free_space': {
-                            'bytes': free_space,
-                            'gb': round(free_space / (1024**3), 2)
-                        },
-                        'usage_percentage': usage_percentage,
-                        'model_directories': self._get_model_directories_info(),
-                        'total_model_size': self._get_total_model_size(),
-                        'runpod_environment': True,
-                        'storage_type': 'network_volume',
-                        'source': 'environment_override'
-                    }
-                except ValueError:
-                    print(f"[DEBUG] Invalid RUNPOD_VOLUME_SIZE_GB value: {volume_size_gb}")
-
-            # Use df to get accurate network volume size
-            result = subprocess.run(['df', '-h', '/workspace'],
-                                  capture_output=True, text=True, timeout=10)
-
-            print(f"[DEBUG] df -h /workspace return code: {result.returncode}")
-            print(f"[DEBUG] df -h /workspace stdout: '{result.stdout}'")
-            print(f"[DEBUG] df -h /workspace stderr: '{result.stderr}'")
-
-            if result.returncode != 0:
-                print(f"[DEBUG] df command failed, falling back to filesystem method")
-                # Fallback to filesystem method
-                return self._get_filesystem_storage_info()
-
-            # Parse df output
-            # Example output:
-            # Filesystem      Size  Used Avail Use% Mounted on
-            # /dev/nvme1n1   100G   25G   75G  25% /workspace
-
-            lines = result.stdout.strip().split('\n')
-            print(f"[DEBUG] df output lines: {lines}")
-
-            if len(lines) < 2:
-                print(f"[DEBUG] df output has less than 2 lines, falling back")
-                return self._get_filesystem_storage_info()
-
-            # Skip header, get data line
-            data_line = lines[1]
-            parts = data_line.split()
-            print(f"[DEBUG] df data line parts: {parts}")
-
-            if len(parts) < 4:
-                print(f"[DEBUG] df data line has less than 4 parts, falling back")
-                return self._get_filesystem_storage_info()
-
-            # Parse sizes (convert from human readable format)
-            size_str = parts[1]
-            used_str = parts[2]
-            avail_str = parts[3]
-            print(f"[DEBUG] Parsed sizes - Size: '{size_str}', Used: '{used_str}', Avail: '{avail_str}'")
-
-            def parse_size(size_str: str) -> int:
-                """Parse human readable size string to bytes"""
-                print(f"[DEBUG] Parsing size: '{size_str}'")
-                if not size_str:
-                    print(f"[DEBUG] Size string is empty, returning 0")
-                    return 0
-
-                # Remove any commas and spaces
-                size_str = size_str.replace(',', '').strip()
-
-                # Match pattern like "100G", "25G", "1.5T", "500M", "2.1P"
-                match = re.match(r'^(\d+\.?\d*)([KMGTPE]?)(i?B?)?$', size_str.upper())
-                print(f"[DEBUG] Regex match result: {match}")
-                if not match:
-                    print(f"[DEBUG] No regex match, returning 0")
-                    return 0
-
-                number, unit = match.groups()[:2]
-                print(f"[DEBUG] Parsed number: '{number}', unit: '{unit}'")
-                try:
-                    number = float(number)
-                except ValueError:
-                    print(f"[DEBUG] Failed to parse number, returning 0")
-                    return 0
-
-                multipliers = {
-                    '': 1,
-                    'K': 1024,
-                    'M': 1024**2,
-                    'G': 1024**3,
-                    'T': 1024**4,
-                    'P': 1024**5,
-                    'E': 1024**6
-                }
-
-                result = int(number * multipliers.get(unit, 1))
-                print(f"[DEBUG] Size parsing result: {result} bytes")
-                return result
-
-            total_space = parse_size(size_str)
-            used_space = parse_size(used_str)
-            free_space = parse_size(avail_str)
-            print(f"[DEBUG] Final parsed sizes - Total: {total_space}, Used: {used_space}, Free: {free_space}")
-
-            # If the df output shows unrealistically large storage (petabytes),
-            # it's likely showing the entire network filesystem, not our volume
-            # Try to estimate actual volume size
-            if total_space > 100 * 1024**5:  # More than 100 PB is definitely wrong
-                print(f"[DEBUG] Detected unrealistic storage size ({total_space} bytes), estimating actual volume")
-
-                # Get actual used space
-                try:
-                    used_result = subprocess.run(['du', '-sb', '/workspace'],
-                                              capture_output=True, text=True, timeout=30)
-                    actual_used = 0
-                    if used_result.returncode == 0:
-                        try:
-                            actual_used = int(used_result.stdout.split()[0])
-                            print(f"[DEBUG] Actual used space from du: {actual_used} bytes")
-                        except (IndexError, ValueError):
-                            print(f"[DEBUG] Failed to parse du output")
-                            actual_used = 0
-                except Exception as e:
-                    print(f"[DEBUG] Error running du command: {e}")
-                    actual_used = 0
-
-                # Common RunPod volume sizes (in GB)
-                common_sizes = [50, 100, 200, 500, 1000, 2000]
-                estimated_size_gb = 100  # Default to 100GB
-
-                # Find the smallest common size that fits our used space
-                for size_gb in common_sizes:
-                    size_bytes = size_gb * 1024**3
-                    if actual_used < size_bytes * 0.95:  # Leave some buffer
-                        estimated_size_gb = size_gb
-                        break
-
-                estimated_total = estimated_size_gb * 1024**3
-                estimated_free = max(0, estimated_total - actual_used)
-                estimated_usage = round((actual_used / estimated_total) * 100, 2)
-
-                print(f"[DEBUG] Estimated volume size: {estimated_size_gb} GB")
-
-                return {
-                    'total_space': {
-                        'bytes': estimated_total,
-                        'gb': estimated_size_gb
-                    },
-                    'used_space': {
-                        'bytes': actual_used,
-                        'gb': round(actual_used / (1024**3), 2)
-                    },
-                    'free_space': {
-                        'bytes': estimated_free,
-                        'gb': round(estimated_free / (1024**3), 2)
-                    },
-                    'usage_percentage': estimated_usage,
-                    'model_directories': self._get_model_directories_info(),
-                    'total_model_size': self._get_total_model_size(),
-                    'runpod_environment': True,
-                    'storage_type': 'network_volume_estimated',
-                    'source': 'estimated_volume_size'
-                }
-
-            # Add RunPod-specific metadata
             return {
-                'total_space': {
-                    'bytes': total_space,
-                    'gb': round(total_space / (1024**3), 2)
-                },
-                'used_space': {
-                    'bytes': used_space,
-                    'gb': round(used_space / (1024**3), 2)
-                },
-                'free_space': {
-                    'bytes': free_space,
-                    'gb': round(free_space / (1024**3), 2)
-                },
-                'usage_percentage': round((used_space / total_space) * 100, 2) if total_space > 0 else 0,
-                'model_directories': self._get_model_directories_info(),
-                'total_model_size': self._get_total_model_size(),
+                'models_used': model_size_info,
+                'models_directory': self.base_dir,
+                'model_directories': model_directories,
+                'total_model_size': model_size_info,
                 'runpod_environment': True,
-                'storage_type': 'network_volume',
-                'source': 'df_command'
+                'display_mode': 'models_only',
+                'source': 'models_directory'
             }
 
         except Exception as e:
-            print(f"Error getting RunPod storage info: {e}")
-            # Fallback to filesystem method
-            return self._get_filesystem_storage_info()
+            print(f"[DEBUG] Error getting RunPod model storage info: {e}")
+            # Fallback to basic model size calculation
+            try:
+                model_size = self._get_total_model_size()
+                return {
+                    'models_used': model_size,
+                    'models_directory': self.base_dir,
+                    'model_directories': self._get_model_directories_info(),
+                    'total_model_size': model_size,
+                    'runpod_environment': True,
+                    'display_mode': 'models_only',
+                    'source': 'fallback'
+                }
+            except Exception as fallback_e:
+                print(f"[DEBUG] Fallback also failed: {fallback_e}")
+                return {
+                    'models_used': {'bytes': 0, 'gb': 0.0},
+                    'models_directory': self.base_dir,
+                    'model_directories': {},
+                    'total_model_size': {'bytes': 0, 'gb': 0.0},
+                    'runpod_environment': True,
+                    'display_mode': 'models_only',
+                    'source': 'error_fallback',
+                    'error': str(e)
+                }
 
     def _get_filesystem_storage_info(self) -> Dict:
-        """Get storage information using filesystem stats (original method)"""
-        print(f"[DEBUG] Getting filesystem storage info for: {self.base_dir}")
+        """Get storage information focusing on model storage only"""
+        print(f"[DEBUG] Getting filesystem storage info (models only) for: {self.base_dir}")
         try:
-            statvfs = os.statvfs(self.base_dir)
-            print(f"[DEBUG] statvfs results - f_frsize: {statvfs.f_frsize}, f_blocks: {statvfs.f_blocks}, f_bavail: {statvfs.f_bavail}")
+            # Focus on model storage only - same approach as RunPod
+            model_size_info = self._get_total_model_size()
+            model_directories = self._get_model_directories_info()
 
-            total_space = statvfs.f_frsize * statvfs.f_blocks
-            free_space = statvfs.f_frsize * statvfs.f_bavail
-            used_space = total_space - free_space
-
-            print(f"[DEBUG] Filesystem sizes - Total: {total_space}, Free: {free_space}, Used: {used_space}")
+            print(f"[DEBUG] Model storage size: {model_size_info}")
+            print(f"[DEBUG] Model directories: {model_directories}")
 
             return {
-                'total_space': {
-                    'bytes': total_space,
-                    'gb': round(total_space / (1024**3), 2)
-                },
-                'used_space': {
-                    'bytes': used_space,
-                    'gb': round(used_space / (1024**3), 2)
-                },
-                'free_space': {
-                    'bytes': free_space,
-                    'gb': round(free_space / (1024**3), 2)
-                },
-                'usage_percentage': round((used_space / total_space) * 100, 2) if total_space > 0 else 0,
-                'model_directories': self._get_model_directories_info(),
-                'total_model_size': self._get_total_model_size(),
+                'models_used': model_size_info,
+                'models_directory': self.base_dir,
+                'model_directories': model_directories,
+                'total_model_size': model_size_info,
                 'runpod_environment': False,
-                'storage_type': 'local_filesystem',
-                'source': 'filesystem_stats'
+                'display_mode': 'models_only',
+                'source': 'models_directory'
             }
         except Exception as e:
-            return {'error': str(e)}
+            print(f"[DEBUG] Error getting filesystem model storage info: {e}")
+            return {
+                'models_used': {'bytes': 0, 'gb': 0.0},
+                'models_directory': self.base_dir,
+                'model_directories': {},
+                'total_model_size': {'bytes': 0, 'gb': 0.0},
+                'runpod_environment': False,
+                'display_mode': 'models_only',
+                'source': 'error_fallback',
+                'error': str(e)
+            }
 
     def _get_model_directories_info(self) -> Dict:
         """Get information about model directories"""

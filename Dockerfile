@@ -204,8 +204,17 @@ COPY --chmod=755 scripts/download_image_presets.sh /
 COPY --chmod=755 scripts/download_audio_presets.sh /
 COPY --chmod=755 scripts/install_custom_nodes.sh /
 
-# Create required directories for preset manager
-RUN mkdir -p /app/templates /app/static /app/workspace/docs/presets
+# Create required directories for preset manager and YAML configuration
+RUN mkdir -p /app/templates /app/static /app/workspace/docs/presets /workspace/config
+
+# Copy YAML preset management system
+COPY --chmod=644 config/presets.yaml /workspace/config/presets.yaml
+COPY --chmod=644 config/presets-schema.json /workspace/config/presets-schema.json
+COPY --chmod=755 scripts/preset_updater.py /scripts/
+COPY --chmod=755 scripts/unified_preset_downloader.py /scripts/
+COPY --chmod=755 scripts/generate_download_scripts.py /scripts/
+COPY --chmod=755 scripts/preset_validator.py /scripts/
+COPY --chmod=755 scripts/test_preset_system.py /scripts/
 
 # Copy preset manager web application to /app/
 COPY --chmod=755 scripts/preset_manager_cli.py /app/preset_manager.py

@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComfyUI Presets Configuration Schema",
+  "description": "Schema for validating ComfyUI presets configuration files",
+  "type": "object",
+  "required": ["metadata", "categories", "presets"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["version", "last_updated", "description", "schema_version"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Version number in semantic versioning format (e.g., 1.0.0)"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last update in ISO 8601 format"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Human-readable description of the preset configuration"
+        },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+$",
+          "description": "Schema version for compatibility checking"
+        }
+      },
+      "additionalProperties": false
+    },
+    "categories": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Z][A-Za-z\\s]+$": {
+          "type": "object",
+          "required": ["description", "type"],
+          "properties": {
+            "description": {
+              "type": "string",
+              "minLength": 5,
+              "description": "Description of the preset category"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["video", "image", "audio"],
+              "description": "Type of content this category generates"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "presets": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Z][A-Z0-9_]*$": {
+          "type": "object",
+          "required": ["name", "category", "type", "description", "download_size", "files", "use_case", "tags"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 3,
+              "description": "Human-readable name of the preset"
+            },
+            "category": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Za-z\\s]+$",
+              "description": "Category this preset belongs to (must match a key in categories)"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["video", "image", "audio"],
+              "description": "Type of content this preset generates"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 10,
+              "description": "Detailed description of what this preset does"
+            },
+            "download_size": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(KB|MB|GB|TB)$",
+              "description": "Total download size with unit (e.g., 4.8GB)"
+            },
+            "files": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["path", "url", "size"],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9/_\\.-]+\\.(safetensors|pth|pt|bin|ckpt|gguf)$",
+                    "description": "Relative path where the file should be stored"
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "pattern": "^https?://",
+                    "description": "URL to download the file from"
+                  },
+                  "size": {
+                    "type": "string",
+                    "pattern": "^\\d+(\\.\\d+)?(KB|MB|GB|TB)$",
+                    "description": "File size with unit"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "description": "List of files included in this preset"
+            },
+            "use_case": {
+              "type": "string",
+              "minLength": 5,
+              "description": "Primary use case for this preset"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9_-]+$",
+                "minLength": 2
+              },
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "Tags for categorizing and searching presets"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

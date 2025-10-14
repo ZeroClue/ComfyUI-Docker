@@ -23,6 +23,22 @@ except ImportError:
 from .core import ModelManager
 from .config import DEFAULT_HOST, DEFAULT_PORT, SECRET_KEY
 
+# Import preset updater for GitHub integration
+try:
+    from preset_updater import PresetUpdater
+    HAS_UPDATER = True
+except ImportError:
+    HAS_UPDATER = False
+    print("Warning: preset_updater not available, update functionality disabled")
+
+# Import download script generator for YAML-based downloads
+try:
+    from generate_download_scripts import DownloadScriptGenerator
+    HAS_SCRIPT_GENERATOR = True
+except ImportError:
+    HAS_SCRIPT_GENERATOR = False
+    print("Warning: download script generator not available, using fallback")
+
 
 # Global variables for operation tracking
 operation_status = {}
@@ -38,6 +54,8 @@ class PresetManagerWeb:
                         template_folder='/app/templates',
                         static_folder='/app/static')
         self.model_manager = ModelManager()
+        self.preset_updater = PresetUpdater() if HAS_UPDATER else None
+        self.script_generator = DownloadScriptGenerator() if HAS_SCRIPT_GENERATOR else None
         self.access_password = os.environ.get('ACCESS_PASSWORD', 'password')
         self._setup_flask_config()
         self._setup_routes()
@@ -119,10 +137,25 @@ class PresetManagerWeb:
                 'installation_rate': round((installed_presets / total_presets) * 100, 1) if total_presets > 0 else 0
             }
 
+            # Get preset version and update information
+            preset_version = None
+            update_available = False
+
+            if self.preset_updater:
+                try:
+                    preset_version = self.preset_updater.get_current_version()
+                    update_check = self.preset_updater.check_for_updates()
+                    update_available = update_check.get('update_available', False)
+                except Exception as e:
+                    print(f"[WARNING] Error checking preset updates: {e}")
+
             return render_template('index.html',
                                  storage_info=storage_info,
                                  categories=self.model_manager.categories,
-                                 stats=stats)
+                                 stats=stats,
+                                 preset_version=preset_version,
+                                 update_available=update_available,
+                                 has_updater=HAS_UPDATER)
 
         @self.app.route('/presets')
         def presets():
@@ -276,8 +309,233 @@ class PresetManagerWeb:
                     'error': str(e)
                 }), 500
 
+        @self.app.route('/api/presets/update/check', methods=['GET'])
+        def check_preset_updates():
+            """Check if preset updates are available"""
+            if not self.preset_updater:
+                return jsonify({
+                    'success': False,
+                    'error': 'Preset updater not available'
+                }), 503
+
+            try:
+                update_check = self.preset_updater.check_for_updates()
+                return jsonify(update_check)
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+
+        @self.app.route('/api/presets/update', methods=['POST'])
+        def update_presets():
+            """Update presets from GitHub"""
+            if not self.preset_updater:
+                return jsonify({
+                    'success': False,
+                    'error': 'Preset updater not available'
+                }), 503
+
+            try:
+                force_update = request.json.get('force', False) if request.is_json else False
+
+                # Initialize operation status
+                operation_id = f"update_presets_{int(time.time())}"
+                operation_status[operation_id] = {
+                    'type': 'update',
+                    'status': 'starting',
+                    'progress': 0,
+                    'message': 'Checking for updates...',
+                    'start_time': datetime.now().isoformat()
+                }
+
+                # Start update in background thread
+                thread = threading.Thread(target=self._update_presets_background, args=(operation_id, force_update))
+                thread.daemon = True
+                thread.start()
+
+                return jsonify({'operation_id': operation_id})
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+
+        @self.app.route('/api/presets/update/history', methods=['GET'])
+        def get_update_history():
+            """Get preset update history"""
+            if not self.preset_updater:
+                return jsonify({
+                    'success': False,
+                    'error': 'Preset updater not available'
+                }), 503
+
+            try:
+                history = self.preset_updater.get_update_history()
+                return jsonify(history)
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+
+        @self.app.route('/api/presets/version', methods=['GET'])
+        def get_preset_version():
+            """Get current preset version information"""
+            if not self.preset_updater:
+                return jsonify({
+                    'success': False,
+                    'error': 'Preset updater not available'
+                }), 503
+
+            try:
+                current_version = self.preset_updater.get_current_version()
+                return jsonify({
+                    'success': True,
+                    'version': current_version
+                })
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+
     def _download_preset(self, operation_id: str, preset: Dict):
-        """Download preset in background thread"""
+        """Download preset in background thread using YAML configuration"""
+        try:
+            # Get preset ID from the preset data
+            preset_id = None
+            for pid, pdata in self.model_manager.presets.items():
+                if pdata.get('name') == preset.get('name'):
+                    preset_id = pid
+                    break
+
+            if not preset_id:
+                raise ValueError(f"Could not find preset ID for {preset.get('name')}")
+
+            # Update status
+            operation_status[operation_id]['status'] = 'downloading'
+            operation_status[operation_id]['message'] = f'Downloading {preset["name"]}...'
+
+            # Use YAML-based download if available
+            if self.script_generator:
+                self._download_preset_yaml(operation_id, preset_id, preset)
+            else:
+                # Fallback to script-based approach
+                self._download_preset_script(operation_id, preset_id, preset)
+
+        except Exception as e:
+            operation_status[operation_id]['status'] = 'error'
+            operation_status[operation_id]['message'] = f'Download error: {str(e)}'
+
+    def _download_preset_yaml(self, operation_id: str, preset_id: str, preset: Dict):
+        """Download preset using YAML configuration"""
+        try:
+            # Load presets and get file URLs
+            presets = self.script_generator.load_presets()
+            files = self.script_generator.get_preset_urls(preset_id, presets)
+
+            if not files:
+                raise ValueError(f"No files found for preset {preset_id}")
+
+            # Calculate total files for progress tracking
+            total_files = len(files)
+            completed_files = 0
+
+            operation_status[operation_id]['message'] = f'Downloading {total_files} files for {preset["name"]}...'
+
+            # Download each file
+            for file_info in files:
+                url = file_info['url']
+                path = file_info['path']
+                target_dir = f"/workspace/ComfyUI/models/{os.path.dirname(path)}"
+
+                operation_status[operation_id]['message'] = f'Downloading {os.path.basename(path)}...'
+
+                # Use the download function from generated script
+                cmd = [
+                    'bash', '-c',
+                    f'''
+source <(cat << 'EOF'
+# download_if_missing function
+download_if_missing() {{
+    local url="$1"
+    local dest_dir="$2"
+
+    local filename
+    filename=$(basename "$url")
+    local filepath="$dest_dir/$filename"
+
+    mkdir -p "$dest_dir"
+
+    if [ -f "$filepath" ]; then
+        echo "File already exists: $filepath"
+        return 0
+    fi
+
+    echo "Downloading: $filename → $dest_dir"
+    local tmpdir="/workspace/tmp"
+    mkdir -p "$tmpdir"
+    local tmpfile="$tmpdir/${{filename}}.part"
+
+    if wget --show-progress -O "$tmpfile" "$url"; then
+        mv -f "$tmpfile" "$filepath"
+        echo "Download completed: $filepath"
+        return 0
+    else
+        echo "Download failed: $url"
+        rm -f "$tmpfile"
+        return 1
+    fi
+}}
+download_if_missing "{url}" "{target_dir}"
+EOF
+)
+                    '''
+                ]
+
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True
+                )
+
+                # Monitor this download
+                while True:
+                    output = process.stdout.readline()
+                    if output == '' and process.poll() is not None:
+                        break
+                    if output:
+                        operation_status[operation_id]['message'] = output.strip()
+
+                # Check result
+                if process.poll() == 0:
+                    completed_files += 1
+                    progress = int((completed_files / total_files) * 95)  # Leave 5% for finalization
+                    operation_status[operation_id]['progress'] = progress
+                else:
+                    stderr_output = process.stderr.read()
+                    operation_status[operation_id]['status'] = 'error'
+                    operation_status[operation_id]['message'] = f'Download failed for {os.path.basename(path)}: {stderr_output}'
+                    return
+
+            # All downloads completed successfully
+            operation_status[operation_id]['status'] = 'completed'
+            operation_status[operation_id]['progress'] = 100
+            operation_status[operation_id]['message'] = f'Download completed successfully! Downloaded {total_files} files.'
+
+            # Rescan models to update status
+            self.model_manager._scan_installed_models()
+
+        except Exception as e:
+            operation_status[operation_id]['status'] = 'error'
+            operation_status[operation_id]['message'] = f'YAML download error: {str(e)}'
+
+    def _download_preset_script(self, operation_id: str, preset_id: str, preset: Dict):
+        """Fallback: Download preset using traditional script approach"""
         try:
             # Determine script path based on preset type
             if preset['type'] == 'video':
@@ -289,12 +547,8 @@ class PresetManagerWeb:
             else:
                 raise ValueError(f"Unknown preset type: {preset['type']}")
 
-            # Update status
-            operation_status[operation_id]['status'] = 'downloading'
-            operation_status[operation_id]['message'] = f'Downloading {preset["name"]}...'
-
             # Run download command
-            cmd = [script_path, preset['name'].split()[0]]  # Use first part of name
+            cmd = [script_path, preset_id]
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -329,11 +583,43 @@ class PresetManagerWeb:
             else:
                 stderr_output = process.stderr.read()
                 operation_status[operation_id]['status'] = 'error'
-                operation_status[operation_id]['message'] = f'Download failed: {stderr_output}'
+                operation_status[operation_id]['message'] = f'Script download failed: {stderr_output}'
 
         except Exception as e:
             operation_status[operation_id]['status'] = 'error'
-            operation_status[operation_id]['message'] = f'Download error: {str(e)}'
+            operation_status[operation_id]['message'] = f'Script download error: {str(e)}'
+
+    def _update_presets_background(self, operation_id: str, force_update: bool = False):
+        """Update presets in background thread"""
+        try:
+            # Update status
+            operation_status[operation_id]['status'] = 'updating'
+            operation_status[operation_id]['message'] = 'Updating presets from GitHub...'
+            operation_status[operation_id]['progress'] = 10
+
+            # Perform update
+            update_result = self.preset_updater.update_presets(force=force_update)
+
+            if update_result['success']:
+                operation_status[operation_id]['status'] = 'completed'
+                operation_status[operation_id]['progress'] = 100
+                operation_status[operation_id]['message'] = update_result['message']
+
+                # Reload presets to update the manager
+                self.model_manager._parse_all_presets()
+                self.model_manager._scan_installed_models()
+
+                # Clear any related cache
+                if hasattr(self.model_manager, 'presets_cache'):
+                    self.model_manager.presets_cache.clear()
+
+            else:
+                operation_status[operation_id]['status'] = 'error'
+                operation_status[operation_id]['message'] = update_result['message']
+
+        except Exception as e:
+            operation_status[operation_id]['status'] = 'error'
+            operation_status[operation_id]['message'] = f'Update error: {str(e)}'
 
     def run(self, host=DEFAULT_HOST, port=DEFAULT_PORT, debug=False):
         """Run the Flask application"""

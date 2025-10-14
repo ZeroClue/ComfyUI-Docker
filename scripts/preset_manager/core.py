@@ -8,6 +8,7 @@ import subprocess
 import threading
 import time
 import glob
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -477,30 +478,127 @@ class ModelManager:
         except Exception as e:
             return False, f"Error deleting preset files: {str(e)}"
 
-    def get_storage_info(self) -> Dict:
-        """Get comprehensive storage information"""
+    def _is_runpod_environment(self) -> bool:
+        """Check if running in RunPod environment"""
+        # Check for RunPod environment variables
+        runpod_vars = [key for key in os.environ.keys() if key.startswith('RUNPOD_')]
+        if runpod_vars:
+            return True
+
+        # Check for RunPod network volume mount
         try:
-            # Get disk usage
+            # Check if /workspace is a network mount (NFS, etc.)
+            result = subprocess.run(['df', '-T', '/workspace'],
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                output = result.stdout
+                # Look for network filesystem types or RunPod-specific mounts
+                if any(fs in output for fs in ['nfs', 'cifs', 'fuse', 'runpod']):
+                    return True
+        except Exception:
+            pass
+
+        return False
+
+    def _get_runpod_storage_info(self) -> Dict:
+        """Get storage information using df command for RunPod network volumes"""
+        try:
+            # Use df to get accurate network volume size
+            result = subprocess.run(['df', '-h', '/workspace'],
+                                  capture_output=True, text=True, timeout=10)
+
+            if result.returncode != 0:
+                # Fallback to filesystem method
+                return self._get_filesystem_storage_info()
+
+            # Parse df output
+            # Example output:
+            # Filesystem      Size  Used Avail Use% Mounted on
+            # /dev/nvme1n1   100G   25G   75G  25% /workspace
+
+            lines = result.stdout.strip().split('\n')
+            if len(lines) < 2:
+                return self._get_filesystem_storage_info()
+
+            # Skip header, get data line
+            data_line = lines[1]
+            parts = data_line.split()
+
+            if len(parts) < 4:
+                return self._get_filesystem_storage_info()
+
+            # Parse sizes (convert from human readable format)
+            size_str = parts[1]
+            used_str = parts[2]
+            avail_str = parts[3]
+
+            def parse_size(size_str: str) -> int:
+                """Parse human readable size string to bytes"""
+                if not size_str:
+                    return 0
+
+                # Remove any commas and spaces
+                size_str = size_str.replace(',', '').strip()
+
+                # Match pattern like "100G", "25G", "1.5T", "500M"
+                match = re.match(r'^(\d+\.?\d*)([KMGT]?)(i?B?)?$', size_str.upper())
+                if not match:
+                    return 0
+
+                number, unit = match.groups()[:2]
+                try:
+                    number = float(number)
+                except ValueError:
+                    return 0
+
+                multipliers = {
+                    '': 1,
+                    'K': 1024,
+                    'M': 1024**2,
+                    'G': 1024**3,
+                    'T': 1024**4
+                }
+
+                return int(number * multipliers.get(unit, 1))
+
+            total_space = parse_size(size_str)
+            used_space = parse_size(used_str)
+            free_space = parse_size(avail_str)
+
+            # Add RunPod-specific metadata
+            return {
+                'total_space': {
+                    'bytes': total_space,
+                    'gb': round(total_space / (1024**3), 2)
+                },
+                'used_space': {
+                    'bytes': used_space,
+                    'gb': round(used_space / (1024**3), 2)
+                },
+                'free_space': {
+                    'bytes': free_space,
+                    'gb': round(free_space / (1024**3), 2)
+                },
+                'usage_percentage': round((used_space / total_space) * 100, 2) if total_space > 0 else 0,
+                'model_directories': self._get_model_directories_info(),
+                'total_model_size': self._get_total_model_size(),
+                'runpod_environment': True,
+                'storage_type': 'network_volume',
+                'source': 'df_command'
+            }
+
+        except Exception as e:
+            print(f"Error getting RunPod storage info: {e}")
+            # Fallback to filesystem method
+            return self._get_filesystem_storage_info()
+
+    def _get_filesystem_storage_info(self) -> Dict:
+        """Get storage information using filesystem stats (original method)"""
+        try:
             statvfs = os.statvfs(self.base_dir)
             total_space = statvfs.f_frsize * statvfs.f_blocks
             free_space = statvfs.f_frsize * statvfs.f_bavail
             used_space = total_space - free_space
-
-            # Get model directory sizes
-            model_dirs = {}
-            total_model_size = 0
-
-            for category in MODEL_PATHS.keys():
-                category_path = MODEL_PATHS[category]
-                if os.path.exists(category_path):
-                    size = self._get_directory_size(category_path)
-                    model_dirs[category] = {
-                        'size_bytes': size,
-                        'size_mb': round(size / (1024 * 1024), 2),
-                        'size_gb': round(size / (1024 * 1024 * 1024), 2),
-                        'file_count': self._count_files(category_path)
-                    }
-                    total_model_size += size
 
             return {
                 'total_space': {
@@ -515,16 +613,58 @@ class ModelManager:
                     'bytes': free_space,
                     'gb': round(free_space / (1024**3), 2)
                 },
-                'usage_percentage': round((used_space / total_space) * 100, 2),
-                'model_directories': model_dirs,
-                'total_model_size': {
-                    'bytes': total_model_size,
-                    'gb': round(total_model_size / (1024**3), 2)
-                }
+                'usage_percentage': round((used_space / total_space) * 100, 2) if total_space > 0 else 0,
+                'model_directories': self._get_model_directories_info(),
+                'total_model_size': self._get_total_model_size(),
+                'runpod_environment': False,
+                'storage_type': 'local_filesystem',
+                'source': 'filesystem_stats'
             }
-
         except Exception as e:
             return {'error': str(e)}
+
+    def _get_model_directories_info(self) -> Dict:
+        """Get information about model directories"""
+        model_dirs = {}
+        total_model_size = 0
+
+        for category in MODEL_PATHS.keys():
+            category_path = MODEL_PATHS[category]
+            if os.path.exists(category_path):
+                size = self._get_directory_size(category_path)
+                model_dirs[category] = {
+                    'size_bytes': size,
+                    'size_mb': round(size / (1024 * 1024), 2),
+                    'size_gb': round(size / (1024 * 1024 * 1024), 2),
+                    'file_count': self._count_files(category_path)
+                }
+                total_model_size += size
+
+        return model_dirs
+
+    def _get_total_model_size(self) -> Dict:
+        """Get total size of all models"""
+        model_dirs = self._get_model_directories_info()
+        total_model_size = sum(info['size_bytes'] for info in model_dirs.values())
+
+        return {
+            'bytes': total_model_size,
+            'gb': round(total_model_size / (1024**3), 2)
+        }
+
+    def get_storage_info(self) -> Dict:
+        """Get comprehensive storage information with RunPod support"""
+        try:
+            # Detect if running in RunPod environment
+            if self._is_runpod_environment():
+                return self._get_runpod_storage_info()
+            else:
+                return self._get_filesystem_storage_info()
+
+        except Exception as e:
+            print(f"Error getting storage info: {e}")
+            # Fallback to basic filesystem method
+            return self._get_filesystem_storage_info()
 
     def _get_directory_size(self, path: str) -> int:
         """Get total size of directory"""

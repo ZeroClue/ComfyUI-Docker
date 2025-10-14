@@ -514,6 +514,51 @@ class ModelManager:
         """Get storage information using df command for RunPod network volumes"""
         print(f"[DEBUG] Getting RunPod storage info...")
         try:
+            # Check for custom volume size override
+            volume_size_gb = os.environ.get('RUNPOD_VOLUME_SIZE_GB')
+            if volume_size_gb:
+                try:
+                    volume_size_bytes = int(float(volume_size_gb) * 1024**3)
+                    print(f"[DEBUG] Using custom volume size: {volume_size_gb} GB = {volume_size_bytes} bytes")
+
+                    # Get used space from du command for accuracy
+                    used_result = subprocess.run(['du', '-sb', '/workspace'],
+                                              capture_output=True, text=True, timeout=30)
+                    used_space = 0
+                    if used_result.returncode == 0:
+                        try:
+                            used_space = int(used_result.stdout.split()[0])
+                            print(f"[DEBUG] Used space from du: {used_space} bytes")
+                        except (IndexError, ValueError):
+                            print(f"[DEBUG] Failed to parse du output: {used_result.stdout}")
+                            used_space = 0
+
+                    free_space = max(0, volume_size_bytes - used_space)
+                    usage_percentage = round((used_space / volume_size_bytes) * 100, 2) if volume_size_bytes > 0 else 0
+
+                    return {
+                        'total_space': {
+                            'bytes': volume_size_bytes,
+                            'gb': round(volume_size_bytes / (1024**3), 2)
+                        },
+                        'used_space': {
+                            'bytes': used_space,
+                            'gb': round(used_space / (1024**3), 2)
+                        },
+                        'free_space': {
+                            'bytes': free_space,
+                            'gb': round(free_space / (1024**3), 2)
+                        },
+                        'usage_percentage': usage_percentage,
+                        'model_directories': self._get_model_directories_info(),
+                        'total_model_size': self._get_total_model_size(),
+                        'runpod_environment': True,
+                        'storage_type': 'network_volume',
+                        'source': 'environment_override'
+                    }
+                except ValueError:
+                    print(f"[DEBUG] Invalid RUNPOD_VOLUME_SIZE_GB value: {volume_size_gb}")
+
             # Use df to get accurate network volume size
             result = subprocess.run(['df', '-h', '/workspace'],
                                   capture_output=True, text=True, timeout=10)
@@ -597,6 +642,66 @@ class ModelManager:
             used_space = parse_size(used_str)
             free_space = parse_size(avail_str)
             print(f"[DEBUG] Final parsed sizes - Total: {total_space}, Used: {used_space}, Free: {free_space}")
+
+            # If the df output shows unrealistically large storage (petabytes),
+            # it's likely showing the entire network filesystem, not our volume
+            # Try to estimate actual volume size
+            if total_space > 100 * 1024**5:  # More than 100 PB is definitely wrong
+                print(f"[DEBUG] Detected unrealistic storage size ({total_space} bytes), estimating actual volume")
+
+                # Get actual used space
+                try:
+                    used_result = subprocess.run(['du', '-sb', '/workspace'],
+                                              capture_output=True, text=True, timeout=30)
+                    actual_used = 0
+                    if used_result.returncode == 0:
+                        try:
+                            actual_used = int(used_result.stdout.split()[0])
+                            print(f"[DEBUG] Actual used space from du: {actual_used} bytes")
+                        except (IndexError, ValueError):
+                            print(f"[DEBUG] Failed to parse du output")
+                            actual_used = 0
+                except Exception as e:
+                    print(f"[DEBUG] Error running du command: {e}")
+                    actual_used = 0
+
+                # Common RunPod volume sizes (in GB)
+                common_sizes = [50, 100, 200, 500, 1000, 2000]
+                estimated_size_gb = 100  # Default to 100GB
+
+                # Find the smallest common size that fits our used space
+                for size_gb in common_sizes:
+                    size_bytes = size_gb * 1024**3
+                    if actual_used < size_bytes * 0.95:  # Leave some buffer
+                        estimated_size_gb = size_gb
+                        break
+
+                estimated_total = estimated_size_gb * 1024**3
+                estimated_free = max(0, estimated_total - actual_used)
+                estimated_usage = round((actual_used / estimated_total) * 100, 2)
+
+                print(f"[DEBUG] Estimated volume size: {estimated_size_gb} GB")
+
+                return {
+                    'total_space': {
+                        'bytes': estimated_total,
+                        'gb': estimated_size_gb
+                    },
+                    'used_space': {
+                        'bytes': actual_used,
+                        'gb': round(actual_used / (1024**3), 2)
+                    },
+                    'free_space': {
+                        'bytes': estimated_free,
+                        'gb': round(estimated_free / (1024**3), 2)
+                    },
+                    'usage_percentage': estimated_usage,
+                    'model_directories': self._get_model_directories_info(),
+                    'total_model_size': self._get_total_model_size(),
+                    'runpod_environment': True,
+                    'storage_type': 'network_volume_estimated',
+                    'source': 'estimated_volume_size'
+                }
 
             # Add RunPod-specific metadata
             return {

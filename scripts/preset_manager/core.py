@@ -564,8 +564,8 @@ class ModelManager:
                 # Remove any commas and spaces
                 size_str = size_str.replace(',', '').strip()
 
-                # Match pattern like "100G", "25G", "1.5T", "500M"
-                match = re.match(r'^(\d+\.?\d*)([KMGT]?)(i?B?)?$', size_str.upper())
+                # Match pattern like "100G", "25G", "1.5T", "500M", "2.1P"
+                match = re.match(r'^(\d+\.?\d*)([KMGTPE]?)(i?B?)?$', size_str.upper())
                 print(f"[DEBUG] Regex match result: {match}")
                 if not match:
                     print(f"[DEBUG] No regex match, returning 0")
@@ -584,7 +584,9 @@ class ModelManager:
                     'K': 1024,
                     'M': 1024**2,
                     'G': 1024**3,
-                    'T': 1024**4
+                    'T': 1024**4,
+                    'P': 1024**5,
+                    'E': 1024**6
                 }
 
                 result = int(number * multipliers.get(unit, 1))

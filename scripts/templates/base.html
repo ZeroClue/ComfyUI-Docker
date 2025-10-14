@@ -661,10 +661,16 @@
                     return;
                 }
 
-                // Apply current theme immediately
-                const savedThemeData = localStorage.getItem('themeData');
-                const savedTheme = savedThemeData ? JSON.parse(savedThemeData) : { type: 'custom', name: 'dark' };
-                this.updateChartColors(chart, savedTheme.type, savedTheme.name);
+                // Delay theme application to prevent recursion during chart creation
+                setTimeout(() => {
+                    try {
+                        const savedThemeData = localStorage.getItem('themeData');
+                        const savedTheme = savedThemeData ? JSON.parse(savedThemeData) : { type: 'custom', name: 'dark' };
+                        this.updateChartColors(chart, savedTheme.type, savedTheme.name);
+                    } catch (error) {
+                        console.warn('Failed to apply theme to chart:', error);
+                    }
+                }, 50);
             }
         }
 

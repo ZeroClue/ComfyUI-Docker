@@ -277,6 +277,13 @@
         try {
             console.log('Initializing charts...');
 
+            // Temporarily disable Chart.js animation to prevent recursion
+            if (typeof Chart !== 'undefined') {
+                const originalDefaults = Chart.defaults;
+                Chart.defaults.animation = false;
+                Chart.defaults.responsiveAnimationDuration = 0;
+            }
+
             // Installation Statistics Chart
             const installationCanvas = document.getElementById('installationChart');
             if (!installationCanvas) {
@@ -285,9 +292,11 @@
             }
 
             const installationCtx = installationCanvas.getContext('2d');
+
+            // Create chart with minimal options to prevent recursion
             const installationChart = new Chart(installationCtx, {
-        type: 'bar',
-        data: {
+                type: 'bar',
+                data: {
             labels: ['Installed', 'Partial', 'Not Installed'],
             datasets: [{
                 label: 'Presets',
@@ -310,17 +319,18 @@
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
+                animation: false,
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
                     }
                 }
             }
-        }
     });
 
             // Category Distribution Chart
@@ -353,14 +363,15 @@
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
+                animation: false,
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
                 }
             }
-        }
     });
 
             // Storage by Category Chart
@@ -392,35 +403,62 @@
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ' + context.parsed + 'GB';
+                animation: false,
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + 'GB';
+                            }
                         }
                     }
                 }
             }
-        }
     });
 
-            // Register charts with theme manager
-            if (typeof themeManager !== 'undefined') {
-                themeManager.registerChart(installationChart);
-                themeManager.registerChart(categoryChart);
-                themeManager.registerChart(storageChart);
-                console.log('Charts registered with theme manager');
-            }
+            // Delay chart registration to prevent recursion during initialization
+            setTimeout(() => {
+                if (typeof themeManager !== 'undefined') {
+                    try {
+                        themeManager.registerChart(installationChart);
+                        console.log('Installation chart registered');
+                    } catch (e) {
+                        console.warn('Failed to register installation chart:', e);
+                    }
+                }
+            }, 300);
+
+            setTimeout(() => {
+                if (typeof themeManager !== 'undefined') {
+                    try {
+                        themeManager.registerChart(categoryChart);
+                        console.log('Category chart registered');
+                    } catch (e) {
+                        console.warn('Failed to register category chart:', e);
+                    }
+                }
+            }, 400);
+
+            setTimeout(() => {
+                if (typeof themeManager !== 'undefined') {
+                    try {
+                        themeManager.registerChart(storageChart);
+                        console.log('Storage chart registered');
+                    } catch (e) {
+                        console.warn('Failed to register storage chart:', e);
+                    }
+                }
+            }, 500);
 
             console.log('Charts initialized successfully');
 
             // Load unknown models count after charts are ready
-            setTimeout(loadUnknownModelsCount, 200);
+            setTimeout(loadUnknownModelsCount, 600);
 
         } catch (error) {
             console.error('Error initializing charts:', error);

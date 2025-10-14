@@ -33,7 +33,10 @@ class PresetManagerWeb:
     """Flask web interface for preset management"""
 
     def __init__(self):
-        self.app = Flask(__name__)
+        # Explicitly specify template and static folders to resolve path issues
+        self.app = Flask(__name__,
+                        template_folder='/app/templates',
+                        static_folder='/app/static')
         self.model_manager = ModelManager()
         self.access_password = os.environ.get('ACCESS_PASSWORD', 'password')
         self._setup_flask_config()

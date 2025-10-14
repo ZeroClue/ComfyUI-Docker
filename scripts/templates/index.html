@@ -163,11 +163,11 @@
                         </div>
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-outline-primary btn-sm"
-                                    onclick="downloadPreset('{{ preset.name.split()[0] }}')"
+                                    onclick="downloadPreset('{{ preset.id }}')"
                                     {% if preset.is_installed %}disabled{% endif %}>
                                 <i class="fas fa-download"></i>
                             </button>
-                            <a href="{{ url_for('preset_detail', preset_id=preset.name.split()[0]) }}"
+                            <a href="{{ url_for('preset_detail', preset_id=preset.id) }}"
                                class="btn btn-outline-info btn-sm">
                                 <i class="fas fa-info"></i>
                             </a>
@@ -272,9 +272,20 @@
     }
 </style>
 <script>
-    // Installation Statistics Chart
-    const installationCtx = document.getElementById('installationChart').getContext('2d');
-    const installationChart = new Chart(installationCtx, {
+    // Initialize charts with error handling
+    function initializeCharts() {
+        try {
+            console.log('Initializing charts...');
+
+            // Installation Statistics Chart
+            const installationCanvas = document.getElementById('installationChart');
+            if (!installationCanvas) {
+                console.error('Installation chart canvas not found');
+                return;
+            }
+
+            const installationCtx = installationCanvas.getContext('2d');
+            const installationChart = new Chart(installationCtx, {
         type: 'bar',
         data: {
             labels: ['Installed', 'Partial', 'Not Installed'],
@@ -312,9 +323,15 @@
         }
     });
 
-    // Category Distribution Chart
-    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-    const categoryChart = new Chart(categoryCtx, {
+            // Category Distribution Chart
+            const categoryCanvas = document.getElementById('categoryChart');
+            if (!categoryCanvas) {
+                console.error('Category chart canvas not found');
+                return;
+            }
+
+            const categoryCtx = categoryCanvas.getContext('2d');
+            const categoryChart = new Chart(categoryCtx, {
         type: 'doughnut',
         data: {
             labels: [{% for category in categories.keys() %}'{{ category }}'{% if not loop.last %}, {% endif %}{% endfor %}],
@@ -346,9 +363,15 @@
         }
     });
 
-    // Storage by Category Chart
-    const storageCtx = document.getElementById('storageChart').getContext('2d');
-    const storageChart = new Chart(storageCtx, {
+            // Storage by Category Chart
+            const storageCanvas = document.getElementById('storageChart');
+            if (!storageCanvas) {
+                console.error('Storage chart canvas not found');
+                return;
+            }
+
+            const storageCtx = storageCanvas.getContext('2d');
+            const storageChart = new Chart(storageCtx, {
         type: 'pie',
         data: {
             labels: [{% for category in storage_info.model_directories.keys() %}'{{ category|title }}'{% if not loop.last %}, {% endif %}{% endfor %}],
@@ -386,32 +409,72 @@
         }
     });
 
-    // Register charts with theme manager
-    if (typeof themeManager !== 'undefined') {
-        themeManager.registerChart(installationChart);
-        themeManager.registerChart(categoryChart);
-        themeManager.registerChart(storageChart);
+            // Register charts with theme manager
+            if (typeof themeManager !== 'undefined') {
+                themeManager.registerChart(installationChart);
+                themeManager.registerChart(categoryChart);
+                themeManager.registerChart(storageChart);
+                console.log('Charts registered with theme manager');
+            }
+
+            console.log('Charts initialized successfully');
+
+            // Load unknown models count after charts are ready
+            setTimeout(loadUnknownModelsCount, 200);
+
+        } catch (error) {
+            console.error('Error initializing charts:', error);
+
+            // Hide chart containers if initialization fails
+            const chartContainers = document.querySelectorAll('[id$="Chart"]');
+            chartContainers.forEach(canvas => {
+                const card = canvas.closest('.card');
+                if (card) {
+                    const cardBody = card.querySelector('.card-body');
+                    if (cardBody) {
+                        cardBody.innerHTML = '<div class="alert alert-warning">Charts unavailable: ' + error.message + '</div>';
+                    }
+                }
+            });
+        }
     }
 
-    // Load unknown models count
+    // Initialize charts when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-        loadUnknownModelsCount();
+        // Wait a bit for theme manager to be ready
+        setTimeout(() => {
+            initializeCharts();
+        }, 100);
     });
 
+    // Load unknown models count after charts are initialized
+    function loadUnknownModelsCountDelayed() {
+        loadUnknownModelsCount();
+    }
+
     function loadUnknownModelsCount() {
+        console.log('Loading unknown models count...');
         fetch('/api/unknown-models')
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response received:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Data received:', data);
                 if (data.success) {
+                    console.log('Unknown models count:', data.count);
                     document.getElementById('unknownModelsCount').innerHTML = data.count;
                 } else {
                     console.error('Failed to load unknown models count:', data.error);
-                    document.getElementById('unknownModelsCount').innerHTML = '0';
+                    document.getElementById('unknownModelsCount').innerHTML = 'Error';
                 }
             })
             .catch(error => {
                 console.error('Error loading unknown models count:', error);
-                document.getElementById('unknownModelsCount').innerHTML = '0';
+                document.getElementById('unknownModelsCount').innerHTML = 'Error';
             });
     }
 

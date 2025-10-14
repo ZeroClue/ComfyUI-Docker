@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ComfyUI Preset Manager{% endblock %}</title>
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap CSS 5.3.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Bootswatch Theme Placeholder -->
+    <link id="bootswatch-theme" rel="stylesheet" disabled>
 
     <style>
         /* Light Theme (Default) */
@@ -298,6 +300,33 @@
                     <hr class="text-white-50">
 
                     <div class="text-center mt-4">
+                        <!-- Theme Selector -->
+                        <div class="mb-3">
+                            <select id="bootswatch-selector" class="form-select form-select-sm"
+                                    onchange="handleThemeChange(this.value)" title="Select theme">
+                                <option value="custom">Custom Themes</option>
+                                <optgroup label="Light Themes">
+                                    <option value="lux">Lux</option>
+                                    <option value="minty">Minty</option>
+                                    <option value="yeti">Yeti</option>
+                                    <option value="pulse">Pulse</option>
+                                    <option value="quartz">Quartz</option>
+                                    <option value="zephyr">Zephyr</option>
+                                </optgroup>
+                                <optgroup label="Dark Themes">
+                                    <option value="darkly">Darkly</option>
+                                    <option value="cyborg">Cyborg</option>
+                                    <option value="vapor">Vapor</option>
+                                    <option value="superhero">Superhero</option>
+                                </optgroup>
+                                <optgroup label="Special Themes">
+                                    <option value="sketchy">Sketchy</option>
+                                    <option value="morph">Morph</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <!-- Quick Theme Toggle -->
                         <button class="theme-toggle mb-3" onclick="toggleTheme()"
                                 title="Toggle theme" aria-label="Toggle theme">
                             <i class="fas fa-moon theme-toggle-icon" id="themeIcon"></i>
@@ -358,13 +387,30 @@
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap JS 5.3.3 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // Theme Management System
+        // Theme Management System with Bootswatch Support
         class ThemeManager {
             constructor() {
+                this.bootswatchThemes = {
+                    'default': null, // Use default Bootstrap
+                    'lux': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css',
+                    'darkly': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/darkly/bootstrap.min.css',
+                    'cyborg': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/cyborg/bootstrap.min.css',
+                    'vapor': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/vapor/bootstrap.min.css',
+                    'minty': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/minty/bootstrap.min.css',
+                    'sketchy': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/sketchy/bootstrap.min.css',
+                    'superhero': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/superhero/bootstrap.min.css',
+                    'yeti': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/yeti/bootstrap.min.css',
+                    'pulse': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/pulse/bootstrap.min.css',
+                    'quartz': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/quartz/bootstrap.min.css',
+                    'morph': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/morph/bootstrap.min.css',
+                    'zephyr': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/zephyr/bootstrap.min.css'
+                };
+                this.currentTheme = 'custom';
+                this.isUpdatingCharts = false;
                 this.init();
             }
 
@@ -373,47 +419,122 @@
                 this.setupToggle();
                 this.setupSystemPreference();
                 this.setupCharts();
+                this.setupBootswatchSelector();
             }
 
             loadTheme() {
-                // Default to dark theme
-                const savedTheme = localStorage.getItem('theme');
-                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const theme = savedTheme || 'dark'; // Default to dark
-                this.setTheme(theme);
+                // Load theme preference from localStorage
+                const savedThemeData = localStorage.getItem('themeData');
+                const savedTheme = savedThemeData ? JSON.parse(savedThemeData) : { type: 'custom', name: 'dark' };
+
+                // Default to dark custom theme if no saved preference
+                if (!savedTheme.type) {
+                    savedTheme.type = 'custom';
+                    savedTheme.name = 'dark';
+                }
+
+                this.setTheme(savedTheme.type, savedTheme.name);
             }
 
-            setTheme(theme) {
-                document.documentElement.setAttribute('data-theme', theme);
-                localStorage.setItem('theme', theme);
-                this.updateToggleIcon(theme);
-                this.updateCharts(theme);
+            setTheme(type, name) {
+                // Save theme preference
+                localStorage.setItem('themeData', JSON.stringify({ type, name }));
+                this.currentTheme = type;
+
+                if (type === 'bootswatch') {
+                    this.applyBootswatchTheme(name);
+                } else {
+                    this.applyCustomTheme(name);
+                }
+
+                this.updateToggleIcon(type, name);
+                this.updateCharts(type, name);
+                this.updateThemeSelector(type, name);
             }
 
-            updateToggleIcon(theme) {
+            applyBootswatchTheme(themeName) {
+                const bootswatchLink = document.getElementById('bootswatch-theme');
+                const defaultBootstrap = document.querySelector('link[href*="bootstrap@5.3.3/dist/css/bootstrap.min.css"]');
+
+                if (themeName === 'default') {
+                    // Use default Bootstrap
+                    bootswatchLink.disabled = true;
+                    if (defaultBootstrap) defaultBootstrap.disabled = false;
+                } else {
+                    // Apply Bootswatch theme
+                    bootswatchLink.href = this.bootswatchThemes[themeName];
+                    bootswatchLink.disabled = false;
+                    if (defaultBootstrap) defaultBootstrap.disabled = true;
+                }
+
+                // Clear custom theme attributes
+                document.documentElement.removeAttribute('data-theme');
+            }
+
+            applyCustomTheme(themeName) {
+                const bootswatchLink = document.getElementById('bootswatch-theme');
+                const defaultBootstrap = document.querySelector('link[href*="bootstrap@5.3.3/dist/css/bootstrap.min.css"]');
+
+                // Disable Bootswatch and enable default Bootstrap
+                bootswatchLink.disabled = true;
+                if (defaultBootstrap) defaultBootstrap.disabled = false;
+
+                // Apply custom theme
+                document.documentElement.setAttribute('data-theme', themeName);
+            }
+
+            updateToggleIcon(type, name) {
                 const icon = document.getElementById('themeIcon');
                 if (icon) {
-                    if (theme === 'dark') {
-                        icon.className = 'fas fa-moon theme-toggle-icon';
+                    if (type === 'bootswatch') {
+                        // Determine if Bootswatch theme is dark or light
+                        const darkThemes = ['darkly', 'cyborg', 'vapor', 'superhero'];
+                        icon.className = darkThemes.includes(name) ? 'fas fa-moon theme-toggle-icon' : 'fas fa-sun theme-toggle-icon';
                     } else {
-                        icon.className = 'fas fa-sun theme-toggle-icon';
+                        // Custom themes
+                        icon.className = name === 'dark' ? 'fas fa-moon theme-toggle-icon' : 'fas fa-sun theme-toggle-icon';
                     }
                 }
             }
 
-            updateCharts(theme) {
-                // Update all Chart.js instances
-                if (window.charts) {
-                    window.charts.forEach(chart => {
-                        this.updateChartColors(chart, theme);
-                    });
+            updateCharts(type, name) {
+                // Prevent infinite recursion
+                if (this.isUpdatingCharts) {
+                    return;
+                }
+
+                this.isUpdatingCharts = true;
+
+                try {
+                    // Update all Chart.js instances
+                    if (window.charts) {
+                        window.charts.forEach(chart => {
+                            this.updateChartColors(chart, type, name);
+                        });
+                    }
+                } finally {
+                    this.isUpdatingCharts = false;
                 }
             }
 
-            updateChartColors(chart, theme) {
-                const isDark = theme === 'dark';
+            updateChartColors(chart, type, name) {
+                // Prevent recursion during chart updates
+                if (this.isUpdatingCharts) {
+                    return;
+                }
 
-                // Define colors for each theme
+                let isDark;
+
+                if (type === 'bootswatch') {
+                    // Determine if Bootswatch theme is dark or light
+                    const darkThemes = ['darkly', 'cyborg', 'vapor', 'superhero'];
+                    isDark = darkThemes.includes(name);
+                } else {
+                    // Custom themes
+                    isDark = name === 'dark';
+                }
+
+                // Define colors for each theme type
                 const colors = {
                     dark: {
                         text: '#e9ecef',
@@ -437,7 +558,7 @@
                     }
                 };
 
-                const themeColors = colors[theme];
+                const themeColors = colors[isDark ? 'dark' : 'light'];
 
                 // Update chart options
                 if (chart.options.scales) {
@@ -469,7 +590,12 @@
                     });
                 }
 
-                chart.update();
+                // Update chart without triggering events to prevent recursion
+                try {
+                    chart.update('none'); // Use 'none' mode to prevent animation and reduce recursion risk
+                } catch (error) {
+                    console.warn('Failed to update chart colors:', error);
+                }
             }
 
             setupToggle() {
@@ -498,19 +624,47 @@
                 }
             }
 
+            setupBootswatchSelector() {
+                // Add Bootswatch selector setup here if needed
+                window.switchToBootswatchTheme = (themeName) => {
+                    this.setTheme('bootswatch', themeName);
+                };
+            }
+
+            updateThemeSelector(type, name) {
+                // Update the theme selector UI if it exists
+                const selector = document.getElementById('bootswatch-selector');
+                if (selector) {
+                    selector.value = type === 'bootswatch' ? name : 'custom';
+                }
+            }
+
             toggle() {
-                const currentTheme = document.documentElement.getAttribute('data-theme');
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                this.setTheme(newTheme);
+                // Simple toggle between custom dark and light themes
+                if (this.currentTheme === 'custom') {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    this.setTheme('custom', newTheme);
+                } else {
+                    // If using Bootswatch, switch to custom dark theme
+                    this.setTheme('custom', 'dark');
+                }
             }
 
             // Register chart instance
             registerChart(chart) {
                 if (!window.charts) window.charts = [];
                 window.charts.push(chart);
+
+                // Prevent infinite recursion by checking if we're already updating charts
+                if (this.isUpdatingCharts) {
+                    return;
+                }
+
                 // Apply current theme immediately
-                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-                this.updateChartColors(chart, currentTheme);
+                const savedThemeData = localStorage.getItem('themeData');
+                const savedTheme = savedThemeData ? JSON.parse(savedThemeData) : { type: 'custom', name: 'dark' };
+                this.updateChartColors(chart, savedTheme.type, savedTheme.name);
             }
         }
 
@@ -604,6 +758,17 @@
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
         });
+
+        // Theme change handler for selector
+        function handleThemeChange(value) {
+            if (value === 'custom') {
+                // Switch to custom dark theme
+                themeManager.setTheme('custom', 'dark');
+            } else {
+                // Switch to Bootswatch theme
+                themeManager.setTheme('bootswatch', value);
+            }
+        }
     </script>
 
     {% block extra_js %}{% endblock %}

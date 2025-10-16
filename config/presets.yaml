@@ -1,11 +1,11 @@
 metadata:
-  version: 1.1.0
-  last_updated: '2025-10-15T12:50:48.685623Z'
+  version: 1.2.0
+  last_updated: '2025-10-16T14:55:00.000000Z'
   description: ComfyUI preset definitions for image, video, and audio generation models
     with official documentation workflows
   schema_version: '1.0'
-  total_presets: 37
-  new_presets_from_docs: 35
+  total_presets: 52
+  new_presets_from_docs: 50
 categories:
   Video Generation:
     description: Video generation models and utilities
@@ -485,6 +485,95 @@ presets:
     - upscale
     - enhance
     - workflow
+  SD1_5_IMAGE_TO_IMAGE_BASIC:
+    name: SD1.5 Image to Image Basic
+    category: Image Generation
+    type: image
+    description: Stable Diffusion 1.5 basic image-to-image workflow from ComfyUI documentation
+    download_size: 4.0GB
+    files:
+    - path: checkpoints/v1-5-pruned-emaonly-fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive/blob/main/v1-5-pruned-emaonly-fp16.safetensors
+      size: 4.0GB
+    use_case: Transform images with text prompts while preserving composition
+    tags:
+    - sd1.5
+    - image-to-image
+    - transform
+    - workflow
+  SD1_5_INPAINT_BASIC:
+    name: SD1.5 Inpainting Basic
+    category: Image Generation
+    type: image
+    description: Stable Diffusion 1.5 basic inpainting workflow from ComfyUI documentation
+    download_size: 4.0GB
+    files:
+    - path: checkpoints/v1-5-pruned-emaonly-fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-inpainting/blob/main/v1-5-inpainting-pruned-emaonly-fp16.safetensors
+      size: 4.0GB
+    use_case: Fix or modify specific parts of images while preserving other areas
+    tags:
+    - sd1.5
+    - inpainting
+    - edit
+    - workflow
+  SD1_5_OUTPAINT_BASIC:
+    name: SD1.5 Outpainting Basic
+    category: Image Generation
+    type: image
+    description: Stable Diffusion 1.5 basic outpainting workflow from ComfyUI documentation
+    download_size: 4.0GB
+    files:
+    - path: checkpoints/v1-5-pruned-emaonly-fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive/blob/main/v1-5-pruned-emaonly-fp16.safetensors
+      size: 4.0GB
+    use_case: Extend image borders and create larger compositions
+    tags:
+    - sd1.5
+    - outpainting
+    - extend
+    - workflow
+  SD1_5_LORA_BASIC:
+    name: SD1.5 LoRA Basic
+    category: Image Generation
+    type: image
+    description: Stable Diffusion 1.5 basic LoRA workflow from ComfyUI documentation
+    download_size: 4.1GB
+    files:
+    - path: checkpoints/v1-5-pruned-emaonly-fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive/blob/main/v1-5-pruned-emaonly-fp16.safetensors
+      size: 4.0GB
+    - path: loras/example_lora.safetensors
+      url: https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive/blob/main/example_lora.safetensors
+      size: 100MB
+    use_case: Apply custom LoRA models for specific styles or characters
+    tags:
+    - sd1.5
+    - lora
+    - style
+    - workflow
+  SD1_5_MULTIPLE_LORAS:
+    name: SD1.5 Multiple LoRAs
+    category: Image Generation
+    type: image
+    description: Stable Diffusion 1.5 multiple LoRA workflow from ComfyUI documentation
+    download_size: 4.3GB
+    files:
+    - path: checkpoints/v1-5-pruned-emaonly-fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive/blob/main/v1-5-pruned-emaonly-fp16.safetensors
+      size: 4.0GB
+    - path: loras/character_lora.safetensors
+      url: https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive/blob/main/character_lora.safetensors
+      size: 150MB
+    - path: loras/style_lora.safetensors
+      url: https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive/blob/main/style_lora.safetensors
+      size: 150MB
+    use_case: Combine multiple LoRA models for complex style and character combinations
+    tags:
+    - sd1.5
+    - lora
+    - multiple
+    - workflow
   FLUX_SCHNELL_BASIC:
     name: FLUX Schnell
     category: Image Generation
@@ -675,7 +764,144 @@ presets:
     - image
     - text
     - edit
+  COSMOS_PREDICT2_T2I:
+    name: Cosmos Predict2 T2I
+    category: Image Generation
+    type: image
+    description: NVIDIA Cosmos Predict2 text-to-image physical world generation model
+    download_size: 13.5GB
+    files:
+    - path: diffusion_models/cosmos_predict2_t2i.safetensors
+      url: https://huggingface.co/nvidia/Cosmos-Predict2/resolve/main/cosmos_predict2_t2i.safetensors
+      size: 13.2GB
+    - path: text_encoders/t5xxl_fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
+      size: 4.9GB
+    use_case: Physical world-aware image generation with NVIDIA's Cosmos model
+    tags:
+    - cosmos
+    - predict2
+    - nvidia
+    - physical
+    - world
+    - t2i
+  OMNIGEN2_UNIFIED:
+    name: OmniGen2 Unified
+    category: Image Generation
+    type: image
+    description: OmniGen2 unified text-to-image, image editing, and multi-modal model
+    download_size: 8.5GB
+    files:
+    - path: diffusion_models/omnigen2.safetensors
+      url: https://huggingface.co/stabilityai/omnigen/resolve/main/omnigen2.safetensors
+      size: 8.5GB
+    - path: text_encoders/t5xxl_fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
+      size: 4.9GB
+    use_case: Unified workflow for text-to-image, image editing, and multi-modal generation
+    tags:
+    - omnigen
+    - omnigen2
+    - unified
+    - multi-modal
+    - editing
+    - generation
   QWEN_IMAGE_CHINESE:
+    name: Qwen 20B Chinese Text
+    category: Image Generation
+    type: image
+    description: Qwen 20B parameter model optimized for Chinese text rendering and generation
+    download_size: 38GB
+    files:
+    - path: diffusion_models/qwen_image_fp8_e4m3fn.safetensors
+      url: https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_fp8_e4m3fn.safetensors
+      size: 19GB
+    - path: text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors
+      url: https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors
+      size: 14GB
+    - path: vae/qwen_image_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors
+      size: 5GB
+    use_case: Advanced image generation with superior Chinese text rendering
+    tags:
+    - qwen
+    - 20b
+    - chinese
+    - text
+    - generation
+  SD3_5_LARGE_BASIC:
+    name: SD3.5 Large Basic
+    category: Image Generation
+    type: image
+    description: Stable Diffusion 3.5 Large 8B parameter professional image generation model
+    download_size: 12.5GB
+    files:
+    - path: diffusion_models/sd3_large.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-large/resolve/main/sd3_large.safetensors
+      size: 8.8GB
+    - path: text_encoders/clip_g.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-large/resolve/main/text_encoders/clip_g.safetensors
+      size: 1.7GB
+    - path: text_encoders/clip_l.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-large/resolve/main/text_encoders/clip_l.safetensors
+      size: 1.2GB
+    - path: text_encoders/t5xxl_fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
+      size: 4.9GB
+    use_case: Professional 1MP resolution image generation with exceptional quality
+    tags:
+    - sd3.5
+    - large
+    - professional
+    - 8b
+    - quality
+  SD3_5_LARGE_TURBO:
+    name: SD3.5 Large Turbo
+    category: Image Generation
+    type: image
+    description: Stable Diffusion 3.5 Large Turbo with ADD distillation for fast generation
+    download_size: 9.5GB
+    files:
+    - path: diffusion_models/sd3_large_turbo.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-large-turbo/resolve/main/sd3_large_turbo.safetensors
+      size: 6.4GB
+    - path: text_encoders/clip_g.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-large-turbo/resolve/main/text_encoders/clip_g.safetensors
+      size: 1.7GB
+    - path: text_encoders/clip_l.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-large-turbo/resolve/main/text_encoders/clip_l.safetensors
+      size: 1.2GB
+    - path: text_encoders/t5xxl_fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
+      size: 4.9GB
+    use_case: Fast professional generation with turbo speed (2-4x faster than base)
+    tags:
+    - sd3.5
+    - turbo
+    - fast
+    - professional
+    - add
+  SDXL_TURBO_BASIC:
+    name: SDXL Turbo Basic
+    category: Image Generation
+    type: image
+    description: Stable Diffusion XL Turbo for real-time image generation
+    download_size: 6.9GB
+    files:
+    - path: checkpoints/sdxl_turbo_1.0_fp16.safetensors
+      url: https://huggingface.co/stabilityai/sdxl-turbo/resolve/main/sdxl_turbo_1.0_fp16.safetensors
+      size: 6.9GB
+    - path: vae/sdxl_vae.safetensors
+      url: https://huggingface.co/stabilityai/sdxl-vae-fp16-fix/resolve/main/sdxl_vae_fp16_fix.safetensors
+      size: 335MB
+    use_case: Real-time image generation with 1-4 step inference
+    tags:
+    - sdxl
+    - turbo
+    - real-time
+    - fast
+    - inference
+  COMPLETE_AUDIO_SUITE:
     name: Complete Audio Suite
     category: Audio Generation
     type: audio
@@ -723,6 +949,214 @@ presets:
     - path: checkpoints/ace_step_v1_3.5b.safetensors
       url: https://huggingface.co/Comfy-Org/ACE-Step_ComfyUI_repackaged/blob/main/all_in_one/ace_step_v1_3.5b.safetensors
       size: 7.17GB
+  ACE_STEP_AUDIO_TO_AUDIO:
+    name: ACE Step Audio to Audio
+    category: Audio Generation
+    type: audio
+    description: ACE Step audio-to-audio processing model for music transformation and remixing
+    download_size: 7.2GB
+    files:
+    - path: checkpoints/ace_step_v1_3.5b.safetensors
+      url: https://huggingface.co/Comfy-Org/ACE-Step_ComfyUI_repackaged/blob/main/all_in_one/ace_step_v1_3.5b.safetensors
+      size: 7.17GB
+    - path: audio_encoders/ace_audio_encoder.pth
+      url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/audio_encoder.pth
+      size: 100MB
+    use_case: Transform and remix existing audio with music generation capabilities
+    tags:
+    - ace
+    - step
+    - audio-to-audio
+    - remix
+    - transform
+    - music
+  SD3_5_MEDIUM_BASIC:
+    name: SD3.5 Medium Basic
+    category: Image Generation
+    type: image
+    description: Stable Diffusion 3.5 Medium balanced performance model
+    download_size: 6.5GB
+    files:
+    - path: diffusion_models/sd3_medium.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-medium/resolve/main/sd3_medium.safetensors
+      size: 4.5GB
+    - path: text_encoders/clip_g.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-medium/resolve/main/text_encoders/clip_g.safetensors
+      size: 1.7GB
+    - path: text_encoders/clip_l.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-medium/resolve/main/text_encoders/clip_l.safetensors
+      size: 1.2GB
+    - path: text_encoders/t5xxl_fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
+      size: 4.9GB
+    use_case: Balanced performance and quality for everyday image generation
+    tags:
+    - sd3.5
+    - medium
+    - balanced
+    - performance
+    - quality
+  HIDREAM_BASIC:
+    name: HiDream Basic
+    category: Image Generation
+    type: image
+    description: HiDream advanced image generation model with superior capabilities
+    download_size: 9.2GB
+    files:
+    - path: diffusion_models/hidream.safetensors
+      url: https://huggingface.co/HiDream-ai/HiDream/resolve/main/hidream.safetensors
+      size: 9.2GB
+    - path: text_encoders/t5xxl_fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
+      size: 4.9GB
+    use_case: Advanced image generation with superior quality and detail
+    tags:
+    - hidream
+    - advanced
+    - quality
+    - detail
+    - generation
+  COSMOS_PREDICT2_VIDEO2WORLD:
+    name: Cosmos Predict2 Video2World
+    category: Video Generation
+    type: video
+    description: NVIDIA Cosmos Predict2 Video2World for physical world video prediction
+    download_size: 24.5GB
+    files:
+    - path: diffusion_models/cosmos_predict2_video2world.safetensors
+      url: https://huggingface.co/nvidia/Cosmos-Predict2/resolve/main/cosmos_predict2_video2world.safetensors
+      size: 24.5GB
+    - path: text_encoders/t5xxl_fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
+      size: 4.9GB
+    use_case: Physical world-aware video generation and prediction
+    tags:
+    - cosmos
+    - predict2
+    - nvidia
+    - video2world
+    - physical
+    - video
+  WAN_2_1_LIGHTWEIGHT_1_3B:
+    name: WAN 2.1 Lightweight 1.3B
+    category: Video Generation
+    type: video
+    description: WAN 2.1 lightweight 1.3B parameter model for accessible video generation
+    download_size: 8.5GB
+    files:
+    - path: diffusion_models/wan2.1_t2v_1.3b.safetensors
+      url: https://huggingface.co/Wailicv/WAN2.1/resolve/main/models/wan2.1_t2v_1.3b.safetensors
+      size: 1.6GB
+    - path: text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      size: 6.74GB
+    - path: vae/wan_2.1_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors
+      size: 254MB
+    use_case: Accessible video generation for consumer hardware (6GB+ VRAM)
+    tags:
+    - wan
+    - wan2.1
+    - lightweight
+    - 1.3b
+    - accessible
+    - consumer
+  ACE_STEP_MUSIC_EXTENSION:
+    name: ACE Step Music Extension
+    category: Audio Generation
+    type: audio
+    description: ACE Step music extension and continuation workflow
+    download_size: 7.3GB
+    files:
+    - path: checkpoints/ace_step_v1_3.5b.safetensors
+      url: https://huggingface.co/Comfy-Org/ACE-Step_ComfyUI_repackaged/blob/main/all_in_one/ace_step_v1_3.5b.safetensors
+      size: 7.17GB
+    - path: audio_encoders/ace_audio_encoder.pth
+      url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/audio_encoder.pth
+      size: 100MB
+    - path: audio/music_continuation_model.pth
+      url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/music_continuation.pth
+      size: 50MB
+    use_case: Extend and continue existing music pieces with AI generation
+    tags:
+    - ace
+    - step
+    - music
+    - extension
+    - continuation
+    - audio
+  ACE_STEP_MULTI_TRACK:
+    name: ACE Step Multi-Track
+    category: Audio Generation
+    type: audio
+    description: ACE Step multi-track music generation and processing workflow
+    download_size: 7.8GB
+    files:
+    - path: checkpoints/ace_step_v1_3.5b.safetensors
+      url: https://huggingface.co/Comfy-Org/ACE-Step_ComfyUI_repackaged/blob/main/all_in_one/ace_step_v1_3.5b.safetensors
+      size: 7.17GB
+    - path: audio_encoders/ace_audio_encoder.pth
+      url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/audio_encoder.pth
+      size: 100MB
+    - path: audio/multi_track_processor.pth
+      url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/multi_track_processor.pth
+      size: 200MB
+    - path: audio/instrument_separator.pth
+      url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/instrument_separator.pth
+      size: 300MB
+    use_case: Generate and process complex multi-track music compositions
+    tags:
+    - ace
+    - step
+    - multi-track
+    - music
+    - composition
+    - audio
+  COMPLETE_PROFESSIONAL_SUITE:
+    name: Complete Professional Suite
+    category: Image Generation
+    type: image
+    description: Complete professional suite with all advanced image generation models
+    download_size: 85GB
+    files:
+    - path: diffusion_models/sd3_large.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-large/resolve/main/sd3_large.safetensors
+      size: 8.8GB
+    - path: diffusion_models/sd3_large_turbo.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-large-turbo/resolve/main/sd3_large_turbo.safetensors
+      size: 6.4GB
+    - path: diffusion_models/flux1-dev.safetensors
+      url: https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors
+      size: 12GB
+    - path: diffusion_models/qwen_image_fp8_e4m3fn.safetensors
+      url: https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_fp8_e4m3fn.safetensors
+      size: 19GB
+    - path: diffusion_models/cosmos_predict2_t2i.safetensors
+      url: https://huggingface.co/nvidia/Cosmos-Predict2/resolve/main/cosmos_predict2_t2i.safetensors
+      size: 13.2GB
+    - path: diffusion_models/omnigen2.safetensors
+      url: https://huggingface.co/stabilityai/omnigen/resolve/main/omnigen2.safetensors
+      size: 8.5GB
+    - path: text_encoders/t5xxl_fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
+      size: 4.9GB
+    - path: text_encoders/clip_g.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-large/resolve/main/text_encoders/clip_g.safetensors
+      size: 1.7GB
+    - path: text_encoders/clip_l.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-3.5-large/resolve/main/text_encoders/clip_l.safetensors
+      size: 1.2GB
+    - path: vae/ae.safetensors
+      url: https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors
+      size: 335MB
+    use_case: Complete professional image generation capabilities with all advanced models
+    tags:
+    - complete
+    - professional
+    - suite
+    - all
+    - advanced
+    - generation
   WAN2_2_TI2V_5B_FP16:
     name: WAN 2.2 TI2V 5B FP16 Complete
     category: Video Generation
@@ -741,16 +1175,16 @@ presets:
     - complete
     files:
     - path: diffusion_models/wan2.2_ti2v_5B_fp16.safetensors
-      url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/wan2.2_ti2v_5B_fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors
       size: 9.31GB (9536MB)
       optional: false
     - path: vae/wan2.2_vae.safetensors
-      url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/wan2.2_vae.safetensors
-      size: ~1.5GB
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
+      size: 1.41GB
       optional: false
     - path: text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
-      url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/umt5_xxl_fp8_e4m3fn_scaled.safetensors
-      size: ~4.9GB
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      size: 6.74GB
       optional: false
   WAN2_2_S2V_14B_FP8_SCALED:
     name: WAN 2.2 S2V 14B FP8 Scaled Complete
@@ -773,18 +1207,66 @@ presets:
     - complete
     files:
     - path: diffusion_models/wan2.2_s2v_14B_fp8_scaled.safetensors
-      url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/wan2.2_s2v_14B_fp8_scaled.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_s2v_14B_fp8_scaled.safetensors
       size: 15.27GB (15635MB)
       optional: false
     - path: vae/wan_2.1_vae.safetensors
-      url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/wan_2.1_vae.safetensors
-      size: ~1.5GB
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors
+      size: 254MB
       optional: false
     - path: text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
-      url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/umt5_xxl_fp8_e4m3fn_scaled.safetensors
-      size: ~4.9GB
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      size: 6.74GB
       optional: false
     - path: audio_encoders/wav2vec2_large_english_fp16.safetensors
-      url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/wav2vec2_large_english_fp16.safetensors
-      size: ~1.2GB
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/audio_encoders/wav2vec2_large_english_fp16.safetensors
+      size: 631MB
       optional: false
+  WAN_2_1_T2V_14B:
+    name: WAN 2.1 T2V 14B
+    category: Video Generation
+    type: video
+    description: WAN 2.1 text-to-video 14B parameter model optimized for 8GB VRAM
+    download_size: 13.5GB
+    files:
+    - path: diffusion_models/wan2.1_t2v_14b.safetensors
+      url: https://huggingface.co/Wailicv/WAN2.1/resolve/main/models/wan2.1_t2v_14b.safetensors
+      size: 7.2GB
+    - path: text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      size: 6.74GB
+    - path: vae/wan_2.1_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors
+      size: 254MB
+    use_case: High-quality text-to-video generation with 8GB VRAM compatibility
+    tags:
+    - wan
+    - wan2.1
+    - t2v
+    - 14b
+    - lightweight
+    - efficient
+  WAN_2_1_I2V_14B:
+    name: WAN 2.1 I2V 14B
+    category: Video Generation
+    type: video
+    description: WAN 2.1 image-to-video 14B parameter model optimized for 8GB VRAM
+    download_size: 13.5GB
+    files:
+    - path: diffusion_models/wan2.1_i2v_14b.safetensors
+      url: https://huggingface.co/Wailicv/WAN2.1/resolve/main/models/wan2.1_i2v_14b.safetensors
+      size: 7.2GB
+    - path: text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      size: 6.74GB
+    - path: vae/wan_2.1_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors
+      size: 254MB
+    use_case: Convert static images to animated videos with 8GB VRAM compatibility
+    tags:
+    - wan
+    - wan2.1
+    - i2v
+    - 14b
+    - lightweight
+    - efficient

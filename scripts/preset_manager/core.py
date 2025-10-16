@@ -162,6 +162,13 @@ class ModelManager:
         """Get preset by ID"""
         return self.presets.get(preset_id)
 
+    def get_preset_id_by_name(self, preset_name: str) -> Optional[str]:
+        """Get preset ID by display name"""
+        for preset_id, preset_data in self.presets.items():
+            if preset_data.get('name') == preset_name:
+                return preset_id
+        return None
+
     def get_preset_readme(self, preset_id: str) -> Optional[str]:
         """Get preset README content"""
         readme_path = os.path.join(self.readme_base_path, f'{preset_id}.md')

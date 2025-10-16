@@ -149,9 +149,19 @@ class PresetManagerWeb:
                 except Exception as e:
                     print(f"[WARNING] Error checking preset updates: {e}")
 
+            # Add preset IDs to categories for template use
+            categories_with_ids = {}
+            for category_name, presets in self.model_manager.categories.items():
+                categories_with_ids[category_name] = []
+                for preset in presets:
+                    preset_id = self.model_manager.get_preset_id_by_name(preset['name'])
+                    preset_with_id = preset.copy()
+                    preset_with_id['id'] = preset_id
+                    categories_with_ids[category_name].append(preset_with_id)
+
             return render_template('index.html',
                                  storage_info=storage_info,
-                                 categories=self.model_manager.categories,
+                                 categories=categories_with_ids,
                                  stats=stats,
                                  preset_version=preset_version,
                                  update_available=update_available,
@@ -160,7 +170,17 @@ class PresetManagerWeb:
         @self.app.route('/presets')
         def presets():
             """Browse all presets"""
-            return render_template('presets.html', categories=self.model_manager.categories)
+            # Add preset IDs to categories for template use
+            categories_with_ids = {}
+            for category_name, presets in self.model_manager.categories.items():
+                categories_with_ids[category_name] = []
+                for preset in presets:
+                    preset_id = self.model_manager.get_preset_id_by_name(preset['name'])
+                    preset_with_id = preset.copy()
+                    preset_with_id['id'] = preset_id
+                    categories_with_ids[category_name].append(preset_with_id)
+
+            return render_template('presets.html', categories=categories_with_ids)
 
         @self.app.route('/preset/<preset_id>')
         def preset_detail(preset_id):

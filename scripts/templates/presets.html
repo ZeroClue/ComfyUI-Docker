@@ -123,11 +123,11 @@
                                 <div class="mt-auto">
                                     <div class="btn-group w-100" role="group">
                                         <button class="btn btn-sm btn-outline-primary flex-fill"
-                                                onclick="showPresetDetails('{{ preset.name.split()[0] }}')">
+                                                onclick="showPresetDetails('{{ preset.id }}')">
                                             <i class="fas fa-info"></i> Details
                                         </button>
                                         <button class="btn btn-sm {% if preset.is_installed %}btn-outline-danger{% else %}btn-success{% endif %} flex-fill"
-                                                onclick="handlePresetAction('{{ preset.name.split()[0] }}', {% if preset.is_installed %}true{% else %}false{% endif %})"
+                                                onclick="handlePresetAction('{{ preset.id }}', {% if preset.is_installed %}true{% else %}false{% endif %})"
                                                 {% if preset.is_partial %}disabled{% endif %}>
                                             {% if preset.is_installed %}
                                                 <i class="fas fa-trash"></i> Delete
@@ -301,12 +301,68 @@
 
                 document.getElementById('presetDetailsContent').innerHTML = content;
 
+                // Update modal action button based on preset status
+                updateModalActionButton(doc);
+
                 const modal = new bootstrap.Modal(document.getElementById('presetDetailsModal'));
                 modal.show();
             })
             .catch(error => {
                 showAlert('Error loading preset details', 'danger');
             });
+    }
+
+    // Update modal action button based on preset status
+    function updateModalActionButton(doc) {
+        const actionButton = document.getElementById('modalActionButton');
+        if (!actionButton) return;
+
+        // Check preset status by looking for status badges in the loaded content
+        const statusBadge = doc.querySelector('.badge');
+        let isInstalled = false;
+        let isPartial = false;
+
+        if (statusBadge) {
+            if (statusBadge.textContent.includes('Installed')) {
+                isInstalled = true;
+            } else if (statusBadge.textContent.includes('Partial')) {
+                isPartial = true;
+            }
+        }
+
+        // Remove existing event listeners
+        actionButton.replaceWith(actionButton.cloneNode(true));
+        const newActionButton = document.getElementById('modalActionButton');
+
+        // Configure button based on preset status
+        if (isInstalled) {
+            // Preset is installed - show delete button
+            newActionButton.textContent = 'Delete Preset';
+            newActionButton.className = 'btn btn-danger';
+            newActionButton.onclick = function() {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('presetDetailsModal'));
+                modal.hide();
+                handlePresetAction(currentPresetId, true);
+            };
+        } else if (isPartial) {
+            // Preset is partially installed - show complete download button
+            newActionButton.textContent = 'Complete Download';
+            newActionButton.className = 'btn btn-warning';
+            newActionButton.onclick = function() {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('presetDetailsModal'));
+                modal.hide();
+                handlePresetAction(currentPresetId, false);
+            };
+        } else {
+            // Preset is not installed - show download button
+            newActionButton.textContent = 'Download Preset';
+            newActionButton.className = 'btn btn-success';
+            newActionButton.onclick = function() {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('presetDetailsModal'));
+                modal.hide();
+                handlePresetAction(currentPresetId, false);
+            };
+        }
     }
 
     // Handle preset download/delete action

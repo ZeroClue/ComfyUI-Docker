@@ -134,7 +134,7 @@ docker run --gpus all \
 ### Key Capabilities
 
 - **🎛️ Visual Dashboard**: Storage overview and installation statistics
-- **📂 Preset Browser**: Browse 96+ presets by category (Video/Image/Audio)
+- **📂 Preset Browser**: Browse 52+ presets by category (Video/Image/Audio)
 - **📖 Documentation Integration**: View full preset READMEs inline
 - **⬇️ One-Click Installation**: Download presets with progress tracking
 - **🗂️ Storage Management**: Monitor disk usage and cleanup unused models
@@ -157,6 +157,8 @@ docker run -e ENABLE_PRESET_MANAGER=False zeroclue/comfyui:base-torch2.8.0-cu126
 ## 🔧 Triple Preset System
 
 > This Docker container features a **triple preset system** that supports automatic downloading of models for video, image, and audio generation. Each preset system is independent and can be used alone or combined with others for complete multimedia generation.
+
+> **🔄 Runtime Updates**: Presets are automatically updated at container startup from the latest GitHub configuration, so Docker images always have the most current preset definitions without requiring rebuilds.
 
 ### 🎬 Video Generation (PRESET_DOWNLOAD)
 

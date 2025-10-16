@@ -216,3 +216,5 @@ dmypy.json
 *.lock
 .DS_Store
 Thumbs.db
+
+CLAUDE.md.bak

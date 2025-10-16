@@ -160,7 +160,12 @@ if [ -f /scripts/preset_updater.py ]; then
 
     # Run preset updater
     echo "**** updating preset configurations from GitHub... ****"
-    if python3 /scripts/preset_updater.py update --force=$FORCE_PRESET_UPDATE; then
+    if [ "$FORCE_PRESET_UPDATE" = "true" ]; then
+        python3 /scripts/preset_updater.py update --force
+    else
+        python3 /scripts/preset_updater.py update
+    fi
+    if [ $? -eq 0 ]; then
         echo "**** preset configuration update completed successfully ****"
     else
         echo "**** preset configuration update failed, continuing with existing configuration ****"

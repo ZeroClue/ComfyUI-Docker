@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# ComfyUI Preset Schema Migration Script
-# Fixes schema validation issues for preset updates
+# ComfyUI Preset System Migration Script
+# Updates schema and all necessary scripts for preset system compatibility
 # Usage: curl -fsSL https://raw.githubusercontent.com/your-repo/ComfyUI-docker/main/scripts/migrate_schema.sh | bash
 
 set -e
@@ -139,6 +139,71 @@ migrate_schema()
 "
 }
 
+# Function to download file from GitHub
+download_file() {
+    local url="$1"
+    local local_path="$2"
+    local file_name="$3"
+
+    print_status "Downloading $file_name..."
+
+    if curl -fsSL "$url" -o "$local_path"; then
+        print_success "Downloaded $file_name successfully"
+        return 0
+    else
+        print_error "Failed to download $file_name from $url"
+        return 1
+    fi
+}
+
+# Function to update scripts from GitHub
+update_scripts() {
+    local comfyui_dir="$1"
+
+    print_status "Updating necessary scripts from GitHub..."
+
+    # GitHub repository details
+    local github_repo="zeroclue/ComfyUI-docker"
+    local github_branch="main"
+    local base_url="https://raw.githubusercontent.com/${github_repo}/${github_branch}"
+
+    # List of scripts to update
+    local scripts=(
+        "scripts/preset_updater.py:Preset Updater"
+        "scripts/preset_validator.py:Preset Validator"
+        "scripts/generate_download_scripts.py:Download Scripts Generator"
+        "scripts/unified_downloader.py:Unified Downloader"
+    )
+
+    local updated_count=0
+    local total_count=${#scripts[@]}
+
+    for script_info in "${scripts[@]}"; do
+        IFS=':' read -r script_path script_name <<< "$script_info"
+
+        local local_file="${comfyui_dir}/${script_path}"
+        local remote_url="${base_url}/${script_path}"
+
+        # Create backup of existing script if it exists
+        if [[ -f "$local_file" ]]; then
+            cp "$local_file" "${local_file}.backup.$(date +%Y%m%d_%H%M%S)"
+            print_status "Backed up existing $script_name"
+        fi
+
+        # Download updated script
+        if download_file "$remote_url" "$local_file" "$script_name"; then
+            chmod +x "$local_file" 2>/dev/null || true  # Make executable if possible
+            ((updated_count++))
+            print_success "Updated $script_name"
+        else
+            print_warning "Failed to update $script_name, continuing with others..."
+        fi
+    done
+
+    print_status "Updated $updated_count/$total_count scripts"
+    return $((total_count - updated_count))
+}
+
 # Function to validate migrated schema
 validate_schema() {
     local schema_file="$1"
@@ -208,29 +273,42 @@ main() {
     # Create backup directory if it doesn't exist
     mkdir -p "$BACKUP_DIR"
 
-    # Check if migration is needed
+    # Update scripts first (always update to ensure compatibility)
+    print_status "Updating migration and preset management scripts..."
+    update_scripts "$COMFYUI_DIR"
+    script_update_result=$?
+
+    # Check if schema migration is needed
     if check_schema_needs_migration "$SCHEMA_FILE"; then
         print_status "Schema needs migration"
+
+        # Create backup
+        create_backup "$SCHEMA_FILE" "$BACKUP_DIR"
+
+        # Migrate schema
+        migrate_schema "$SCHEMA_FILE"
+
+        # Validate migrated schema
+        if validate_schema "$SCHEMA_FILE"; then
+            print_success "Schema migration completed successfully!"
+            print_status "You can now run the preset update process again."
+            print_status "The backup was saved to: $BACKUP_DIR/presets-schema_*.json"
+        else
+            print_error "Schema migration failed! Please check the backup and try manually."
+            exit 1
+        fi
     else
-        print_success "Schema is already up to date. No migration needed."
-        exit 0
+        print_success "Schema is already up to date."
     fi
 
-    # Create backup
-    create_backup "$SCHEMA_FILE" "$BACKUP_DIR"
-
-    # Migrate schema
-    migrate_schema "$SCHEMA_FILE"
-
-    # Validate migrated schema
-    if validate_schema "$SCHEMA_FILE"; then
-        print_success "Schema migration completed successfully!"
-        print_status "You can now run the preset update process again."
-        print_status "The backup was saved to: $BACKUP_DIR/presets-schema_*.json"
+    # Report final status
+    if [[ $script_update_result -eq 0 ]]; then
+        print_success "All scripts updated successfully!"
     else
-        print_error "Schema migration failed! Please check the backup and try manually."
-        exit 1
+        print_warning "Some script updates failed. Check the logs above."
     fi
+
+    print_status "Migration process completed. You can now run preset updates normally."
 }
 
 # Check if Python 3 is available

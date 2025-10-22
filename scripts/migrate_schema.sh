@@ -38,7 +38,19 @@ detect_comfyui_dir() {
         return 0
     fi
 
-    # Common locations to check
+    # Check for container environment first
+    if [[ -f "/workspace/config/presets-schema.json" ]]; then
+        echo "/"  # In container, base directory is root
+        return 0
+    fi
+
+    # Check if we're in scripts directory within container
+    if [[ "$(pwd)" == "/scripts" ]] && [[ -f "/workspace/config/presets-schema.json" ]]; then
+        echo "/"  # Base directory is root in container
+        return 0
+    fi
+
+    # Common locations to check (for local/non-container environments)
     local locations=(
         "$HOME/ComfyUI-docker"
         "$HOME/projects/ComfyUI-docker"
@@ -259,7 +271,7 @@ update_scripts() {
     for script_info in "${scripts[@]}"; do
         IFS=':' read -r script_path script_name <<< "$script_info"
 
-        local local_file="${comfyui_dir}/${script_path}"
+        local local_file="${SCRIPTS_DIR:-${comfyui_dir}/${script_path}}"
         local remote_url="${base_url}/${script_path}"
 
         # Create backup of existing script if it exists
@@ -338,9 +350,18 @@ main() {
 
     print_status "Found ComfyUI-docker directory: $COMFYUI_DIR"
 
-    # Define file paths
-    SCHEMA_FILE="$COMFYUI_DIR/config/presets-schema.json"
-    BACKUP_DIR="$COMFYUI_DIR/config/backups"
+    # Define file paths (handle container environment)
+    if [[ "$COMFYUI_DIR" == "/" ]]; then
+        # Container environment
+        SCHEMA_FILE="/workspace/config/presets-schema.json"
+        BACKUP_DIR="/workspace/config/backups"
+        SCRIPTS_DIR="/scripts"
+    else
+        # Local/non-container environment
+        SCHEMA_FILE="$COMFYUI_DIR/config/presets-schema.json"
+        BACKUP_DIR="$COMFYUI_DIR/config/backups"
+        SCRIPTS_DIR="$COMFYUI_DIR/scripts"
+    fi
 
     # Check if schema file exists
     if [[ ! -f "$SCHEMA_FILE" ]]; then

@@ -126,6 +126,75 @@ class PresetUpdater:
         except Exception as e:
             return False, f"Validation failed: {str(e)}"
 
+    def check_schema_migration_needed(self) -> bool:
+        """Check if schema needs migration for backward compatibility"""
+        if not self.local_schema_path.exists():
+            return False
+
+        try:
+            with open(self.local_schema_path, 'r') as f:
+                schema = json.load(f)
+
+            # Check if metadata properties need to be added
+            metadata_props = schema.get('properties', {}).get('metadata', {}).get('properties', {})
+
+            # Check if new properties are missing
+            needs_migration = (
+                'total_presets' not in metadata_props or
+                'new_presets_from_docs' not in metadata_props
+            )
+
+            if needs_migration:
+                self.log("Schema missing new metadata properties, migration needed")
+
+            return needs_migration
+
+        except Exception as e:
+            self.log(f"Error checking schema migration: {e}", "ERROR")
+            return False
+
+    def migrate_schema(self) -> bool:
+        """Migrate schema to support new metadata properties"""
+        try:
+            with open(self.local_schema_path, 'r') as f:
+                schema = json.load(f)
+
+            # Get metadata properties section
+            metadata_props = schema.get('properties', {}).get('metadata', {}).get('properties', {})
+
+            # Add missing properties
+            added_total_presets = False
+            added_new_presets = False
+
+            if 'total_presets' not in metadata_props:
+                metadata_props['total_presets'] = {
+                    'type': 'number',
+                    'description': 'Total number of presets in configuration'
+                }
+                added_total_presets = True
+
+            if 'new_presets_from_docs' not in metadata_props:
+                metadata_props['new_presets_from_docs'] = {
+                    'type': 'number',
+                    'description': 'Number of new presets added from documentation'
+                }
+                added_new_presets = True
+
+            # Write updated schema back to file
+            with open(self.local_schema_path, 'w') as f:
+                json.dump(schema, f, indent=2)
+
+            if added_total_presets:
+                self.log("✓ Added total_presets property to schema")
+            if added_new_presets:
+                self.log("✓ Added new_presets_from_docs property to schema")
+
+            return added_total_presets or added_new_presets
+
+        except Exception as e:
+            self.log(f"Error migrating schema: {e}", "ERROR")
+            return False
+
     def create_backup(self, file_path: Path) -> Optional[Path]:
         """Create backup of file"""
         if not file_path.exists():
@@ -214,6 +283,17 @@ class PresetUpdater:
                 schema_updated = True
             else:
                 errors.append("Failed to download schema")
+
+        # Check if schema migration is needed (fix for backward compatibility)
+        if self.local_schema_path.exists():
+            migration_needed = self.check_schema_migration_needed()
+            if migration_needed:
+                self.log("Schema migration needed for backward compatibility...")
+                if self.migrate_schema():
+                    self.log("Schema migration completed successfully")
+                    schema_updated = True
+                else:
+                    errors.append("Schema migration failed")
 
         # Download presets
         if update_check["presets_update_available"] or force:

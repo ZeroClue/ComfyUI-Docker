@@ -3,11 +3,20 @@
   "title": "ComfyUI Presets Configuration Schema",
   "description": "Schema for validating ComfyUI presets configuration files",
   "type": "object",
-  "required": ["metadata", "categories", "presets"],
+  "required": [
+    "metadata",
+    "categories",
+    "presets"
+  ],
   "properties": {
     "metadata": {
       "type": "object",
-      "required": ["version", "last_updated", "description", "schema_version"],
+      "required": [
+        "version",
+        "last_updated",
+        "description",
+        "schema_version"
+      ],
       "properties": {
         "version": {
           "type": "string",
@@ -28,6 +37,14 @@
           "type": "string",
           "pattern": "^\\d+\\.\\d+$",
           "description": "Schema version for compatibility checking"
+        },
+        "total_presets": {
+          "type": "number",
+          "description": "Total number of presets in configuration"
+        },
+        "new_presets_from_docs": {
+          "type": "number",
+          "description": "Number of new presets added from documentation"
         }
       },
       "additionalProperties": false
@@ -37,7 +54,10 @@
       "patternProperties": {
         "^[A-Z][A-Za-z\\s]+$": {
           "type": "object",
-          "required": ["description", "type"],
+          "required": [
+            "description",
+            "type"
+          ],
           "properties": {
             "description": {
               "type": "string",
@@ -46,7 +66,11 @@
             },
             "type": {
               "type": "string",
-              "enum": ["video", "image", "audio"],
+              "enum": [
+                "video",
+                "image",
+                "audio"
+              ],
               "description": "Type of content this category generates"
             }
           },
@@ -60,7 +84,16 @@
       "patternProperties": {
         "^[A-Z][A-Z0-9_]*$": {
           "type": "object",
-          "required": ["name", "category", "type", "description", "download_size", "files", "use_case", "tags"],
+          "required": [
+            "name",
+            "category",
+            "type",
+            "description",
+            "download_size",
+            "files",
+            "use_case",
+            "tags"
+          ],
           "properties": {
             "name": {
               "type": "string",
@@ -74,7 +107,11 @@
             },
             "type": {
               "type": "string",
-              "enum": ["video", "image", "audio"],
+              "enum": [
+                "video",
+                "image",
+                "audio"
+              ],
               "description": "Type of content this preset generates"
             },
             "description": {
@@ -92,7 +129,11 @@
               "minItems": 1,
               "items": {
                 "type": "object",
-                "required": ["path", "url", "size"],
+                "required": [
+                  "path",
+                  "url",
+                  "size"
+                ],
                 "properties": {
                   "path": {
                     "type": "string",

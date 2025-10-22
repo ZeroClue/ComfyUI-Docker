@@ -139,21 +139,99 @@ migrate_schema()
 "
 }
 
+# Function to check prerequisites
+check_prerequisites() {
+    local comfyui_dir="$1"
+
+    print_status "Checking prerequisites..."
+
+    # Check network connectivity
+    if ! curl -s --connect-timeout 10 "https://github.com" >/dev/null; then
+        print_error "Cannot connect to GitHub. Check your network connection."
+        return 1
+    fi
+
+    # Check write permissions in scripts directory
+    local scripts_dir="${comfyui_dir}/scripts"
+    if [[ -d "$scripts_dir" ]]; then
+        if ! touch "${scripts_dir}/.test_write" 2>/dev/null; then
+            print_error "No write permission in scripts directory: $scripts_dir"
+            return 1
+        fi
+        rm -f "${scripts_dir}/.test_write" 2>/dev/null || true
+    else
+        # Create scripts directory if it doesn't exist
+        if ! mkdir -p "$scripts_dir" 2>/dev/null; then
+            print_error "Cannot create scripts directory: $scripts_dir"
+            return 1
+        fi
+    fi
+
+    # Check write permissions in config directory
+    if ! touch "${comfyui_dir}/config/.test_write" 2>/dev/null; then
+        print_error "No write permission in config directory: ${comfyui_dir}/config"
+        return 1
+    fi
+    rm -f "${comfyui_dir}/config/.test_write" 2>/dev/null || true
+
+    print_success "Prerequisites check passed"
+    return 0
+}
+
+# Function to check if file exists on GitHub
+check_file_exists() {
+    local url="$1"
+
+    # Use GitHub API to check if file exists
+    local api_url="${url/\/raw\./\/api}"
+
+    if curl -s -f -o /dev/null "$url"; then
+        return 0  # File exists
+    else
+        return 1  # File doesn't exist
+    fi
+}
+
 # Function to download file from GitHub
 download_file() {
     local url="$1"
     local local_path="$2"
     local file_name="$3"
+    local max_retries=3
+    local retry_count=0
 
     print_status "Downloading $file_name..."
 
-    if curl -fsSL "$url" -o "$local_path"; then
-        print_success "Downloaded $file_name successfully"
-        return 0
-    else
-        print_error "Failed to download $file_name from $url"
+    # Create directory if it doesn't exist
+    local dir_path
+    dir_path="$(dirname "$local_path")"
+    if ! mkdir -p "$dir_path" 2>/dev/null; then
+        print_error "Cannot create directory: $dir_path"
         return 1
     fi
+
+    # Check if file exists remotely first
+    if ! check_file_exists "$url"; then
+        print_warning "File not found on GitHub: $file_name"
+        return 1
+    fi
+
+    # Download with retry logic
+    while [[ $retry_count -lt $max_retries ]]; do
+        if curl -fsSL --connect-timeout 30 --max-time 300 "$url" -o "$local_path" 2>/dev/null; then
+            print_success "Downloaded $file_name successfully"
+            return 0
+        else
+            ((retry_count++))
+            if [[ $retry_count -lt $max_retries ]]; then
+                print_warning "Download attempt $retry_count failed, retrying..."
+                sleep 2
+            fi
+        fi
+    done
+
+    print_error "Failed to download $file_name after $max_retries attempts"
+    return 1
 }
 
 # Function to update scripts from GitHub
@@ -163,7 +241,7 @@ update_scripts() {
     print_status "Updating necessary scripts from GitHub..."
 
     # GitHub repository details
-    local github_repo="zeroclue/ComfyUI-docker"
+    local github_repo="ZeroClue/ComfyUI-Docker"
     local github_branch="main"
     local base_url="https://raw.githubusercontent.com/${github_repo}/${github_branch}"
 
@@ -172,7 +250,7 @@ update_scripts() {
         "scripts/preset_updater.py:Preset Updater"
         "scripts/preset_validator.py:Preset Validator"
         "scripts/generate_download_scripts.py:Download Scripts Generator"
-        "scripts/unified_downloader.py:Unified Downloader"
+        "scripts/unified_preset_downloader.py:Unified Preset Downloader"
     )
 
     local updated_count=0
@@ -247,7 +325,7 @@ except Exception as e:
 
 # Main execution
 main() {
-    print_status "ComfyUI Preset Schema Migration Script"
+    print_status "ComfyUI Preset System Migration Script"
     print_status "====================================="
 
     # Detect ComfyUI-docker directory
@@ -272,6 +350,12 @@ main() {
 
     # Create backup directory if it doesn't exist
     mkdir -p "$BACKUP_DIR"
+
+    # Run pre-flight checks
+    if ! check_prerequisites "$COMFYUI_DIR"; then
+        print_error "Pre-flight checks failed. Cannot proceed with migration."
+        exit 1
+    fi
 
     # Update scripts first (always update to ensure compatibility)
     print_status "Updating migration and preset management scripts..."

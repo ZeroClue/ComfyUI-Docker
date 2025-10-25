@@ -1,10 +1,10 @@
 metadata:
-  version: 1.2.0
-  last_updated: '2025-10-16T14:55:00.000000Z'
+  version: 1.5.0
+  last_updated: '2025-10-25T16:00:00.000000Z'
   description: ComfyUI preset definitions for image, video, and audio generation models
-    with official documentation workflows
+    with official documentation workflows - all preset purpose deviations fixed and missing components added
   schema_version: '1.0'
-  total_presets: 52
+  total_presets: 56
   new_presets_from_docs: 50
 categories:
   Video Generation:
@@ -22,7 +22,7 @@ presets:
     category: Video Generation
     type: video
     description: LTX-Video text-to-video workflow from ComfyUI documentation
-    download_size: 9.7GB
+    download_size: 14.5GB
     files:
     - path: checkpoints/ltx-video-2b-v0.9.5.safetensors
       url: https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors
@@ -30,6 +30,12 @@ presets:
     - path: text_encoders/t5xxl_fp16.safetensors
       url: https://huggingface.co/Comfy-Org/mochi_preview_repackaged/resolve/main/split_files/text_encoders/t5xxl_fp16.safetensors
       size: 4.9GB
+    - path: text_encoders/PixArt-XL-2-1024-MS/text_encoder/model-00001-of-00002.safetensors
+      url: https://huggingface.co/PixArt-alpha/PixArt-XL-2-1024-MS/resolve/main/text_encoder/model-00001-of-00002.safetensors
+      size: 2.3GB
+    - path: text_encoders/PixArt-XL-2-1024-MS/text_encoder/model-00002-of-00002.safetensors
+      url: https://huggingface.co/PixArt-alpha/PixArt-XL-2-1024-MS/resolve/main/text_encoder/model-00002-of-00002.safetensors
+      size: 2.5GB
     use_case: Efficient video generation with long descriptive prompts
     tags:
     - ltx
@@ -42,14 +48,23 @@ presets:
     category: Video Generation
     type: video
     description: LTX-Video image-to-video workflow from ComfyUI documentation
-    download_size: 9.7GB
+    download_size: 16.1GB
     files:
     - path: checkpoints/ltx-video-2b-v0.9.5.safetensors
       url: https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors
       size: 4.8GB
+    - path: clip_vision/sd_image_encoder.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-2-1/resolve/main/image_encoder/model.safetensors
+      size: 1.6GB
     - path: text_encoders/t5xxl_fp16.safetensors
       url: https://huggingface.co/Comfy-Org/mochi_preview_repackaged/resolve/main/split_files/text_encoders/t5xxl_fp16.safetensors
       size: 4.9GB
+    - path: text_encoders/PixArt-XL-2-1024-MS/text_encoder/model-00001-of-00002.safetensors
+      url: https://huggingface.co/PixArt-alpha/PixArt-XL-2-1024-MS/resolve/main/text_encoder/model-00001-of-00002.safetensors
+      size: 2.3GB
+    - path: text_encoders/PixArt-XL-2-1024-MS/text_encoder/model-00002-of-00002.safetensors
+      url: https://huggingface.co/PixArt-alpha/PixArt-XL-2-1024-MS/resolve/main/text_encoder/model-00002-of-00002.safetensors
+      size: 2.5GB
     use_case: Convert static images to animated videos with LTX efficiency
     tags:
     - ltx
@@ -62,7 +77,7 @@ presets:
     category: Video Generation
     type: video
     description: LTX-Video multi-frame control workflow from ComfyUI documentation
-    download_size: 9.7GB
+    download_size: 14.5GB
     files:
     - path: checkpoints/ltx-video-2b-v0.9.5.safetensors
       url: https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors
@@ -70,6 +85,12 @@ presets:
     - path: text_encoders/t5xxl_fp16.safetensors
       url: https://huggingface.co/Comfy-Org/mochi_preview_repackaged/resolve/main/split_files/text_encoders/t5xxl_fp16.safetensors
       size: 4.9GB
+    - path: text_encoders/PixArt-XL-2-1024-MS/text_encoder/model-00001-of-00002.safetensors
+      url: https://huggingface.co/PixArt-alpha/PixArt-XL-2-1024-MS/resolve/main/text_encoder/model-00001-of-00002.safetensors
+      size: 2.3GB
+    - path: text_encoders/PixArt-XL-2-1024-MS/text_encoder/model-00002-of-00002.safetensors
+      url: https://huggingface.co/PixArt-alpha/PixArt-XL-2-1024-MS/resolve/main/text_encoder/model-00002-of-00002.safetensors
+      size: 2.5GB
     use_case: Control video generation with multiple reference frames
     tags:
     - ltx
@@ -258,7 +279,7 @@ presets:
     category: Video Generation
     type: video
     description: Wan 2.2 sound-to-video model in FP8 format
-    download_size: 6.3GB
+    download_size: 7.7GB
     files:
     - path: diffusion_models/Wan2.2_S2V_FP8.safetensors
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/Wan2.2_S2V_FP8.safetensors
@@ -266,6 +287,9 @@ presets:
     - path: audio_encoders/audio_encoder.pth
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/audio_encoder.pth
       size: 1.2GB
+    - path: vae/wan2.2_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
+      size: 1.41GB
     use_case: Audio-to-video generation
     tags:
     - wan
@@ -278,7 +302,7 @@ presets:
     category: Video Generation
     type: video
     description: WAN 2.2 basic text-to-video workflow from ComfyUI documentation
-    download_size: 14.1GB
+    download_size: 15.5GB
     files:
     - path: diffusion_models/Wan2.2_T2V_5B.safetensors
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/Wan2.2_T2V_5B.safetensors
@@ -286,6 +310,9 @@ presets:
     - path: text_encoders/t5xxl_fp16.safetensors
       url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
       size: 4.9GB
+    - path: vae/wan2.2_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
+      size: 1.41GB
     use_case: Basic text-to-video generation following ComfyUI official workflow
     tags:
     - wan
@@ -293,19 +320,47 @@ presets:
     - basic
     - official
     - workflow
+  WAN_22_5B_TIV2:
+    name: WAN 2.2 T2V Legacy
+    category: Video Generation
+    type: video
+    description: 'Legacy alias for WAN 2.2 5B parameter text-to-video generation model (deprecated: use WAN_2_2_T2V_BASIC)'
+    download_size: 15.5GB
+    files:
+    - path: diffusion_models/Wan2.2_T2V_5B.safetensors
+      url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/Wan2.2_T2V_5B.safetensors
+      size: 9.2GB
+    - path: text_encoders/t5xxl_fp16.safetensors
+      url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
+      size: 4.9GB
+    - path: vae/wan2.2_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
+      size: 1.41GB
+    use_case: Legacy text-to-video generation - consider migrating to WAN_2_2_T2V_BASIC
+    tags:
+    - wan
+    - t2v
+    - legacy
+    - deprecated
   WAN_2_2_I2V_BASIC:
     name: WAN 2.2 I2V Basic
     category: Video Generation
     type: video
     description: WAN 2.2 basic image-to-video workflow from ComfyUI documentation
-    download_size: 12.7GB
+    download_size: 15.7GB
     files:
     - path: diffusion_models/Wan2.2_I2V_14B_Q8_0.gguf
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/Wan2.2_I2V_14B_Q8_0.gguf
       size: 7.8GB
+    - path: clip_vision/sd_image_encoder.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-2-1/resolve/main/image_encoder/model.safetensors
+      size: 1.6GB
     - path: text_encoders/t5xxl_fp16.safetensors
       url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
       size: 4.9GB
+    - path: vae/wan2.2_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
+      size: 1.41GB
     use_case: Basic image-to-video conversion following ComfyUI official workflow
     tags:
     - wan
@@ -318,7 +373,7 @@ presets:
     category: Video Generation
     type: video
     description: WAN 2.2 sound-to-video workflow from ComfyUI documentation
-    download_size: 11.2GB
+    download_size: 12.6GB
     files:
     - path: diffusion_models/Wan2.2_S2V_FP8.safetensors
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/Wan2.2_S2V_FP8.safetensors
@@ -326,6 +381,12 @@ presets:
     - path: audio_encoders/audio_encoder.pth
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/audio_encoder.pth
       size: 1.2GB
+    - path: text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      size: 6.74GB
+    - path: vae/wan2.2_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
+      size: 1.41GB
     use_case: Audio-to-video generation with sound synchronization
     tags:
     - wan
@@ -338,7 +399,7 @@ presets:
     category: Video Generation
     type: video
     description: WAN 2.2 camera movement control workflow from ComfyUI documentation
-    download_size: 15.5GB
+    download_size: 16.9GB
     files:
     - path: diffusion_models/Wan2.2_T2V_5B.safetensors
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/Wan2.2_T2V_5B.safetensors
@@ -352,6 +413,9 @@ presets:
     - path: loras/wan22_lightning.safetensors
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/loras/wan22_lightning.safetensors
       size: 1.4GB
+    - path: vae/wan2.2_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
+      size: 1.41GB
     use_case: Advanced camera movement control in video generation
     tags:
     - wan
@@ -364,7 +428,7 @@ presets:
     category: Video Generation
     type: video
     description: WAN 2.2 advanced control workflow from ComfyUI documentation
-    download_size: 16.3GB
+    download_size: 17.7GB
     files:
     - path: diffusion_models/Wan2.2_T2V_5B.safetensors
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/Wan2.2_T2V_5B.safetensors
@@ -378,6 +442,9 @@ presets:
     - path: loras/wan22_lightning.safetensors
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/loras/wan22_lightning.safetensors
       size: 1.4GB
+    - path: vae/wan2.2_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
+      size: 1.41GB
     use_case: Advanced control mechanisms for precise video generation
     tags:
     - wan
@@ -389,7 +456,7 @@ presets:
     category: Video Generation
     type: video
     description: WAN 2.2 inpainting workflow from ComfyUI documentation
-    download_size: 15.5GB
+    download_size: 16.9GB
     files:
     - path: diffusion_models/Wan2.2_T2V_5B.safetensors
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/models/Wan2.2_T2V_5B.safetensors
@@ -403,6 +470,9 @@ presets:
     - path: loras/wan22_lightning.safetensors
       url: https://huggingface.co/Wailicv/Wan2.2/resolve/main/loras/wan22_lightning.safetensors
       size: 1.4GB
+    - path: vae/wan2.2_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
+      size: 1.41GB
     use_case: Video inpainting and content modification
     tags:
     - wan
@@ -414,7 +484,7 @@ presets:
     category: Video Generation
     type: video
     description: Complete video generation workflow with all models
-    download_size: 25GB
+    download_size: 26.4GB
     files:
     - path: diffusion_models/LTXV_2B_FP8_SCALED.safetensors
       url: https://huggingface.co/Lightricks/LTXV/resolve/main/transformers/diffusion_pytorch_model.safetensors
@@ -437,6 +507,9 @@ presets:
     - path: upscale_models/4x_NMKD-Siax_xl.pth
       url: https://huggingface.co/Guillaume-M/4x_NMKD-Siax_xl/resolve/main/4x_NMKD-Siax_xl.pth
       size: 690MB
+    - path: vae/wan2.2_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
+      size: 1.41GB
     use_case: Full video generation capabilities
     tags:
     - complete
@@ -448,11 +521,14 @@ presets:
     category: Image Generation
     type: image
     description: Stable Diffusion 1.5 basic text-to-image workflow from ComfyUI documentation
-    download_size: 4.0GB
+    download_size: 5.97GB
     files:
     - path: checkpoints/v1-5-pruned-emaonly-fp16.safetensors
-      url: https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive/blob/main/v1-5-pruned-emaonly-fp16.safetensors
-      size: 4.0GB
+      url: https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive/resolve/main/v1-5-pruned-emaonly-fp16.safetensors
+      size: 4.27GB
+    - path: text_encoders/clip_l.safetensors
+      url: https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/pytorch_model.bin
+      size: 1.7GB
     use_case: Basic text-to-image generation following official ComfyUI workflow
     tags:
     - sd1.5
@@ -584,6 +660,9 @@ presets:
     - path: diffusion_models/flux1-schnell.safetensors
       url: https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/flux1-schnell.safetensors
       size: 12GB
+    - path: text_encoders/clip_l.safetensors
+      url: https://huggingface.co/Comfy-Org/FLUX.1-dev/resolve/main/text_encoders/clip_l.safetensors
+      size: 246MB
     - path: text_encoders/t5xxl_fp16.safetensors
       url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
       size: 4.9GB
@@ -606,6 +685,9 @@ presets:
     - path: diffusion_models/flux1-dev.safetensors
       url: https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors
       size: 12GB
+    - path: text_encoders/clip_l.safetensors
+      url: https://huggingface.co/Comfy-Org/FLUX.1-dev/resolve/main/text_encoders/clip_l.safetensors
+      size: 246MB
     - path: text_encoders/t5xxl_fp16.safetensors
       url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
       size: 4.9GB
@@ -906,15 +988,15 @@ presets:
     category: Audio Generation
     type: audio
     description: Complete audio generation suite with all models
-    download_size: 15GB
+    download_size: 10.9GB
     files:
-    - path: audio/musicgen_medium.safetensors
+    - path: audio_encoders/musicgen_medium.safetensors
       url: https://huggingface.co/facebook/musicgen-medium/resolve/main/pytorch_model.bin
       size: 2.8GB
-    - path: audio/musicgen_small.safetensors
+    - path: audio_encoders/musicgen_small.safetensors
       url: https://huggingface.co/facebook/musicgen-small/resolve/main/pytorch_model.bin
       size: 1.3GB
-    - path: audio/stable_audio_open.safetensors
+    - path: audio_encoders/stable_audio_open.safetensors
       url: https://huggingface.co/stabilityai/stable-audio-open-1.0/resolve/main/model.safetensors
       size: 2.4GB
     - path: TTS/bark_model.pth
@@ -1021,14 +1103,17 @@ presets:
     category: Video Generation
     type: video
     description: NVIDIA Cosmos Predict2 Video2World for physical world video prediction
-    download_size: 24.5GB
+    download_size: 31.4GB
     files:
     - path: diffusion_models/cosmos_predict2_video2world.safetensors
       url: https://huggingface.co/nvidia/Cosmos-Predict2/resolve/main/cosmos_predict2_video2world.safetensors
       size: 24.5GB
-    - path: text_encoders/t5xxl_fp16.safetensors
-      url: https://huggingface.co/Comfy-Org/sd3-t5xxlfp16/resolve/main/t5xxl_fp16.safetensors
-      size: 4.9GB
+    - path: vae/wan_2.1_vae.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors
+      size: 254MB
+    - path: text_encoders/oldt5_xxl_fp8_e4m3fn_scaled.safetensors
+      url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/oldt5_xxl_fp8_e4m3fn_scaled.safetensors
+      size: 6.6GB
     use_case: Physical world-aware video generation and prediction
     tags:
     - cosmos
@@ -1074,7 +1159,7 @@ presets:
     - path: audio_encoders/ace_audio_encoder.pth
       url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/audio_encoder.pth
       size: 100MB
-    - path: audio/music_continuation_model.pth
+    - path: audio_encoders/music_continuation_model.pth
       url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/music_continuation.pth
       size: 50MB
     use_case: Extend and continue existing music pieces with AI generation
@@ -1098,10 +1183,10 @@ presets:
     - path: audio_encoders/ace_audio_encoder.pth
       url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/audio_encoder.pth
       size: 100MB
-    - path: audio/multi_track_processor.pth
+    - path: audio_encoders/multi_track_processor.pth
       url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/multi_track_processor.pth
       size: 200MB
-    - path: audio/instrument_separator.pth
+    - path: audio_encoders/instrument_separator.pth
       url: https://huggingface.co/billwuhao/ComfyUI_ACE-Step/resolve/main/models/instrument_separator.pth
       size: 300MB
     use_case: Generate and process complex multi-track music compositions
@@ -1177,6 +1262,10 @@ presets:
     - path: diffusion_models/wan2.2_ti2v_5B_fp16.safetensors
       url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors
       size: 9.31GB (9536MB)
+      optional: false
+    - path: clip_vision/sd_image_encoder.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-2-1/resolve/main/image_encoder/model.safetensors
+      size: 1.6GB
       optional: false
     - path: vae/wan2.2_vae.safetensors
       url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors
@@ -1256,6 +1345,9 @@ presets:
     - path: diffusion_models/wan2.1_i2v_14b.safetensors
       url: https://huggingface.co/Wailicv/WAN2.1/resolve/main/models/wan2.1_i2v_14b.safetensors
       size: 7.2GB
+    - path: clip_vision/sd_image_encoder.safetensors
+      url: https://huggingface.co/stabilityai/stable-diffusion-2-1/resolve/main/image_encoder/model.safetensors
+      size: 1.6GB
     - path: text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
       url: https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
       size: 6.74GB

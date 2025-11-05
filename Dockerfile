@@ -47,10 +47,12 @@ RUN uv python install ${PYTHON_VERSION} --default --preview && \
     uv venv --seed /venv
 ENV PATH="/venv/bin:$PATH"
 
-# Install Python packages that need compilation
-RUN pip install --no-cache-dir -U \
-    pip setuptools wheel \
-    torch==${TORCH_VERSION} torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
+# Install PyTorch and core dependencies using UV (faster than pip)
+RUN uv pip install --no-cache-dir -U \
+    pip setuptools wheel && \
+    uv pip install --no-cache-dir \
+    torch==${TORCH_VERSION} torchvision torchaudio \
+    --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
 
 # ==========================================
 # Runtime Stage - Production optimized
@@ -84,10 +86,11 @@ ENV HF_HOME="${RP_WORKSPACE}/.cache/huggingface/"
 ENV HF_HUB_ENABLE_HF_TRANSFER=1
 ENV HF_XET_HIGH_PERFORMANCE=1
 
-# Shared python package cache
-ENV VIRTUALENV_OVERRIDE_APP_DATA="${RP_WORKSPACE}/.cache/virtualenv/"
-ENV PIP_CACHE_DIR="${RP_WORKSPACE}/.cache/pip/"
-ENV UV_CACHE_DIR="${RP_WORKSPACE}/.cache/uv/"
+# CRITICAL FIX: Use local cache directories for better performance
+# Shared python package cache - LOCAL for performance, not network storage
+ENV VIRTUALENV_OVERRIDE_APP_DATA="/root/.cache/virtualenv/"
+ENV PIP_CACHE_DIR="/root/.cache/pip/"
+ENV UV_CACHE_DIR="/root/.cache/uv/"
 
 # modern pip workarounds
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
@@ -115,40 +118,46 @@ RUN apt-get install --yes --no-install-recommends \
 # Install the UV tool from astral-sh
 ADD https://astral.sh/uv/install.sh /uv-installer.sh
 RUN sh /uv-installer.sh && rm /uv-installer.sh
-ENV PATH="/root/.local/bin/:$PATH"
 
-# Install Python and create virtual environment
-RUN uv python install ${PYTHON_VERSION} --default --preview && \
-    uv venv --seed /venv
-ENV PATH="/workspace/venv/bin:/venv/bin:$PATH"
+# CRITICAL FIX: Ensure UV is in PATH for runtime use
+ENV PATH="/root/.local/bin:/venv/bin:$PATH"
+
+# Install Python (no venv creation - will copy from builder)
+RUN uv python install ${PYTHON_VERSION} --default --preview
 
 # Copy Python packages from builder stage
 COPY --from=builder /venv /venv
 
-# Install essential Python packages
-RUN pip install --no-cache-dir -U \
+# Validate virtual environment is functional
+RUN python -c "import sys; print(f'Python: {sys.version}')" && \
+    which python && \
+    which pip && \
+    uv pip list
+
+# Install essential Python packages using UV for better performance
+RUN uv pip install --no-cache-dir -U \
     pip setuptools wheel \
     huggingface_hub hf_transfer \
     numpy requests tqdm pillow pyyaml \
     triton
 
 # Install Flask web framework for preset manager
-RUN pip install --no-cache-dir -U \
+RUN uv pip install --no-cache-dir -U \
     flask python-markdown \
     pygments Flask Flask-Session \
     markdown
 
-# Conditionally install development and science packages
+# Conditionally install development and science packages (layered for better caching)
 RUN if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \
         echo "Installing development tools..." && \
-        pip install --no-cache-dir jupyterlab jupyterlab_widgets ipykernel ipywidgets; \
+        uv pip install --no-cache-dir jupyterlab jupyterlab_widgets ipykernel ipywidgets; \
     else \
         echo "Skipping development tools installation."; \
     fi
 
 RUN if [ "$INSTALL_SCIENCE_PACKAGES" = "true" ]; then \
         echo "Installing science packages..." && \
-        pip install --no-cache-dir scipy matplotlib pandas scikit-learn seaborn; \
+        uv pip install --no-cache-dir scipy matplotlib pandas scikit-learn seaborn; \
     else \
         echo "Skipping science packages installation."; \
     fi
@@ -156,18 +165,29 @@ RUN if [ "$INSTALL_SCIENCE_PACKAGES" = "true" ]; then \
 # Install ComfyUI and ComfyUI Manager
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git && \
     cd ComfyUI && \
-    pip install --no-cache-dir -r requirements.txt && \
+    uv pip install --no-cache-dir -r requirements.txt && \
     git clone https://github.com/ltdrdata/ComfyUI-Manager.git custom_nodes/ComfyUI-Manager && \
     cd custom_nodes/ComfyUI-Manager && \
-    pip install --no-cache-dir -r requirements.txt
+    uv pip install --no-cache-dir -r requirements.txt
 
 COPY custom_nodes.txt /custom_nodes.txt
 
+# OPTIMIZATION: Only install essential custom nodes in base image
+# Additional nodes will be installed at runtime for better flexibility
 RUN if [ -z "$SKIP_CUSTOM_NODES" ]; then \
+        echo "Installing essential custom nodes only..." && \
         cd /ComfyUI/custom_nodes && \
-        xargs -n 1 git clone --recursive < /custom_nodes.txt && \
-        find /ComfyUI/custom_nodes -name "requirements.txt" -exec pip install --no-cache-dir -r {} \; && \
-        find /ComfyUI/custom_nodes -name "install.py" -exec python {} \; ; \
+        # Install only core nodes that are commonly needed
+        for repo in "https://github.com/ComfyUI-Manager/ComfyUI-Manager.git" \
+                     "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git"; do \
+            if grep -q "$(basename "$repo" .git)" /custom_nodes.txt; then \
+                echo "Installing $(basename "$repo" .git)"; \
+                git clone "$repo"; \
+            fi; \
+        done && \
+        # Install requirements for only these essential nodes
+        find /ComfyUI/custom_nodes -maxdepth 2 -name "requirements.txt" -exec uv pip install --no-cache-dir -r {} \; && \
+        find /ComfyUI/custom_nodes -maxdepth 2 -name "install.py" -exec python {} \; ; \
     else \
         echo "Skipping custom nodes installation because SKIP_CUSTOM_NODES is set"; \
     fi
@@ -231,6 +251,13 @@ COPY --chmod=644 workspace/docs/presets/ /app/workspace/docs/presets/
 COPY logo/zeroclue.txt /etc/zeroclue.txt
 RUN echo 'cat /etc/zeroclue.txt' >> /root/.bashrc
 RUN echo 'echo -e "\nFor detailed documentation and guides, please visit:\n\033[1;34mhttps://docs.runpod.io/\033[0m and \033[1;34mhttps://blog.runpod.io/\033[0m\n\n"' >> /root/.bashrc
+
+# Add build information for debugging
+RUN echo "Build timestamp: $(date)" > /build-info.txt && \
+    echo "UV version: $(uv --version)" >> /build-info.txt && \
+    echo "Python version: $(python --version)" >> /build-info.txt && \
+    echo "CUDA version: ${CUDA_VERSION}" >> /build-info.txt && \
+    echo "PyTorch version: ${TORCH_VERSION}" >> /build-info.txt
 
 # Set entrypoint to the start script
 CMD ["/start.sh"]

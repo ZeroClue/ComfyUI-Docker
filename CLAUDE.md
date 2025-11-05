@@ -173,3 +173,6 @@ All models are installed to `/workspace/ComfyUI/models/` with standardized paths
 - `audio_encoders/`: Audio processing models
 - `loras/`: LoRA adapters and enhancement models
 - `upscale_models/`: Image upscaling models
+- you can always ask to connect to the runpod cpu node by asking for the ssh connection
+- runpod documentation for building docker images: https://docs.runpod.io/tutorials/pods/build-docker-images
+- example github repository for building docker images on runpod: https://github.com/therealadityashankar/build-docker-in-runpod.git

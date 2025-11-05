@@ -168,9 +168,16 @@ start_preset_manager() {
 
 start_nginx
 
+# Start sync monitor in background for real-time progress tracking
+if [ -f "/scripts/sync_monitor.sh" ]; then
+    echo "Starting sync progress monitor..."
+    nohup /scripts/sync_monitor.sh > /dev/null 2>&1 &
+    echo "Sync monitor started - check /workspace/logs/sync_monitor.log for detailed progress"
+fi
+
 execute_script "/pre_start.sh" "Running pre-start script..."
 
-echo "Pod Started"
+echo "Pod Started - Optimizations applied"
 
 setup_ssh
 start_jupyter

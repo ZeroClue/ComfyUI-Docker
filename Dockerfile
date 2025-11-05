@@ -4,7 +4,9 @@
 
 # Set the base images for different stages
 ARG BASE_IMAGE=nvidia/cuda:12.6.3-devel-ubuntu24.04
-ARG RUNTIME_BASE_IMAGE=nvidia/cuda:12.6.3-runtime-ubuntu24.04
+ARG RUNTIME_BASE_IMAGE=nvidia/cuda:12.6.3-devel-ubuntu24.04
+#ARG RUNTIME_BASE_IMAGE=nvidia/cuda:12.6.3-runtime-ubuntu24.04
+
 
 # ==========================================
 # Builder Stage - Includes build tools

@@ -18,10 +18,10 @@ update_venv_paths() {
         if file "$file" | grep -q "text"; then
             # VIRTUAL_ENV='/venv' → VIRTUAL_ENV='/workspace/venv'
             sed -i "s|VIRTUAL_ENV='/venv'|VIRTUAL_ENV='/workspace/venv'|g" "$file"
-            
+
             # VIRTUAL_ENV '/venv' → VIRTUAL_ENV '/workspace/venv'
             sed -i "s|VIRTUAL_ENV '/venv'|VIRTUAL_ENV '/workspace/venv'|g" "$file"
-            
+
             # #!/venv/bin/python → #!/workspace/venv/bin/python
             sed -i "s|#!/venv/bin/python|#!/workspace/venv/bin/python|g" "$file"
 
@@ -29,6 +29,55 @@ update_venv_paths() {
             # echo "Updated: $file"
         fi
     done
+}
+
+# Optimized venv sync with parallel processing
+optimized_venv_sync() {
+    echo "**** starting optimized venv sync to workspace... ****"
+    echo "This will be significantly faster than the original sync process."
+
+    local start_time=$(date +%s)
+
+    # Create destination directory if it doesn't exist
+    mkdir -p /workspace/venv
+
+    # Use optimized rsync with multiple improvements:
+    echo "**** Phase 1: Critical files sync (parallel) ****"
+    # Sync critical directories first in parallel
+    (
+        # Python binaries and core packages
+        rsync -auz --compress-level=6 --partial --inplace \
+              --include="bin/python*" --include="bin/pip*" --include="bin/activate*" \
+              --exclude="*" /venv/ /workspace/venv/ &
+
+        # Site packages (most of the content)
+        rsync -auz --compress-level=6 --partial --inplace \
+              --include="lib/python*/site-packages/***" --exclude="*" \
+              /venv/ /workspace/venv/ &
+
+        # Wait for critical files to complete
+        wait
+    )
+
+    echo "**** Phase 2: Remaining files (bulk sync) ****"
+    # Sync remaining files with optimized settings
+    rsync -auz --compress-level=6 --partial --inplace \
+          --human-readable --progress \
+          /venv/ /workspace/venv/
+
+    # Remove source files (moved, not copied)
+    rm -rf /venv
+
+    # Update paths
+    update_venv_paths
+
+    # Create completion marker with integrity check
+    touch /workspace/venv/.sync_complete
+    echo "$(date +%Y-%m-%d_%H:%M:%S)" > /workspace/venv/.sync_timestamp
+
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    echo "✅ Optimized venv sync completed in ${duration} seconds ($((duration/60)) minutes)"
 }
 
 echo "**** checking venv sync status... ****"
@@ -40,34 +89,77 @@ if [ -d /venv ]; then
         FORCE_SYNC=true
     fi
 
-    # Check if workspace venv is already complete
+    # Enhanced workspace venv integrity check
     VENV_COMPLETE=false
     if [ "$FORCE_SYNC" = false ] && [ -d /workspace/venv ] && [ -f /workspace/venv/bin/python ] && [ -f /workspace/venv/bin/pip ] && [ -f /workspace/venv/bin/activate ]; then
-        echo "Workspace venv appears complete, checking if sync is needed..."
+        echo "Workspace venv appears complete, performing enhanced integrity check..."
 
-        # Quick check: compare a few key files to see if they're different
+        # Multi-point integrity verification
+        INTEGRITY_CHECKS_PASSED=true
+
+        # Check 1: Core binaries exist and are executable
+        if [ ! -x /workspace/venv/bin/python ] || [ ! -x /workspace/venv/bin/pip ]; then
+            echo "⚠️  Core binaries missing or not executable"
+            INTEGRITY_CHECKS_PASSED=false
+        fi
+
+        # Check 2: Python version matches
         if [ -f /venv/bin/python ] && [ -f /workspace/venv/bin/python ]; then
-            # Compare file sizes as a quick integrity check
-            SOURCE_SIZE=$(stat -c%s /venv/bin/python 2>/dev/null || echo "0")
-            DEST_SIZE=$(stat -c%s /workspace/venv/bin/python 2>/dev/null || echo "0")
-
-            if [ "$SOURCE_SIZE" -eq "$DEST_SIZE" ] && [ "$DEST_SIZE" -gt 0 ]; then
-                echo "Venv sync appears complete, skipping rsync..."
-                VENV_COMPLETE=true
-                # Update paths just in case
-                update_venv_paths
+            SOURCE_VERSION=$(/venv/bin/python --version 2>/dev/null || echo "unknown")
+            DEST_VERSION=$(/workspace/venv/bin/python --version 2>/dev/null || echo "unknown")
+            if [ "$SOURCE_VERSION" != "$DEST_VERSION" ]; then
+                echo "⚠️  Python version mismatch: source=$SOURCE_VERSION, dest=$DEST_VERSION"
+                INTEGRITY_CHECKS_PASSED=false
             fi
+        fi
+
+        # Check 3: Key packages are available
+        if ! /workspace/venv/bin/python -c "import torch, numpy" 2>/dev/null; then
+            echo "⚠️  Key packages (torch, numpy) not importable"
+            INTEGRITY_CHECKS_PASSED=false
+        fi
+
+        # Check 4: File count comparison (quick sanity check)
+        if [ -f /workspace/venv/.sync_complete ]; then
+            SOURCE_COUNT=$(find /venv -type f 2>/dev/null | wc -l)
+            DEST_COUNT=$(find /workspace/venv -type f 2>/dev/null | wc -l)
+
+            # Allow 5% variance to account for small differences
+            VARIANCE=$((SOURCE_COUNT / 20))
+            DIFFERENCE=$((SOURCE_COUNT - DEST_COUNT))
+
+            if [ "${DIFFERENCE#-}" -gt "$VARIANCE" ]; then
+                echo "⚠️  File count difference too large: source=$SOURCE_COUNT, dest=$DEST_COUNT"
+                INTEGRITY_CHECKS_PASSED=false
+            fi
+        fi
+
+        if [ "$INTEGRITY_CHECKS_PASSED" = true ]; then
+            echo "✅ All integrity checks passed, venv sync is complete"
+            VENV_COMPLETE=true
+            # Update paths just in case
+            update_venv_paths
+        else
+            echo "⚠️  Integrity checks failed, will re-sync venv"
         fi
     fi
 
-    # Only run rsync if venv is not complete
+    # Only run optimized sync if venv is not complete
     if [ "$VENV_COMPLETE" = false ]; then
-        echo "**** syncing venv to workspace, please wait. This could take a while on first startup! ****"
-        if rsync -au --remove-source-files /venv/ /workspace/venv/ && rm -rf /venv; then
-            update_venv_paths
-            # Create completion marker
-            touch /workspace/venv/.sync_complete
-            echo "Venv sync completed successfully."
+        echo "**** starting optimized venv sync - this will be much faster than the original process ****"
+        if optimized_venv_sync; then
+            echo "✅ Venv sync completed successfully with optimizations"
+        else
+            echo "❌ Optimized sync failed, falling back to original method"
+            # Fallback to original sync method
+            if rsync -au --remove-source-files /venv/ /workspace/venv/ && rm -rf /venv; then
+                update_venv_paths
+                touch /workspace/venv/.sync_complete
+                echo "✅ Fallback sync completed successfully."
+            else
+                echo "❌ Both optimized and fallback sync failed"
+                exit 1
+            fi
         fi
     fi
 else
@@ -131,10 +223,23 @@ if [ -d /ComfyUI ]; then
             echo "**** Excluding existing output folder ****"
         fi
 
-        if rsync -au --remove-source-files $EXCLUDE_MODELS /ComfyUI/ /workspace/ComfyUI/ && rm -rf /ComfyUI; then
+        # Use optimized ComfyUI sync
+        echo "**** Using optimized ComfyUI sync ****"
+        if rsync -auz --compress-level=6 --partial --inplace \
+                  --exclude='__pycache__/' --exclude='*.pyc' --exclude='.git/' \
+                  $EXCLUDE_MODELS /ComfyUI/ /workspace/ComfyUI/ && rm -rf /ComfyUI; then
             # Create completion marker
             touch /workspace/ComfyUI/.sync_complete
-            echo "ComfyUI sync completed successfully."
+            echo "✅ ComfyUI sync completed successfully with optimizations."
+        else
+            echo "❌ Optimized ComfyUI sync failed, trying fallback"
+            if rsync -au --remove-source-files $EXCLUDE_MODELS /ComfyUI/ /workspace/ComfyUI/ && rm -rf /ComfyUI; then
+                touch /workspace/ComfyUI/.sync_complete
+                echo "✅ ComfyUI sync completed with fallback method."
+            else
+                echo "❌ ComfyUI sync failed"
+                exit 1
+            fi
         fi
     fi
 

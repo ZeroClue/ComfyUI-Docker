@@ -32,12 +32,9 @@
 zeroclue/comfyui:(A)-torch2.8.0-(B)
 ```
 
-* **(A)**: `base`, `slim`, `minimal`, `production`, or `ultra-slim`
+* **(A)**: `base` or `production`
   * `base`: ComfyUI + Manager + custom nodes + code-server (**~8-12GB**)
-  * `slim`: ComfyUI + Manager + code-server (no custom nodes) (**~6-8GB**)
-  * `minimal`: ComfyUI + Manager only (no custom nodes, no code-server) (**~4-6GB**)
-  * `production`: ComfyUI + Manager, optimized for serving (**~4-5GB**) 🆕
-  * `ultra-slim`: ComfyUI only, minimal dependencies (**~2-3GB**) 🆕
+  * `production`: ComfyUI + Manager, optimized for serving (**~4-5GB**)
 * **(B)**: CUDA version → `cu126`, `cu128` (new variants), `cu124`, `cu129`, `cu130`
 
 ---
@@ -49,10 +46,6 @@ zeroclue/comfyui:(A)-torch2.8.0-(B)
 | ------------------------------------- | ------------ | ----------- | ---------- | ---- | ---- | ------------ |
 | `zeroclue/comfyui:base-torch2.8.0-cu126` | ✅ Yes        | ✅ Yes      | ✅ Yes     | ~8-12GB | 12.6 | ✅ Auto-built |
 | `zeroclue/comfyui:base-torch2.8.0-cu128` | ✅ Yes        | ✅ Yes      | ✅ Yes     | ~8-12GB | 12.8 | 🔧 Manual only |
-| `zeroclue/comfyui:slim-torch2.8.0-cu126` | ❌ No         | ✅ Yes      | ✅ Yes     | ~6-8GB | 12.6 | ✅ Auto-built |
-| `zeroclue/comfyui:slim-torch2.8.0-cu128` | ❌ No         | ✅ Yes      | ✅ Yes     | ~6-8GB | 12.8 | ✅ Auto-built |
-| `zeroclue/comfyui:minimal-torch2.8.0-cu126` | ❌ No         | ❌ No       | ✅ Yes     | ~4-6GB | 12.6 | ✅ Auto-built |
-| `zeroclue/comfyui:minimal-torch2.8.0-cu128` | ❌ No         | ❌ No       | ✅ Yes     | ~4-6GB | 12.8 | ✅ Auto-built |
 
 > ⚠️ **Important**: `base-torch2.8.0-cu128` requires manual build due to disk space constraints. See [Manual Build Guide](#-manual-build-for-large-variants) below.
 
@@ -61,17 +54,18 @@ zeroclue/comfyui:(A)-torch2.8.0-(B)
 | --------------------------------------------- | ------------ | ----------- | ---------- | ---- | ---- | -------- |
 | `zeroclue/comfyui:production-torch2.8.0-cu126` | ❌ No         | ❌ No       | ❌ No      | ~4-5GB | 12.6 | Production serving |
 | `zeroclue/comfyui:production-torch2.8.0-cu128` | ❌ No         | ❌ No       | ❌ No      | ~4-5GB | 12.8 | Production serving |
-| `zeroclue/comfyui:ultra-slim-torch2.8.0-cu126` | ❌ No         | ❌ No       | ❌ No      | ~2-3GB | 12.6 | Minimal footprint |
-| `zeroclue/comfyui:ultra-slim-torch2.8.0-cu128` | ❌ No         | ❌ No       | ❌ No      | ~2-3GB | 12.8 | Minimal footprint |
 
 > 👉 To switch: **Edit Pod/Template** → set `Container Image`.
 
 ### 🚀 Variant Selection Guide
 
-- **For Development**: Use `base` or `slim` variants with full tooling
-- **For Production**: Use `production` variants (30-50% smaller, faster startup)
-- **For Resource-Constrained**: Use `ultra-slim` variants (60-70% smaller)
+- **For Development**: Use `base` variant with full tooling and custom nodes
+- **For Production**: Use `production` variants (50% smaller, faster startup)
 - **All variants** support the same preset systems and environment variables
+
+**Migration from removed variants:**
+- **slim/minimal users** → Use `base` variant and install custom nodes via ComfyUI Manager
+- **ultra-slim users** → Use `production` variant for similar size with production optimizations
 
 ### 🔄 Migration Guide
 
@@ -329,10 +323,10 @@ For most use cases, these alternatives provide the same functionality:
 
 #### **Need CUDA 12.8?**
 ```bash
-# Use slim-12-8 + ComfyUI Manager for custom nodes
+# Use base-12-8 for full development environment
 docker run --gpus all -p 3000:3000 \
-  zeroclue/comfyui:slim-torch2.8.0-cu128
-# Install custom nodes via ComfyUI Manager web interface
+  zeroclue/comfyui:base-torch2.8.0-cu128
+# Custom nodes are pre-installed in base variants
 ```
 
 #### **Need Full Installation?**
@@ -353,10 +347,11 @@ docker run --gpus all -p 3000:3000 \
 
 ✅ **Reliably built automatically:**
 - `base-torch2.8.0-cu126` - Full installation with CUDA 12.6
-- `slim-torch2.8.0-cu126/128` - No custom nodes
-- `minimal-torch2.8.0-cu126/128` - No code server
+- `base-torch2.8.0-cu128/129/130` - Full installation with latest CUDA versions
 - `production-torch2.8.0-cu126/128` - Optimized for serving
-- `ultra-slim-torch2.8.0-cu126/128` - Minimal footprint
+
+🔧 **Manual build required for large variants:**
+- `base-torch2.8.0-cu128` - Due to disk space constraints
 
 ### 📖 Detailed Instructions
 

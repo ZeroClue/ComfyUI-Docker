@@ -168,66 +168,7 @@ target "base-13-0" {
     tags = tag("base", "cu130")
 }
 
-target "slim-12-4" {
-    inherits = ["_cu124", "_no_custom_nodes"]
-    tags = tag("slim", "cu124")
-}
 
-target "slim-12-5" {
-    inherits = ["_cu125", "_no_custom_nodes"]
-    tags = tag("slim", "cu125")
-}
-
-target "slim-12-6" {
-    inherits = ["_cu126", "_no_custom_nodes"]
-    tags = tag("slim", "cu126")
-}
-
-target "slim-12-8" {
-    inherits = ["_cu128", "_no_custom_nodes"]
-    tags = tag("slim", "cu128")
-}
-
-target "slim-12-9" {
-    inherits = ["_cu129", "_no_custom_nodes"]
-    tags = tag("slim", "cu129")
-}
-
-target "slim-13-0" {
-    inherits = ["_cu130", "_no_custom_nodes"]
-    tags = tag("slim", "cu130")
-}
-
-# Minimal images without code-server
-target "minimal-12-4" {
-    inherits = ["_cu124", "_no_custom_nodes", "_no_code_server"]
-    tags = tag("minimal", "cu124")
-}
-
-target "minimal-12-5" {
-    inherits = ["_cu125", "_no_custom_nodes", "_no_code_server"]
-    tags = tag("minimal", "cu125")
-}
-
-target "minimal-12-6" {
-    inherits = ["_cu126", "_no_custom_nodes", "_no_code_server"]
-    tags = tag("minimal", "cu126")
-}
-
-target "minimal-12-8" {
-    inherits = ["_cu128", "_no_custom_nodes", "_no_code_server"]
-    tags = tag("minimal", "cu128")
-}
-
-target "minimal-12-9" {
-    inherits = ["_cu129", "_no_custom_nodes", "_no_code_server"]
-    tags = tag("minimal", "cu129")
-}
-
-target "minimal-13-0" {
-    inherits = ["_cu130", "_no_custom_nodes", "_no_code_server"]
-    tags = tag("minimal", "cu130")
-}
 
 # Production variants - optimized for serving, runtime CUDA images
 target "production-12-6" {
@@ -240,13 +181,3 @@ target "production-12-8" {
     tags = tag("production", "cu128")
 }
 
-# Ultra-slim variants - ComfyUI only, minimal dependencies
-target "ultra-slim-12-6" {
-    inherits = ["_cu126_runtime", "_no_custom_nodes", "_no_code_server", "_no_dev_tools", "_no_science_packages"]
-    tags = tag("ultra-slim", "cu126")
-}
-
-target "ultra-slim-12-8" {
-    inherits = ["_cu128_runtime", "_no_custom_nodes", "_no_code_server", "_no_dev_tools", "_no_science_packages"]
-    tags = tag("ultra-slim", "cu128")
-}

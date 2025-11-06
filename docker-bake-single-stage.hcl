@@ -136,35 +136,6 @@ target "single-stage-13-0" {
 }
 
 # Slim single-stage variants (no custom nodes)
-target "single-stage-slim-12-4" {
-    inherits = ["_cu124", "_no_custom_nodes"]
-    tags = tag("single-stage-slim", "cu124")
-}
-
-target "single-stage-slim-12-5" {
-    inherits = ["_cu125", "_no_custom_nodes"]
-    tags = tag("single-stage-slim", "cu125")
-}
-
-target "single-stage-slim-12-6" {
-    inherits = ["_cu126", "_no_custom_nodes"]
-    tags = tag("single-stage-slim", "cu126")
-}
-
-target "single-stage-slim-12-8" {
-    inherits = ["_cu128", "_no_custom_nodes"]
-    tags = tag("single-stage-slim", "cu128")
-}
-
-target "single-stage-slim-12-9" {
-    inherits = ["_cu129", "_no_custom_nodes"]
-    tags = tag("single-stage-slim", "cu129")
-}
-
-target "single-stage-slim-13-0" {
-    inherits = ["_cu130", "_no_custom_nodes"]
-    tags = tag("single-stage-slim", "cu130")
-}
 
 # Production single-stage variants
 target "single-stage-production-12-6" {

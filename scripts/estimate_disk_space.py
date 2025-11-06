@@ -153,7 +153,7 @@ class DiskSpaceEstimator:
 
     def analyze_all_variants(self) -> Dict:
         """Analyze all current workflow variants"""
-        variants = ['base', 'slim', 'minimal', 'production', 'ultra-slim']
+        variants = ['base', 'production']
         cuda_versions = ['12-6', '12-8']
 
         results = {}

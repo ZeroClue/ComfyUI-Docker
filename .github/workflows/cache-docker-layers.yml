@@ -6,14 +6,18 @@ on:
     branches: [main, feature/runpod-startup-optimization]
     paths:
       - 'Dockerfile'
-      - 'docker-bake-optimized.hcl'
+      - 'Dockerfile.single-stage'
+      - 'docker-bake.hcl'
+      - 'docker-bake-single-stage.hcl'
       - 'scripts/**'
       - 'config/**'
   pull_request:
     branches: [main]
     paths:
       - 'Dockerfile'
-      - 'docker-bake-optimized.hcl'
+      - 'Dockerfile.single-stage'
+      - 'docker-bake.hcl'
+      - 'docker-bake-single-stage.hcl'
       - 'scripts/**'
       - 'config/**'
 
@@ -62,7 +66,7 @@ jobs:
         run: |
           echo "🚀 Using cached layers for ${{ matrix.variant }}-${{ matrix.cuda_version }}"
           docker buildx bake \
-            -f docker-bake-optimized.hcl \
+            -f docker-bake.hcl \
             --cache-from type=local,src=/tmp/.buildx-cache \
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
             ${{ matrix.variant }}-${{ matrix.cuda_version }}
@@ -72,7 +76,7 @@ jobs:
         run: |
           echo "🔨 Building fresh layers for ${{ matrix.variant }}-${{ matrix.cuda_version }}"
           docker buildx bake \
-            -f docker-bake-optimized.hcl \
+            -f docker-bake.hcl \
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
             ${{ matrix.variant }}-${{ matrix.cuda_version }}
 

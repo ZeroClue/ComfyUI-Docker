@@ -1,0 +1,207 @@
+# ==========================================
+# Single-stage build for simplified deployment
+# ==========================================
+
+# Use the same base image as the multi-stage version
+FROM nvidia/cuda:12.6.3-devel-ubuntu24.04
+
+# Set the shell and enable pipefail for better error handling
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Set build environment variables
+ARG PYTHON_VERSION=3.13
+ARG TORCH_VERSION=2.8.0
+ARG CUDA_VERSION=cu126
+ARG SKIP_CUSTOM_NODES
+ARG INSTALL_DEV_TOOLS=true
+ARG INSTALL_SCIENCE_PACKAGES=true
+ARG INSTALL_CODE_SERVER=true
+
+# Set basic environment variables
+ENV SHELL=/bin/bash
+ENV PYTHONUNBUFFERED=True
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set the default workspace directory
+ENV RP_WORKSPACE=/workspace
+
+# Override the default huggingface cache directory.
+ENV HF_HOME="${RP_WORKSPACE}/.cache/huggingface/"
+
+# Faster transfer of models from the hub to the container
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
+ENV HF_XET_HIGH_PERFORMANCE=1
+
+# CRITICAL FIX: Use local cache directories for better performance
+# Shared python package cache - LOCAL for performance, not network storage
+ENV VIRTUALENV_OVERRIDE_APP_DATA="/root/.cache/virtualenv/"
+ENV PIP_CACHE_DIR="/root/.cache/pip/"
+ENV UV_CACHE_DIR="/root/.cache/uv/"
+
+# modern pip workarounds
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+ENV PIP_ROOT_USER_ACTION=ignore
+
+# Set TZ and Locale
+ENV TZ=Etc/UTC
+
+# Set working directory
+WORKDIR /
+
+# Update and upgrade
+RUN apt-get update --yes && \
+    apt-get upgrade --yes
+
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+
+# Install all required packages (build + runtime) in single stage
+RUN apt-get install --yes --no-install-recommends \
+        git wget curl bash build-essential cmake ninja-build clang \
+        libgl1 libglib2.0-0 libomp-dev ca-certificates \
+        nginx-light rsync sudo binutils ffmpeg lshw nano tzdata file \
+        openssh-server && \
+    apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Install the UV tool from astral-sh
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Install Python and create virtual environment
+RUN uv python install ${PYTHON_VERSION} --default --preview && \
+    uv venv --seed /venv
+ENV PATH="/venv/bin:$PATH"
+
+# Validate virtual environment is functional
+RUN python -c "import sys; print(f'Python: {sys.version}')" && \
+    which python && \
+    which pip
+
+# Install PyTorch and core dependencies using UV (faster than pip)
+RUN uv pip install --no-cache-dir -U \
+    pip setuptools wheel && \
+    uv pip install --no-cache-dir \
+    torch==${TORCH_VERSION} torchvision torchaudio \
+    --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
+
+# Install essential Python packages using UV for better performance
+RUN uv pip install --no-cache-dir -U \
+    huggingface_hub hf_transfer \
+    numpy requests tqdm pillow pyyaml \
+    triton
+
+# Install Flask web framework for preset manager
+RUN uv pip install --no-cache-dir -U \
+    flask python-markdown \
+    pygments Flask Flask-Session \
+    markdown
+
+# Conditionally install development and science packages (layered for better caching)
+RUN if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \
+        echo "Installing development tools..." && \
+        uv pip install --no-cache-dir jupyterlab jupyterlab_widgets ipykernel ipywidgets; \
+    else \
+        echo "Skipping development tools installation."; \
+    fi
+
+RUN if [ "$INSTALL_SCIENCE_PACKAGES" = "true" ]; then \
+        echo "Installing science packages..." && \
+        uv pip install --no-cache-dir scipy matplotlib pandas scikit-learn seaborn; \
+    else \
+        echo "Skipping science packages installation."; \
+    fi
+
+# Install ComfyUI and ComfyUI Manager
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git && \
+    cd ComfyUI && \
+    uv pip install --no-cache-dir -r requirements.txt && \
+    git clone https://github.com/ltdrdata/ComfyUI-Manager.git custom_nodes/ComfyUI-Manager && \
+    cd custom_nodes/ComfyUI-Manager && \
+    uv pip install --no-cache-dir -r requirements.txt
+
+COPY custom_nodes.txt /custom_nodes.txt
+
+# OPTIMIZATION: Only install essential custom nodes in base image
+# Additional nodes will be installed at runtime for better flexibility
+RUN if [ -z "$SKIP_CUSTOM_NODES" ]; then \
+        echo "Installing essential custom nodes only..." && \
+        cd /ComfyUI/custom_nodes && \
+        # Install only core nodes that are commonly needed
+        for repo in "https://github.com/ComfyUI-Manager/ComfyUI-Manager.git" \
+                     "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git"; do \
+            if grep -q "$(basename "$repo" .git)" /custom_nodes.txt; then \
+                echo "Installing $(basename "$repo" .git)"; \
+                git clone "$repo"; \
+            fi; \
+        done && \
+        # Install requirements for only these essential nodes
+        find /ComfyUI/custom_nodes -maxdepth 2 -name "requirements.txt" -exec uv pip install --no-cache-dir -r {} \; && \
+        find /ComfyUI/custom_nodes -maxdepth 2 -name "install.py" -exec python {} \; ; \
+    else \
+        echo "Skipping custom nodes installation because SKIP_CUSTOM_NODES is set"; \
+    fi
+
+# Install code-server (optional - can be skipped with build argument)
+RUN if [ "$INSTALL_CODE_SERVER" = "true" ]; then \
+        echo "Installing code-server..." && \
+        curl -fsSL https://code-server.dev/install.sh | sh; \
+    else \
+        echo "Skipping code-server installation."; \
+    fi
+
+EXPOSE 22 3000 8080 8888 9000
+
+# NGINX Proxy
+COPY proxy/nginx.conf /etc/nginx/nginx.conf
+COPY proxy/snippets /etc/nginx/snippets
+COPY proxy/readme.html /usr/share/nginx/html/readme.html
+
+# Remove existing SSH host keys
+RUN rm -f /etc/ssh/ssh_host_*
+
+# Copy the README.md
+COPY README.md /usr/share/nginx/html/README.md
+
+# Start Scripts
+COPY --chmod=755 scripts/start.sh /
+COPY --chmod=755 scripts/pre_start.sh /
+COPY --chmod=755 scripts/post_start.sh /
+
+COPY --chmod=755 scripts/download_presets.sh /
+COPY --chmod=755 scripts/download_image_presets.sh /
+COPY --chmod=755 scripts/download_audio_presets.sh /
+COPY --chmod=755 scripts/install_custom_nodes.sh /
+
+# Create required directories for preset manager and YAML configuration
+RUN mkdir -p /app/templates /app/static /app/workspace/docs/presets /workspace/config
+
+# Copy YAML preset management system
+COPY --chmod=644 config/presets.yaml /workspace/config/presets.yaml
+COPY --chmod=644 config/presets-schema.json /workspace/config/presets-schema.json
+COPY --chmod=755 scripts/preset_updater.py /scripts/
+COPY --chmod=755 scripts/unified_preset_downloader.py /scripts/
+COPY --chmod=755 scripts/generate_download_scripts.py /scripts/
+COPY --chmod=755 scripts/preset_validator.py /scripts/
+COPY --chmod=755 scripts/test_preset_system.py /scripts/
+
+# Copy preset manager web application to /app/
+COPY --chmod=755 scripts/preset_manager_cli.py /app/preset_manager.py
+COPY --chmod=644 scripts/preset_manager/ /app/preset_manager/
+COPY --chmod=644 scripts/templates/ /app/templates/
+COPY --chmod=644 scripts/static/ /app/static/
+COPY --chmod=644 workspace/docs/presets/ /app/workspace/docs/presets/
+
+# Welcome Message
+COPY logo/zeroclue.txt /etc/zeroclue.txt
+RUN echo 'cat /etc/zeroclue.txt' >> /root/.bashrc
+RUN echo 'echo -e "\nFor detailed documentation and guides, please visit:\n\033[1;34mhttps://docs.runpod.io/\033[0m and \033[1;34mhttps://blog.runpod.io/\033[0m\n\n"' >> /root/.bashrc
+
+# Add build information for debugging
+RUN echo "Build timestamp: $(date)" > /build-info.txt && \
+    echo "UV version: $(uv --version)" >> /build-info.txt && \
+    echo "Python version: $(python --version)" >> /build-info.txt && \
+    echo "CUDA version: ${CUDA_VERSION}" >> /build-info.txt && \
+    echo "PyTorch version: ${TORCH_VERSION}" >> /build-info.txt
+
+# Set entrypoint to the start script
+CMD ["/start.sh"]

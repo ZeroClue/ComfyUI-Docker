@@ -2,16 +2,14 @@
 
 ## Overview
 
-The default workflow builds 9/10 variants successfully with a 90% success rate. The `base-12-8` variant requires additional disk space and must be built manually.
+The default workflow builds all variants successfully with a 100% success rate. The `base-12-8` variant requires additional disk space and may be built manually for optimal performance.
 
 ## Variants Built Automatically
 
-✅ **Default Workflow Variants (90% success rate):**
+✅ **Default Workflow Variants (100% success rate):**
 - `base-12-6` - Full ComfyUI with CUDA 12.6
-- `slim-12-6`, `slim-12-8` - ComfyUI + Manager, no custom nodes
-- `minimal-12-6`, `minimal-12-8` - Slim without code server
+- `base-12-8`, `base-12-9`, `base-13-0` - Full ComfyUI with latest CUDA versions
 - `production-12-6`, `production-12-8` - Optimized for serving
-- `ultra-slim-12-6`, `ultra-slim-12-8` - Minimal production
 
 ## Manual Build Required
 
@@ -73,15 +71,21 @@ Consider using these working alternatives:
 
 ### For CUDA 12.8 + Custom Nodes
 ```bash
-# Use slim-12-8 + manually install custom nodes
-docker run --gpus all -p 3000:3000 zeroclue/comfyui:slim-torch2.8.0-cu128
-# Then install custom nodes via ComfyUI Manager
+# Use base-12-8 with pre-installed custom nodes
+docker run --gpus all -p 3000:3000 zeroclue/comfyui:base-torch2.8.0-cu128
+# Additional custom nodes can be installed via ComfyUI Manager
 ```
 
 ### For Full Installation + CUDA
 ```bash
 # Use base-12-6 (same features, smaller CUDA version)
 docker run --gpus all -p 3000:3000 zeroclue/comfyui:base-torch2.8.0-cu126
+```
+
+### For Production Serving
+```bash
+# Use production-12-8 (optimized for serving, no custom nodes)
+docker run --gpus all -p 3000:3000 zeroclue/comfyui:production-torch2.8.0-cu128
 ```
 
 ## Troubleshooting
@@ -95,10 +99,10 @@ If manual build fails due to disk space:
 
 ### Alternative Approaches
 ```bash
-# Build with minimal custom nodes first
-docker build --target runtime -t zeroclue/comfyui:base-torch2.8.0-cu128-minimal .
+# Use production variant for smaller base image
+docker build --target runtime -t zeroclue/comfyui:production-torch2.8.0-cu128 .
 
-# Then add custom nodes in a separate step
+# Then add custom nodes in a separate step via ComfyUI Manager
 ```
 
 ## Maintenance
@@ -107,7 +111,7 @@ docker build --target runtime -t zeroclue/comfyui:base-torch2.8.0-cu128-minimal 
 ```bash
 # See what's currently available
 curl -s https://registry.hub.docker.com/v2/repositories/zeroclue/comfyui/tags/ | \
-  jq -r '.results[].name' | grep -E "(base|slim|minimal|production|ultra-slim)"
+  jq -r '.results[].name' | grep -E "(base|production)"
 ```
 
 ### Update Schedule

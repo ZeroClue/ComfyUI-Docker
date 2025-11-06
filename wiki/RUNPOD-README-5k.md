@@ -14,7 +14,6 @@
 | -------- | ----------------- | --- | ------------- |
 | **Development** | `zeroclue/comfyui:base-torch2.8.0-cu126` | RTX A4000+ | $0.50-1.00/hr |
 | **Production** | `zeroclue/comfyui:production-torch2.8.0-cu126` | RTX A4000+ | $0.35-0.60/hr |
-| **Budget** | `zeroclue/comfyui:ultra-slim-torch2.8.0-cu126` | RTX 4000+ | $0.25-0.40/hr |
 
 ### 2. Create RunPod Pod
 
@@ -65,9 +64,6 @@ zeroclue/comfyui:base-torch2.8.0-cu126
 
 # Production (cost optimized)
 zeroclue/comfyui:production-torch2.8.0-cu126
-
-# Budget (minimal)
-zeroclue/comfyui:ultra-slim-torch2.8.0-cu126
 ```
 
 ---
@@ -166,10 +162,9 @@ AUDIO_PRESET_DOWNLOAD=MUSICGEN_MEDIUM,BARK_BASIC
 |--------------|---------------------|---------|
 | **Premium** | `base-torch2.8.0-cu126` | Full features, higher cost |
 | **Balanced** | `production-torch2.8.0-cu126` | 30-50% savings |
-| **Budget** | `ultra-slim-torch2.8.0-cu126` | 60-70% savings |
 
 ### GPU Selection
 | GPU Type | Best For | Hourly Cost |
 |----------|----------|-------------|
-| **RTX 4000** | Ultra-slim, basic workloads | $0.25-0.40 |
+| **RTX A4000** | Production, development | $0.35-0.60 |
 | 

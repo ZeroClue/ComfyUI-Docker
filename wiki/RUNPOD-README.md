@@ -14,7 +14,6 @@
 | -------- | ----------------- | --- | ------------- |
 | **Development** | `zeroclue/comfyui:base-torch2.8.0-cu126` | RTX A4000+ | $0.50-1.00/hr |
 | **Production** | `zeroclue/comfyui:production-torch2.8.0-cu126` | RTX A4000+ | $0.35-0.60/hr |
-| **Budget** | `zeroclue/comfyui:ultra-slim-torch2.8.0-cu126` | RTX 4000+ | $0.25-0.40/hr |
 
 ### 2. Create RunPod Pod
 
@@ -62,20 +61,14 @@ After pod starts, click the **Port 3000** link to access ComfyUI web interface.
 
 #### Development Variants (Full Tooling)
 ```bash
-# Complete development environment
+# Complete development environment with custom nodes
 zeroclue/comfyui:base-torch2.8.0-cu126
-
-# Development without custom nodes
-zeroclue/comfyui:slim-torch2.8.0-cu126
 ```
 
 #### Production Variants (Cost Optimized)
 ```bash
 # Production optimized - recommended for most users
 zeroclue/comfyui:production-torch2.8.0-cu126
-
-# Ultra-minimal - for budget constraints
-zeroclue/comfyui:ultra-slim-torch2.8.0-cu126
 ```
 
 ---
@@ -229,20 +222,18 @@ All important data is automatically stored in network storage:
 |--------------|---------------------|---------|
 | **Premium** | `base-torch2.8.0-cu126` | Full features, higher cost |
 | **Balanced** | `production-torch2.8.0-cu126` | 30-50% savings |
-| **Budget** | `ultra-slim-torch2.8.0-cu126` | 60-70% savings |
 
 ### GPU Selection Guide
 
 | GPU Type | Best For | Hourly Cost (Estimate) |
 |----------|----------|------------------------|
-| **RTX 4000** | Ultra-slim, basic workloads | $0.25-0.40 |
 | **RTX A4000** | Production, video generation | $0.35-0.60 |
 | **RTX A5000** | Professional workflows | $0.50-0.80 |
 | **RTX A6000** | Heavy workloads, batch processing | $0.80-1.20 |
 
 ### Cost Saving Tips
 
-1. **Use Production Variants**: 30-70% cost reduction
+1. **Use Production Variants**: 30-50% cost reduction
 2. **Right-Size GPU**: Don't overprovision GPU memory
 3. **Monitor Usage**: Stop pods when not in use
 4. **Storage Cleanup**: Regular cleanup of generated content
@@ -276,12 +267,12 @@ ACCESS_PASSWORD=secure_password_123
 
 ### Template 3: Budget Development
 
-**Image**: `zeroclue/comfyui:ultra-slim-torch2.8.0-cu126`
-**GPU**: RTX 4000
+**Image**: `zeroclue/comfyui:base-torch2.8.0-cu126`
+**GPU**: RTX A4000
 **Environment Variables**:
 ```bash
 TIME_ZONE=America/New_York
-INSTALL_CUSTOM_NODES=True
+ACCESS_PASSWORD=secure_password_123
 ```
 
 ### Template 4: Complete Multimedia Production

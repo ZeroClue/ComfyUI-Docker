@@ -355,8 +355,8 @@ docker run -e INSTALL_SAGEATTENTION=True \
 # Use GGUF models
 PRESET_DOWNLOAD=WAN_22_5B_I2V_GGUF_Q4_K_M
 
-# Use minimal image if custom nodes not needed
-docker run zeroclue/comfyui:minimal-torch2.8.0-cu126
+# Use production image if custom nodes not needed
+docker run zeroclue/comfyui:production-torch2.8.0-cu126
 ```
 
 ## Contributing

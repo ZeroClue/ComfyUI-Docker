@@ -59,12 +59,12 @@ docker buildx bake -f docker-bake-single-stage.hcl single-stage-12-6
 # Full builds with all features
 docker buildx bake -f docker-bake-single-stage.hcl single-stage-12-6
 docker buildx bake -f docker-bake-single-stage.hcl single-stage-12-8
+docker buildx bake -f docker-bake-single-stage.hcl single-stage-12-9
+docker buildx bake -f docker-bake-single-stage.hcl single-stage-13-0
 
-# Slim builds (no custom nodes)
-docker buildx bake -f docker-bake-single-stage.hcl single-stage-slim-12-6
-
-# Production builds (minimal)
+# Production builds (optimized for serving)
 docker buildx bake -f docker-bake-single-stage.hcl single-stage-production-12-6
+docker buildx bake -f docker-bake-single-stage.hcl single-stage-production-12-8
 ```
 
 ## Benefits

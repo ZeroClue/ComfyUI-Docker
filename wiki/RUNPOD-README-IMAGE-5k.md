@@ -24,7 +24,7 @@
 
 **Recommended Images**:
 - **Full Setup**: `zeroclue/comfyui:base-torch2.8.0-cu126`
-- **Cost Optimized**: `zeroclue/comfyui:slim-torch2.8.0-cu126`
+- **Cost Optimized**: `zeroclue/comfyui:production-torch2.8.0-cu126`
 
 **Features**: ComfyUI + Manager + Preset Manager + 24 custom nodes + CUDA 12.6
 
@@ -91,23 +91,23 @@ ENABLE_PRESET_MANAGER=true
 
 ## 💰 Cost Optimization: Template Switching
 
-**Strategy**: Build with base, then switch to slim/minimal
+**Strategy**: Build with base, then switch to production
 
 **Phase 1**: Use `base` image initially, install custom nodes, download models, create workflows
 
-**Phase 2**: Stop pod, change to `slim` or `minimal`, restart with same network volume
+**Phase 2**: Stop pod, change to `production`, restart with same network volume
 
-**Benefit**: 30-70% cost reduction, same functionality
+**Benefit**: 30-50% cost reduction, same functionality
 
 **Template Comparison**:
 | Template | Size | Use Case |
 |----------|------|----------|
 | **base** | ~8GB | Initial setup |
-| **slim** | ~6GB | Production |
+| **production** | ~4GB | Production |
 
 **How to Switch**:
 1. **Stop Pod**: Pods → Select → Stop
-2. **Change Image**: Edit → `slim-torch2.8.0-cu126`
+2. **Change Image**: Edit → `production-torch2.8.0-cu126`
 3. **Restart**: Start with same network volume
 
 **Why This Works**: Custom nodes, models, and workflows are stored in your network volume.
@@ -137,7 +137,7 @@ ENABLE_PRESET_MANAGER=true
 ## 📈 Best Practices
 
 **Cost Optimization**:
-- Start with `base`, switch to `slim` after setup
+- Start with `base`, switch to `production` after setup
 - Use spot instances when possible
 - Stop pods when not in use
 
@@ -150,7 +150,7 @@ ENABLE_PRESET_MANAGER=true
 
 **Key Takeaways**:
 1. Start with `base` template for setup
-2. Switch to `slim` for cost savings
+2. Switch to `production` for cost savings
 3. Use Preset Manager for model management
 4. Monitor costs and storage usage
 

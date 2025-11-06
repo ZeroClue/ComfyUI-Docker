@@ -23,7 +23,7 @@
 
 **Recommended Images**:
 - **Full Setup**: `zeroclue/comfyui:base-torch2.8.0-cu126`
-- **Cost Optimized**: `zeroclue/comfyui:slim-torch2.8.0-cu126`
+- **Cost Optimized**: `zeroclue/comfyui:production-torch2.8.0-cu126`
 
 **Features**: ComfyUI + Manager + WAN 2.2 nodes + CUDA 12.6
 
@@ -96,7 +96,7 @@ ACCESS_PASSWORD="your-password"
 
 **How to Switch**:
 1. **Stop Pod**: Pods → Select → Stop
-2. **Change Image**: Edit → `slim-torch2.8.0-cu126`
+2. **Change Image**: Edit → `production-torch2.8.0-cu126`
 3. **Restart**: Start with same network volume
 
 ## 🎬 Video Generation Presets

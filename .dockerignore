@@ -1,6 +1,113 @@
+# ==========================================
+# Docker build context exclusions
+# ==========================================
+
+# Version Control
 .git
 .gitignore
-.github
-Dockerfile
-.dockerignore
-.env
+.git/
+
+# Development Environment
+.venv/
+venv/
+env/
+.env/
+.envrc
+.vscode/
+.claude/
+
+# Python Development
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Build & Development Artifacts
+*.log
+*.dockerbuild
+*_analysis.json
+*analysis.json
+*.pid
+dependency_resolution.json
+*original.py
+*monitor.sh
+*migrate_schema.sh
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*~
+.swp
+.swo
+
+# Alternate Build Files (not used in main build)
+Dockerfile.single-stage
+docker-bake-single-stage.hcl
+Dockerfile.*-alt
+docker-bake.*-alt
+
+# Documentation (not needed in container)
+*.md
+!README.md
+docs/
+wiki/
+LICENSE
+CHANGELOG*
+CHANGELOG.*
+CHANGELOG-*
+*.txt
+!custom_nodes.txt
+!requirements.txt
+
+# Temporary and Cache Files
+.cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# IDE and Editor Files
+.idea/
+.vs/
+*.sublime-project
+*.sublime-workspace
+.atom/
+.brackets.json
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup and Archives
+*.tar.gz
+*.zip
+*.rar
+*.7z

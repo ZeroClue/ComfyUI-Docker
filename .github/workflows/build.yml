@@ -4,20 +4,22 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: 'Build targets (comma-separated): base,production'
+        description: 'Build targets (comma-separated): base,production,modern'
         required: false
-        default: 'base,production'
+        default: 'base,production,modern'
       cuda_versions:
-        description: 'CUDA versions (comma-separated): 12-4,12-5,12-6,12-8,12-9,13-0'
+        description: 'CUDA versions (comma-separated): 12-6,12-8,12-9,13-0'
         required: false
-        default: '12-6'
+        default: '12-6,12-8'
   schedule:
     - cron: "0 */8 * * *"
   push:
     branches: [main]
     paths:
       - 'Dockerfile'
+      - 'Dockerfile.modern'
       - 'docker-bake.hcl'
+      - 'docker-bake-modern.hcl'
       - 'scripts/**'
       - 'custom_nodes.txt'
 
@@ -42,10 +44,15 @@ jobs:
             cuda: 12-6
           - target: production
             cuda: 12-8
+          # Modern variants - simplified Dockerfile.modern
+          - target: modern
+            cuda: 12-6
+          - target: modern
+            cuda: 12-8
     steps:
       - name: Check if should run
         run: |
-          TARGETS="${{ github.event.inputs.targets || 'base,production' }}"
+          TARGETS="${{ github.event.inputs.targets || 'base,production,modern' }}"
           CUDA="${{ github.event.inputs.cuda_versions || '12-6,12-8' }}"
 
           if [[ ",$TARGETS," != *",${{ matrix.target }},"* ]]; then
@@ -97,6 +104,9 @@ jobs:
         with:
           targets: ${{ matrix.target }}-${{ matrix.cuda }}
           push: true
+          # Use different bake file for modern variants
+          files: |
+            ${{ matrix.target == 'modern' && 'docker-bake-modern.hcl' || 'docker-bake.hcl' }}
 
       - name: Build summary
         if: env.SKIP_BUILD != 'true'
@@ -106,4 +116,5 @@ jobs:
           echo "- **CUDA Version**: ${{ matrix.cuda }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Repository**: zeroclue/comfyui" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Date**: ${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bake File**: ${{ matrix.target == 'modern' && 'docker-bake-modern.hcl' || 'docker-bake.hcl' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Mode**: Simple working version"

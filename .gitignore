@@ -65,6 +65,14 @@ settings.json
 # Docker related
 docker-compose.override.yml
 .dockerignore.local
+Dockerfile.custom
+Dockerfile.*.local
+Dockerfile.*.custom
+
+# Scratch/development requirements files
+requirements.txt
+requirements*.txt
+requirementsX.txt
 
 # Docker build artifacts and temporary files
 *.dockerbuild

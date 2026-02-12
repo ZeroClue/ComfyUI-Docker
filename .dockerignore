@@ -61,16 +61,24 @@ Dockerfile.single-stage
 docker-bake-single-stage.hcl
 Dockerfile.*-alt
 docker-bake.*-alt
+# Don't exclude main Dockerfile variants - they're needed for builds!
+# Only exclude truly alternate/experimental variants:
+# Dockerfile.custom
+# Dockerfile.*.local
+
 
 # Documentation (not needed in container)
 *.md
 !README.md
+!CLAUDE.md
 docs/
 wiki/
 LICENSE
 CHANGELOG*
 CHANGELOG.*
 CHANGELOG-*
+
+# Text files - exclude most but keep important ones
 *.txt
 !custom_nodes.txt
 !requirements.txt

@@ -123,16 +123,7 @@ COPY --chmod=755 scripts/download_audio_presets.sh /
 COPY --chmod=755 scripts/install_custom_nodes.sh /
 
 # Validate download scripts were copied and are executable
-RUN set -e; \
-    test -f /scripts/download_presets.sh || exit 1; \
-    test -f /scripts/download_image_presets.sh || exit 1; \
-    test -f /scripts/download_audio_presets.sh || exit 1; \
-    test -x /scripts/download_presets.sh || exit 1; \
-    test -x /scripts/download_image_presets.sh || exit 1; \
-    test -x /scripts/download_audio_presets.sh || exit 1; \
-    echo "Download scripts validated successfully"
-
-# Create required directories for preset manager and YAML configuration
+RUN bash -c 'test -f /scripts/download_presets.sh && test -f /scripts/download_image_presets.sh && test -f /scripts/download_audio_presets.sh && test -x /scripts/download_presets.sh && test -x /scripts/download_image_presets.sh && test -x /scripts/download_audio_presets.sh && echo "Download scripts validated successfully"'
 RUN mkdir -p /app/templates /app/static /app/workspace/docs/presets /workspace/config
 
 # Copy YAML preset management system

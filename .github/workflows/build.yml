@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 2
       matrix:
         include:
           # Standard variants - full development environment
@@ -113,6 +113,13 @@ jobs:
           # Use different bake file for modern variants
           files: |
             ${{ matrix.target == 'modern' && 'docker-bake-modern.hcl' || 'docker-bake.hcl' }}
+
+      - name: Free disk space
+        if: env.SKIP_BUILD != 'true'
+        run: |
+          echo "Freeing disk space..."
+          docker system prune -af --volumes 2>/dev/null || true
+          df -h
 
       - name: Verify preset manager components
         if: env.SKIP_BUILD != 'true'

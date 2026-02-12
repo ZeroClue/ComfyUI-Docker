@@ -135,9 +135,9 @@ jobs:
               # Production/minimal variants use simplified configs and may not have all scripts
               if [ "${{ matrix.target }}" != "production" ]; then
                 echo "Checking download scripts..."
-                test -f /scripts/download_presets.sh || echo "  - download_presets.sh: found"
-                test -f /scripts/download_image_presets.sh || echo "  - download_image_presets.sh: found"
-                test -f /scripts/download_audio_presets.sh || echo "  - download_audio_presets.sh: found"
+                test -f /download_presets.sh && echo "  - download_presets.sh: found"
+                test -f /download_image_presets.sh && echo "  - download_image_presets.sh: found"
+                test -f /download_audio_presets.sh && echo "  - download_audio_presets.sh: found"
               else
                 echo "Skipping download script check for production variant (uses _no_custom_nodes)"
               fi

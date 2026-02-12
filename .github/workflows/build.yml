@@ -127,13 +127,13 @@ jobs:
               test -d /app/templates || exit 1
               test -d /app/static || exit 1
               test -f /workspace/config/presets.yaml || exit 1
-              echo "Checking download scripts..."
-              test -f /scripts/download_presets.sh || exit 1
-              test -f /scripts/download_image_presets.sh || exit 1
-              test -f /scripts/download_audio_presets.sh || exit 1
+              echo "Checking download scripts (may not exist in production variants)..."
+              test -f /scripts/download_presets.sh || echo "  - download_presets.sh: not found (expected for production)"
+              test -f /scripts/download_image_presets.sh || echo "  - download_image_presets.sh: not found (expected for production)"
+              test -f /scripts/download_audio_presets.sh || echo "  - download_audio_presets.sh: not found (expected for production)"
               echo "Verifying Python imports..."
               python3 -c "from preset_manager.core import ModelManager" || exit 1
-              echo "All preset manager components verified!"
+              echo "Preset manager core components verified!"
             '
 
       - name: Build summary

@@ -127,7 +127,7 @@ jobs:
             13-0) CUDA_TAG="cu130" ;;
           esac
           echo "Verifying preset manager components..."
-          docker run --rm zeroclue/comfyui:${{ matrix.target }}-torch${{ vars.TORCH_VERSION }}-$CUDA_TAG \
+          docker run --rm zeroclue/comfyui:${{ matrix.target }}-torch2.8.0-$CUDA_TAG \
             bash -c '
               echo "Checking preset manager components..."
               test -f /app/preset_manager.py || exit 1

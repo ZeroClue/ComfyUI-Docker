@@ -30,23 +30,10 @@ target "_common" {
     }
 }
 
-target "_cu124" {
-    inherits = ["_common"]
-    args = {
-        CUDA_VERSION       = "cu124"
-    }
-}
-
-target "_cu125" {
-    inherits = ["_common"]
-    args = {
-        CUDA_VERSION       = "cu125"
-    }
-}
-
 target "_cu126" {
     inherits = ["_common"]
     args = {
+        BASE_IMAGE         = "nvidia/cuda:12.6.3-devel-ubuntu24.04"
         CUDA_VERSION       = "cu126"
     }
 }
@@ -54,6 +41,7 @@ target "_cu126" {
 target "_cu128" {
     inherits = ["_common"]
     args = {
+        BASE_IMAGE         = "nvidia/cuda:12.8.1-devel-ubuntu24.04"
         CUDA_VERSION       = "cu128"
     }
 }
@@ -61,6 +49,7 @@ target "_cu128" {
 target "_cu129" {
     inherits = ["_common"]
     args = {
+        BASE_IMAGE         = "nvidia/cuda:12.9.1-devel-ubuntu24.04"
         CUDA_VERSION       = "cu129"
     }
 }
@@ -68,6 +57,7 @@ target "_cu129" {
 target "_cu130" {
     inherits = ["_common"]
     args = {
+        BASE_IMAGE         = "nvidia/cuda:13.0.0-devel-ubuntu24.04"
         CUDA_VERSION       = "cu130"
     }
 }
@@ -96,23 +86,12 @@ target "_no_science_packages" {
     }
 }
 
-target "_production_base" {
+target "_minimal_base" {
     args = {
         INSTALL_DEV_TOOLS = "false"
         INSTALL_SCIENCE_PACKAGES = "false"
         INSTALL_CODE_SERVER = "false"
     }
-}
-
-# Single-stage variants
-target "single-stage-12-4" {
-    inherits = ["_cu124"]
-    tags = tag("single-stage", "cu124")
-}
-
-target "single-stage-12-5" {
-    inherits = ["_cu125"]
-    tags = tag("single-stage", "cu125")
 }
 
 target "single-stage-12-6" {
@@ -135,15 +114,14 @@ target "single-stage-13-0" {
     tags = tag("single-stage", "cu130")
 }
 
-# Slim single-stage variants (no custom nodes)
-
-# Production single-stage variants
-target "single-stage-production-12-6" {
-    inherits = ["_cu126", "_no_custom_nodes", "_production_base"]
-    tags = tag("single-stage-production", "cu126")
+# Minimal variants - ComfyUI + Manager without dev tools
+# Includes custom nodes but optimized for smaller image size (~6-7GB)
+target "minimal-12-6" {
+    inherits = ["_cu126", "_minimal_base"]
+    tags = tag("minimal", "cu126")
 }
 
-target "single-stage-production-12-8" {
-    inherits = ["_cu128", "_no_custom_nodes", "_production_base"]
-    tags = tag("single-stage-production", "cu128")
+target "minimal-12-8" {
+    inherits = ["_cu128", "_minimal_base"]
+    tags = tag("minimal", "cu128")
 }

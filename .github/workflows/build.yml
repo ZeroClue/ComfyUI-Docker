@@ -49,6 +49,11 @@ jobs:
             cuda: 12-6
           - target: modern
             cuda: 12-8
+          # Minimal variants - ComfyUI + Manager without dev tools
+          - target: minimal
+            cuda: 12-6
+          - target: minimal
+            cuda: 12-8
     steps:
       - name: Check if should run
         run: |
@@ -108,6 +113,29 @@ jobs:
           files: |
             ${{ matrix.target == 'modern' && 'docker-bake-modern.hcl' || 'docker-bake.hcl' }}
 
+      - name: Verify preset manager components
+        if: env.SKIP_BUILD != 'true'
+        run: |
+          echo "Verifying preset manager components..."
+          docker run --rm zeroclue/comfyui:${{ matrix.target }}-torch${{ vars.TORCH_VERSION }}-${{ matrix.cuda }} \
+            bash -c '
+              echo "Checking preset manager components..."
+              test -f /app/preset_manager.py || exit 1
+              test -d /app/preset_manager || exit 1
+              test -f /app/preset_manager/core.py || exit 1
+              test -f /app/preset_manager/web_interface.py || exit 1
+              test -d /app/templates || exit 1
+              test -d /app/static || exit 1
+              test -f /workspace/config/presets.yaml || exit 1
+              echo "Checking download scripts..."
+              test -f /scripts/download_presets.sh || exit 1
+              test -f /scripts/download_image_presets.sh || exit 1
+              test -f /scripts/download_audio_presets.sh || exit 1
+              echo "Verifying Python imports..."
+              python3 -c "from preset_manager.core import ModelManager" || exit 1
+              echo "All preset manager components verified!"
+            '
+
       - name: Build summary
         if: env.SKIP_BUILD != 'true'
         run: |
@@ -117,4 +145,16 @@ jobs:
           echo "- **Repository**: zeroclue/comfyui" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Date**: ${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Bake File**: ${{ matrix.target == 'modern' && 'docker-bake-modern.hcl' || 'docker-bake.hcl' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Build Mode**: Simple working version"
+          echo "- **Build Mode**: Simple working version" >> $GITHUB_STEP_SUMMARY
+          echo "- **Preset Manager**: Included (all variants)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Component Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Preset Manager: ✅ Verified" >> $GITHUB_STEP_SUMMARY
+          echo "- Download Scripts: ✅ Verified" >> $GITHUB_STEP_SUMMARY
+          echo "- Python Imports: ✅ Verified" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Image Variants" >> $GITHUB_STEP_SUMMARY
+          echo "- **base**: Full development environment (~8-12GB)" >> $GITHUB_STEP_SUMMARY
+          echo "- **production**: Optimized for serving (~4-5GB)" >> $GITHUB_STEP_SUMMARY
+          echo "- **modern**: Simplified Dockerfile.modern" >> $GITHUB_STEP_SUMMARY
+          echo "- **minimal**: ComfyUI + Manager without dev tools (~6-7GB)" >> $GITHUB_STEP_SUMMARY

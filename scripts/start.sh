@@ -139,6 +139,41 @@ start_preset_manager() {
     fi
 
     echo "Starting Preset Manager..."
+
+    # Validate required files exist before starting
+    local missing_components=()
+
+    if [[ ! -f /app/preset_manager.py ]]; then
+        missing_components+=("preset_manager.py")
+    fi
+
+    if [[ ! -d /app/preset_manager ]]; then
+        missing_components+=("preset_manager directory")
+    fi
+
+    if [[ ! -f /app/preset_manager/core.py ]]; then
+        missing_components+=("preset_manager/core.py")
+    fi
+
+    if [[ ! -f /app/preset_manager/web_interface.py ]]; then
+        missing_components+=("preset_manager/web_interface.py")
+    fi
+
+    if [[ ${#missing_components[@]} -gt 0 ]]; then
+        echo "WARNING: Preset Manager cannot start - missing components:"
+        printf '  - %s\n' "${missing_components[@]}"
+        echo "Your Docker image may be outdated. Please rebuild or pull the latest version."
+        echo "Visit https://github.com/zeroclue/comfyui-docker for instructions."
+        return 1
+    fi
+
+    # Validate Python imports before starting
+    if ! python3 -c "from preset_manager.core import ModelManager" 2>/dev/null; then
+        echo "WARNING: Cannot import ModelManager. Python dependencies may be missing."
+        echo "Preset Manager will not start. Please check your Docker image."
+        return 1
+    fi
+
     mkdir -p /workspace/logs
     mkdir -p /workspace/docs/presets
 
@@ -159,7 +194,69 @@ start_preset_manager() {
     export PYTHONPATH="/app:$PYTHONPATH"
 
     nohup python3 preset_manager.py &> /workspace/logs/preset_manager.log &
-    echo "Preset Manager started on port 9001 (accessible via Nginx on port 9000)"
+
+    # Verify process started successfully
+    local max_wait=10
+    local waited=0
+    while [[ $waited -lt $max_wait ]]; do
+        if [[ -S /tmp/flask_sessions/* ]] || pgrep -f "python3 preset_manager.py" > /dev/null; then
+            break
+        fi
+        sleep 1
+        ((waited++))
+    done
+
+    # Verify port 8000 is listening (Flask app port)
+    local max_wait=15
+    local waited=0
+    while [[ $waited -lt $max_wait ]]; do
+        if netstat -tuln 2>/dev/null | grep -q ':8000' || ss -tuln 2>/dev/null | grep -q ':8000'; then
+            break
+        fi
+        sleep 1
+        ((waited++))
+    done
+
+    if [[ $waited -ge $max_wait ]]; then
+        echo "WARNING: Preset Manager process started but port 8000 is not listening after ${max_wait}s."
+        echo "Check logs at /workspace/logs/preset_manager.log for errors."
+        return 1
+    fi
+
+    echo "Preset Manager started on port 8000 (accessible via Nginx on port 9000)"
+}
+
+# Check preset manager health
+check_preset_manager_health() {
+    echo "Checking Preset Manager health..."
+
+    local health_issues=()
+
+    # Check if preset manager process is running
+    if ! pgrep -f "python3 preset_manager.py" > /dev/null; then
+        health_issues+=("Preset Manager process is not running")
+    fi
+
+    # Check if port 8000 is listening (Flask app port)
+    if ! netstat -tuln 2>/dev/null | grep -q ':8000' && ! ss -tuln 2>/dev/null | grep -q ':8000'; then
+        health_issues+=("Port 8000 is not listening (Preset Manager Flask app)")
+    fi
+
+    # Check if Nginx proxy (port 9000) is accessible
+    if ! curl -s -f http://localhost:9000 > /dev/null 2>&1; then
+        health_issues+=("Nginx proxy on port 9000 is not accessible")
+    fi
+
+    if [[ ${#health_issues[@]} -gt 0 ]]; then
+        echo "WARNING: Preset Manager health check failed:"
+        printf '  - %s\n' "${health_issues[@]}"
+        echo "You can still use the container, but the Preset Manager web interface may not work."
+        echo "Check logs at /workspace/logs/preset_manager.log for details."
+        return 1
+    else
+        echo "Preset Manager health check passed."
+        return 0
+    fi
 }
 
 # ---------------------------------------------------------------------------- #
@@ -183,6 +280,31 @@ setup_ssh
 start_jupyter
 start_code_server
 start_preset_manager
+
+# Run health check if preset manager was started
+if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then
+    # Wait for preset manager to fully initialize with retries
+    local max_retries=5
+    local retry_delay=3
+    local retry_count=0
+
+    while [[ $retry_count -lt $max_retries ]]; do
+        if check_preset_manager_health; then
+            break
+        fi
+        ((retry_count++))
+        if [[ $retry_count -lt $max_retries ]]; then
+            echo "Retrying health check in ${retry_delay}s... ($retry_count/$max_retries)"
+            sleep $retry_delay
+        fi
+    done
+
+    if [[ $retry_count -ge $max_retries ]]; then
+        echo "NOTE: Preset Manager health check failed after $max_retries attempts, but continuing startup."
+        echo "Preset Manager may not be fully functional. Check logs at /workspace/logs/preset_manager.log"
+    fi
+fi
+
 export_env_vars
 
 execute_script "/post_start.sh" "Running post-start script..."

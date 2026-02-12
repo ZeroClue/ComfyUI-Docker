@@ -24,25 +24,37 @@ from .core import ModelManager
 from .config import DEFAULT_HOST, DEFAULT_PORT, SECRET_KEY
 
 # Import preset updater for GitHub integration
+IMPORT_ERRORS = {}
 try:
     from preset_updater import PresetUpdater
     HAS_UPDATER = True
-except ImportError:
+except ImportError as e:
     HAS_UPDATER = False
-    print("Warning: preset_updater not available, update functionality disabled")
+    IMPORT_ERRORS['preset_updater'] = str(e)
+    print(f"Warning: preset_updater not available - {e}")
 
 # Import download script generator for YAML-based downloads
 try:
     from generate_download_scripts import DownloadScriptGenerator
     HAS_SCRIPT_GENERATOR = True
-except ImportError:
+except ImportError as e:
     HAS_SCRIPT_GENERATOR = False
-    print("Warning: download script generator not available, using fallback")
+    IMPORT_ERRORS['script_generator'] = str(e)
+    print(f"Warning: download script generator not available - {e}")
 
 
 # Global variables for operation tracking
 operation_status = {}
 operation_progress = {}
+
+
+def _validate_script_path(script_path: str) -> bool:
+    """Validate that a download script exists and is executable"""
+    if not os.path.exists(script_path):
+        return False
+    if not os.access(script_path, os.X_OK):
+        return False
+    return True
 
 
 class PresetManagerWeb:
@@ -149,6 +161,28 @@ class PresetManagerWeb:
                 except Exception as e:
                     print(f"[WARNING] Error checking preset updates: {e}")
 
+            # Collect diagnostic information
+            diagnostic_info = {
+                'has_script_generator': HAS_SCRIPT_GENERATOR,
+                'has_updater': HAS_UPDATER,
+                'import_errors': IMPORT_ERRORS,
+                'scripts_available': {
+                    'download_presets.sh': _validate_script_path('/scripts/download_presets.sh'),
+                    'download_image_presets.sh': _validate_script_path('/scripts/download_image_presets.sh'),
+                    'download_audio_presets.sh': _validate_script_path('/scripts/download_audio_presets.sh'),
+                },
+                'components_status': {
+                    'preset_manager_dir': os.path.exists('/app/preset_manager'),
+                    'templates_dir': os.path.exists('/app/templates'),
+                    'static_dir': os.path.exists('/app/static'),
+                    'core_py': os.path.exists('/app/preset_manager/core.py'),
+                    'web_interface_py': os.path.exists('/app/preset_manager/web_interface.py'),
+                    'preset_manager_cli': os.path.exists('/app/preset_manager.py'),
+                    'presets_yaml': os.path.exists('/workspace/config/presets.yaml'),
+                },
+                'has_any_issues': bool(IMPORT_ERRORS) or not HAS_SCRIPT_GENERATOR or not HAS_UPDATER
+            }
+
             # Add preset IDs to categories for template use
             categories_with_ids = {}
             for category_name, presets in self.model_manager.categories.items():
@@ -165,7 +199,8 @@ class PresetManagerWeb:
                                  stats=stats,
                                  preset_version=preset_version,
                                  update_available=update_available,
-                                 has_updater=HAS_UPDATER)
+                                 has_updater=HAS_UPDATER,
+                                 diagnostic_info=diagnostic_info)
 
         @self.app.route('/presets')
         def presets():
@@ -420,6 +455,43 @@ class PresetManagerWeb:
                     'error': str(e)
                 }), 500
 
+        @self.app.route('/api/build/info', methods=['GET'])
+        def get_build_info():
+            """Get build information and component status"""
+            import sys
+
+            # Check script availability
+            scripts = {
+                'download_presets.sh': _validate_script_path('/scripts/download_presets.sh'),
+                'download_image_presets.sh': _validate_script_path('/scripts/download_image_presets.sh'),
+                'download_audio_presets.sh': _validate_script_path('/scripts/download_audio_presets.sh'),
+            }
+
+            # Check component status
+            components = {
+                'preset_manager_dir': os.path.exists('/app/preset_manager'),
+                'templates_dir': os.path.exists('/app/templates'),
+                'static_dir': os.path.exists('/app/static'),
+                'core_py': os.path.exists('/app/preset_manager/core.py'),
+                'web_interface_py': os.path.exists('/app/preset_manager/web_interface.py'),
+                'preset_manager_cli': os.path.exists('/app/preset_manager.py'),
+                'presets_yaml': os.path.exists('/workspace/config/presets.yaml'),
+            }
+
+            return jsonify({
+                'success': True,
+                'data': {
+                    'python_version': sys.version,
+                    'has_script_generator': HAS_SCRIPT_GENERATOR,
+                    'has_updater': HAS_UPDATER,
+                    'import_errors': IMPORT_ERRORS,
+                    'scripts_available': scripts,
+                    'components_status': components,
+                    'all_scripts_available': all(scripts.values()),
+                    'all_components_present': all(components.values()),
+                }
+            })
+
     def _download_preset(self, operation_id: str, preset: Dict):
         """Download preset in background thread using YAML configuration"""
         try:
@@ -472,7 +544,12 @@ class PresetManagerWeb:
 
                 operation_status[operation_id]['message'] = f'Downloading {os.path.basename(path)}...'
 
-                # Use the download function from generated script
+                # Use the download function from generated script with proper argument passing
+                # Sanitize inputs to prevent command injection
+                import shlex
+                safe_url = shlex.quote(url)
+                safe_target_dir = shlex.quote(target_dir)
+
                 cmd = [
                     'bash', '-c',
                     f'''
@@ -508,7 +585,7 @@ download_if_missing() {{
         return 1
     fi
 }}
-download_if_missing "{url}" "{target_dir}"
+download_if_missing {safe_url} {safe_target_dir}
 EOF
 )
                     '''
@@ -566,6 +643,19 @@ EOF
                 script_path = "/scripts/download_audio_presets.sh"
             else:
                 raise ValueError(f"Unknown preset type: {preset['type']}")
+
+            # Validate script exists before attempting
+            if not _validate_script_path(script_path):
+                error_msg = f'Download script not found: {script_path}'
+                if HAS_SCRIPT_GENERATOR:
+                    # Try YAML-based download as fallback
+                    operation_status[operation_id]['message'] = f'{error_msg} - falling back to YAML-based download...'
+                    self._download_preset_yaml(operation_id, preset_id, preset)
+                    return
+                else:
+                    operation_status[operation_id]['status'] = 'error'
+                    operation_status[operation_id]['message'] = f'{error_msg}. Please rebuild your Docker image or pull the latest version. Visit https://github.com/zeroclue/comfyui-docker for instructions.'
+                    return
 
             # Run download command
             cmd = [script_path, preset_id]

@@ -16,6 +16,70 @@
 {% endblock %}
 
 {% block content %}
+
+<!-- System Diagnostics Alert -->
+{% if diagnostic_info and diagnostic_info.has_any_issues %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h6 class="alert-heading">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                System Issues Detected
+            </h6>
+            <hr class="my-2">
+            <p class="mb-2">Some preset manager components may not be working correctly:</p>
+            <ul class="mb-0">
+                {% if not diagnostic_info.has_script_generator %}
+                <li><strong>Download Script Generator:</strong> Not available - YAML-based downloads may not work</li>
+                {% endif %}
+                {% if not diagnostic_info.has_updater %}
+                <li><strong>Preset Updater:</strong> Not available - preset update functionality disabled</li>
+                {% endif %}
+                {% if diagnostic_info.import_errors %}
+                <li><strong>Import Errors:</strong>
+                    <ul class="mb-0">
+                        {% for module, error in diagnostic_info.import_errors.items() %}
+                        <li><code>{{ module }}</code>: {{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% endif %}
+                {% if diagnostic_info.scripts_available and not diagnostic_info.scripts_available.get('download_presets.sh', true) %}
+                <li><strong>Missing Scripts:</strong> download_presets.sh not found or not executable</li>
+                {% endif %}
+                {% if diagnostic_info.scripts_available and not diagnostic_info.scripts_available.get('download_image_presets.sh', true) %}
+                <li><strong>Missing Scripts:</strong> download_image_presets.sh not found or not executable</li>
+                {% endif %}
+                {% if diagnostic_info.scripts_available and not diagnostic_info.scripts_available.get('download_audio_presets.sh', true) %}
+                <li><strong>Missing Scripts:</strong> download_audio_presets.sh not found or not executable</li>
+                {% endif %}
+                {% if diagnostic_info.components_status and not all(diagnostic_info.components_status.values()) %}
+                <li><strong>Missing Components:</strong>
+                    <ul class="mb-0">
+                        {% if not diagnostic_info.components_status.get('preset_manager_dir', true) %}
+                        <li>preset_manager directory</li>
+                        {% endif %}
+                        {% if not diagnostic_info.components_status.get('core_py', true) %}
+                        <li>preset_manager/core.py</li>
+                        {% endif %}
+                        {% if not diagnostic_info.components_status.get('web_interface_py', true) %}
+                        <li>preset_manager/web_interface.py</li>
+                        {% endif %}
+                        {% if not diagnostic_info.components_status.get('presets_yaml', true) %}
+                        <li>presets.yaml configuration</li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+            </ul>
+            <hr class="my-2">
+            <p class="mb-0"><small><strong>Recommended Action:</strong> Pull the latest Docker image or rebuild from source. Visit <a href="https://github.com/zeroclue/comfyui-docker" class="alert-link">github.com/zeroclue/comfyui-docker</a> for instructions.</small></p>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Storage Overview -->
 <div class="row mb-4">
     <div class="col-xl-4 col-md-6 mb-4">

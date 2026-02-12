@@ -138,6 +138,16 @@ target "_production_base" {
     }
 }
 
+# Minimal variant - ComfyUI + Manager + Preset Manager
+# Optimized for RunPod with custom nodes but without dev tools
+target "_minimal_base" {
+    args = {
+        INSTALL_DEV_TOOLS = "false"
+        INSTALL_SCIENCE_PACKAGES = "false"
+        INSTALL_CODE_SERVER = "false"
+    }
+}
+
 target "base-12-4" {
     inherits = ["_cu124"]
     tags = tag("base", "cu124")
@@ -181,3 +191,14 @@ target "production-12-8" {
     tags = tag("production", "cu128")
 }
 
+# Minimal variants - ComfyUI + Manager without dev tools
+# Includes custom nodes but optimized for smaller image size (~6-7GB)
+target "minimal-12-6" {
+    inherits = ["_cu126", "_minimal_base"]
+    tags = tag("minimal", "cu126")
+}
+
+target "minimal-12-8" {
+    inherits = ["_cu128", "_minimal_base"]
+    tags = tag("minimal", "cu128")
+}

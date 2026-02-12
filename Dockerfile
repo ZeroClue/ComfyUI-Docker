@@ -153,7 +153,7 @@ RUN test -f /app/preset_manager.py || exit 1 && \
     echo "Preset manager components validated successfully"
 
 # Test Python imports during build to catch import errors early
-RUN python3 -c "from preset_manager.core import ModelManager" || exit 1 && \
+RUN PYTHONPATH=/app:$PYTHONPATH python3 -c "from preset_manager.core import ModelManager" || exit 1 && \
     echo "Preset manager Python imports validated successfully"
 
 # Welcome Message

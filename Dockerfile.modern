@@ -203,7 +203,7 @@ COPY --chmod=644 workspace/docs/presets/ /app/workspace/docs/presets/
 RUN bash -c 'test -f /app/preset_manager.py && test -d /app/preset_manager && test -f /app/preset_manager/core.py && test -f /app/preset_manager/web_interface.py && test -d /app/templates && test -d /app/static && test -f /workspace/config/presets.yaml && echo "Preset manager components validated successfully"'
 
 # Test Python imports during build to catch import errors early
-RUN bash -c 'python3 -c "from preset_manager.core import ModelManager" && echo "Preset manager Python imports validated successfully"'
+RUN bash -c 'PYTHONPATH=/app:$PYTHONPATH python3 -c "from preset_manager.core import ModelManager" && echo "Preset manager Python imports validated successfully"'
 
 # Welcome Message
 COPY logo/zeroclue.txt /etc/zeroclue.txt

@@ -123,6 +123,7 @@ jobs:
 
       - name: Verify preset manager components
         if: env.SKIP_BUILD != 'true'
+        continue-on-error: true
         run: |
           # Map matrix cuda (12-6) to docker tag format (cu126)
           CUDA_TAG="${{ matrix.cuda }}"

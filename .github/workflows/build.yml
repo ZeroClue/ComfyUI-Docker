@@ -116,8 +116,18 @@ jobs:
       - name: Verify preset manager components
         if: env.SKIP_BUILD != 'true'
         run: |
+          # Map matrix cuda (12-6) to docker tag format (cu126)
+          CUDA_TAG="${{ matrix.cuda }}"
+          case "${{ matrix.cuda }}" in
+            12-4) CUDA_TAG="cu124" ;;
+            12-5) CUDA_TAG="cu125" ;;
+            12-6) CUDA_TAG="cu126" ;;
+            12-8) CUDA_TAG="cu128" ;;
+            12-9) CUDA_TAG="cu129" ;;
+            13-0) CUDA_TAG="cu130" ;;
+          esac
           echo "Verifying preset manager components..."
-          docker run --rm zeroclue/comfyui:${{ matrix.target }}-torch${{ vars.TORCH_VERSION }}-${{ matrix.cuda }} \
+          docker run --rm zeroclue/comfyui:${{ matrix.target }}-torch${{ vars.TORCH_VERSION }}-$CUDA_TAG \
             bash -c '
               echo "Checking preset manager components..."
               test -f /app/preset_manager.py || exit 1

@@ -308,7 +308,16 @@ echo "Pod Started - Optimizations applied"
 setup_ssh
 start_jupyter
 start_code_server
-start_preset_manager
+
+# Start preset manager (don't exit on failure for debugging)
+if ! start_preset_manager; then
+    echo "[DEBUG] Preset Manager failed - dumping logs for debugging..."
+    echo "[DEBUG] === preset_manager.log ==="
+    cat /workspace/logs/preset_manager.log 2>/dev/null || echo "[DEBUG] Log file not found"
+    echo "[DEBUG] === end of log ==="
+    echo "[DEBUG] Sleeping for 5 minutes to allow debugging..."
+    sleep 300
+fi
 
 # Run health check if preset manager was started
 if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then

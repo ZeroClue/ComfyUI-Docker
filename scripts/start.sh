@@ -325,9 +325,9 @@ start_code_server
 # Run health check if preset manager was started
 if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then
     # Wait for preset manager to fully initialize with retries
-    local max_retries=5
-    local retry_delay=3
-    local retry_count=0
+    max_retries=5
+    retry_delay=3
+    retry_count=0
 
     while [[ $retry_count -lt $max_retries ]]; do
         if check_preset_manager_health; then

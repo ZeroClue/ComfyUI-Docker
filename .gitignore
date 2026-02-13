@@ -195,6 +195,7 @@ dmypy.json
 claude_settings.json
 ai_generated_*
 *_claude_*
+.agents
 
 # GitHub Actions and CI/CD artifacts
 .github/workflows/*.tmp
@@ -225,4 +226,10 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
+# Other
 CLAUDE.md.bak
+
+# plans, designs, and other documentation that shouldn't be in git
+docs/plans/
+docs/designs/
+docs/notes/

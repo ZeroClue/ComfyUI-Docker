@@ -13,15 +13,16 @@ on:
         default: '12-6,12-8'
   schedule:
     - cron: "0 */8 * * *"
-  push:
-    branches: [main]
-    paths:
-      - 'Dockerfile'
-      - 'Dockerfile.modern'
-      - 'docker-bake.hcl'
-      - 'docker-bake-modern.hcl'
-      - 'scripts/**'
-      - 'custom_nodes.txt'
+  # Temporarily disabled for debugging
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'Dockerfile'
+  #     - 'Dockerfile.modern'
+  #     - 'docker-bake.hcl'
+  #     - 'docker-bake-modern.hcl'
+  #     - 'scripts/**'
+  #     - 'custom_nodes.txt'
 
 jobs:
   bake:

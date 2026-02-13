@@ -126,3 +126,6 @@ Thumbs.db
 docs/plans/
 docs/designs/
 docs/notes/
+
+# runpod plugin config
+.runpod/

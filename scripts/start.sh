@@ -140,6 +140,9 @@ start_preset_manager() {
 
     echo "Starting Preset Manager..."
 
+    # Set PYTHONPATH first so imports work
+    export PYTHONPATH="/app:$PYTHONPATH"
+
     # Validate required files exist before starting
     local missing_components=()
 
@@ -191,7 +194,6 @@ start_preset_manager() {
 
     # Start the preset manager Flask application
     cd /app
-    export PYTHONPATH="/app:$PYTHONPATH"
 
     nohup python3 preset_manager.py &> /workspace/logs/preset_manager.log &
 

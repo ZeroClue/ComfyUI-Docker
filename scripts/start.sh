@@ -312,15 +312,13 @@ setup_ssh
 start_jupyter
 start_code_server
 
-# Start preset manager in background (don't block container startup)
-(
-    if ! start_preset_manager; then
-        echo "[DEBUG] Preset Manager failed - dumping logs..."
-        echo "[DEBUG] === preset_manager.log ==="
-        cat /workspace/logs/preset_manager.log 2>/dev/null || echo "[DEBUG] Log file not found"
-        echo "[DEBUG] === end of log ==="
-    fi
-) &
+# Start preset manager (don't exit on failure)
+if ! start_preset_manager; then
+    echo "[DEBUG] Preset Manager failed - dumping logs..."
+    echo "[DEBUG] === preset_manager.log ==="
+    cat /workspace/logs/preset_manager.log 2>/dev/null || echo "[DEBUG] Log file not found"
+    echo "[DEBUG] === end of log ==="
+fi
 
 # Run health check if preset manager was started
 if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then

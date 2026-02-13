@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e  # Exit the script if any statement returns a non-true return value
 
+# Ensure venv Python is first in PATH (UV may have added /root/.local/bin first)
+export PATH="/workspace/venv/bin:$PATH"
+
 # ---------------------------------------------------------------------------- #
 #                          Function Definitions                                #
 # ---------------------------------------------------------------------------- #
@@ -187,7 +190,7 @@ start_preset_manager() {
 
     # DEBUG: Validate Python imports before starting
     echo "[DEBUG] Testing Python import..."
-    if ! python3 -c "from preset_manager.core import ModelManager; print('[DEBUG] Import successful')" 2>&1; then
+    if ! /workspace/venv/bin/python3 -c "from preset_manager.core import ModelManager; print('[DEBUG] Import successful')" 2>&1; then
         echo "WARNING: Cannot import ModelManager. Python dependencies may be missing."
         echo "Preset Manager will not start. Please check your Docker image."
         return 1
@@ -214,7 +217,7 @@ start_preset_manager() {
     echo "[DEBUG] Starting Flask app..."
     cd /app
 
-    nohup python3 preset_manager.py &> /workspace/logs/preset_manager.log &
+    nohup /workspace/venv/bin/python3 preset_manager.py &> /workspace/logs/preset_manager.log &
     local pid=$!
     echo "[DEBUG] Flask app started with PID $pid"
 

@@ -202,3 +202,10 @@ target "minimal-12-8" {
     inherits = ["_cu128", "_minimal_base"]
     tags = tag("minimal", "cu128")
 }
+
+# Debug variant - for troubleshooting issues
+# Build manually: docker buildx bake debug-12-6 --push
+target "debug-12-6" {
+    inherits = ["_cu126"]
+    tags = tag("debug", "cu126")
+}

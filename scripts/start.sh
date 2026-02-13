@@ -140,26 +140,41 @@ start_preset_manager() {
 
     echo "Starting Preset Manager..."
 
-    # Set PYTHONPATH first so imports work
+    # DEBUG: Set PYTHONPATH first so imports work
+    echo "[DEBUG] Setting PYTHONPATH=/app"
     export PYTHONPATH="/app:$PYTHONPATH"
+    echo "[DEBUG] PYTHONPATH=$PYTHONPATH"
 
-    # Validate required files exist before starting
+    # DEBUG: Validate required files exist before starting
+    echo "[DEBUG] Checking required files..."
     local missing_components=()
 
     if [[ ! -f /app/preset_manager.py ]]; then
         missing_components+=("preset_manager.py")
+        echo "[DEBUG] MISSING: /app/preset_manager.py"
+    else
+        echo "[DEBUG] FOUND: /app/preset_manager.py"
     fi
 
     if [[ ! -d /app/preset_manager ]]; then
         missing_components+=("preset_manager directory")
+        echo "[DEBUG] MISSING: /app/preset_manager/"
+    else
+        echo "[DEBUG] FOUND: /app/preset_manager/"
     fi
 
     if [[ ! -f /app/preset_manager/core.py ]]; then
         missing_components+=("preset_manager/core.py")
+        echo "[DEBUG] MISSING: /app/preset_manager/core.py"
+    else
+        echo "[DEBUG] FOUND: /app/preset_manager/core.py"
     fi
 
     if [[ ! -f /app/preset_manager/web_interface.py ]]; then
         missing_components+=("preset_manager/web_interface.py")
+        echo "[DEBUG] MISSING: /app/preset_manager/web_interface.py"
+    else
+        echo "[DEBUG] FOUND: /app/preset_manager/web_interface.py"
     fi
 
     if [[ ${#missing_components[@]} -gt 0 ]]; then
@@ -170,38 +185,46 @@ start_preset_manager() {
         return 1
     fi
 
-    # Validate Python imports before starting
-    if ! python3 -c "from preset_manager.core import ModelManager" 2>/dev/null; then
+    # DEBUG: Validate Python imports before starting
+    echo "[DEBUG] Testing Python import..."
+    if ! python3 -c "from preset_manager.core import ModelManager; print('[DEBUG] Import successful')" 2>&1; then
         echo "WARNING: Cannot import ModelManager. Python dependencies may be missing."
         echo "Preset Manager will not start. Please check your Docker image."
         return 1
     fi
 
+    echo "[DEBUG] Creating directories..."
     mkdir -p /workspace/logs
     mkdir -p /workspace/docs/presets
 
-    # README files are now read directly from container image at /app/workspace/docs/presets/
-    # This ensures they stay current with container updates and eliminates sync issues
-
     # Copy templates to the expected location
+    echo "[DEBUG] Copying templates..."
     if [[ -d /scripts/templates ]]; then
         mkdir -p /app/templates
         cp -r /scripts/templates/* /app/templates/
+        echo "[DEBUG] Templates copied from /scripts/templates"
+    else
+        echo "[DEBUG] /scripts/templates not found, skipping"
     fi
 
     # Create static directory
     mkdir -p /app/static
 
     # Start the preset manager Flask application
+    echo "[DEBUG] Starting Flask app..."
     cd /app
 
     nohup python3 preset_manager.py &> /workspace/logs/preset_manager.log &
+    local pid=$!
+    echo "[DEBUG] Flask app started with PID $pid"
 
     # Verify process started successfully
+    echo "[DEBUG] Waiting for process to start..."
     local max_wait=10
     local waited=0
     while [[ $waited -lt $max_wait ]]; do
         if [[ -S /tmp/flask_sessions/* ]] || pgrep -f "python3 preset_manager.py" > /dev/null; then
+            echo "[DEBUG] Process found after ${waited}s"
             break
         fi
         sleep 1
@@ -209,10 +232,12 @@ start_preset_manager() {
     done
 
     # Verify port 8000 is listening (Flask app port)
+    echo "[DEBUG] Waiting for port 8000..."
     local max_wait=15
     local waited=0
     while [[ $waited -lt $max_wait ]]; do
         if netstat -tuln 2>/dev/null | grep -q ':8000' || ss -tuln 2>/dev/null | grep -q ':8000'; then
+            echo "[DEBUG] Port 8000 is listening"
             break
         fi
         sleep 1
@@ -222,6 +247,8 @@ start_preset_manager() {
     if [[ $waited -ge $max_wait ]]; then
         echo "WARNING: Preset Manager process started but port 8000 is not listening after ${max_wait}s."
         echo "Check logs at /workspace/logs/preset_manager.log for errors."
+        echo "[DEBUG] Last 10 lines of preset_manager.log:"
+        tail -10 /workspace/logs/preset_manager.log 2>/dev/null || echo "[DEBUG] Log file not found"
         return 1
     fi
 

@@ -33,51 +33,42 @@ update_venv_paths() {
 
 # Optimized venv sync with parallel processing
 optimized_venv_sync() {
-    echo "**** starting optimized venv sync to workspace... ****"
-    echo "This will be significantly faster than the original sync process."
+    echo "**** starting venv sync to workspace... ****"
 
     local start_time=$(date +%s)
 
     # Create destination directory if it doesn't exist
     mkdir -p /workspace/venv
 
-    # Use optimized rsync with multiple improvements:
-    echo "**** Phase 1: Critical files sync (parallel) ****"
     # Sync critical directories first in parallel
     (
-        # Python binaries and core packages
         rsync -auz --compress-level=6 --partial --inplace \
               --include="bin/python*" --include="bin/pip*" --include="bin/activate*" \
               --exclude="*" /venv/ /workspace/venv/ &
 
-        # Site packages (most of the content)
         rsync -auz --compress-level=6 --partial --inplace \
               --include="lib/python*/site-packages/***" --exclude="*" \
               /venv/ /workspace/venv/ &
 
-        # Wait for critical files to complete
         wait
     )
 
-    echo "**** Phase 2: Remaining files (bulk sync) ****"
-    # Sync remaining files with optimized settings
-    rsync -auz --compress-level=6 --partial --inplace \
-          --human-readable --progress \
-          /venv/ /workspace/venv/
+    # Sync remaining files
+    rsync -auz --compress-level=6 --partial --inplace /venv/ /workspace/venv/
 
-    # Remove source files (moved, not copied)
+    # Remove source files
     rm -rf /venv
 
     # Update paths
     update_venv_paths
 
-    # Create completion marker with integrity check
+    # Create completion marker
     touch /workspace/venv/.sync_complete
     echo "$(date +%Y-%m-%d_%H:%M:%S)" > /workspace/venv/.sync_timestamp
 
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
-    echo "✅ Optimized venv sync completed in ${duration} seconds ($((duration/60)) minutes)"
+    echo "✅ venv sync completed in ${duration}s"
 }
 
 echo "**** checking venv sync status... ****"
@@ -177,24 +168,16 @@ if [ -d /ComfyUI ]; then
     # Check if sync should be forced
     FORCE_SYNC=false
     if [ "${FORCE_SYNC_ALL,,}" = "true" ]; then
-        echo "FORCE_SYNC_ALL is enabled, forcing ComfyUI sync..."
         FORCE_SYNC=true
     fi
 
     # Check if workspace ComfyUI is already complete
     COMFYUI_COMPLETE=false
     if [ "$FORCE_SYNC" = false ] && [ -d /workspace/ComfyUI ] && [ -f /workspace/ComfyUI/main.py ] && [ -f /workspace/ComfyUI/web.py ] && [ -f /workspace/ComfyUI/requirements.txt ]; then
-        echo "Workspace ComfyUI appears complete, checking if sync is needed..."
-
-        # Quick check: compare key files to see if they're different
         if [ -f /ComfyUI/main.py ] && [ -f /workspace/ComfyUI/main.py ]; then
-            # Compare file modification times as a quick check
             SOURCE_TIME=$(stat -c%Y /ComfyUI/main.py 2>/dev/null || echo "0")
             DEST_TIME=$(stat -c%Y /workspace/ComfyUI/main.py 2>/dev/null || echo "0")
-
-            # Also check for completion marker
             if [ -f /workspace/ComfyUI/.sync_complete ] && [ "$SOURCE_TIME" -le "$DEST_TIME" ]; then
-                echo "ComfyUI sync appears complete, skipping rsync..."
                 COMFYUI_COMPLETE=true
             fi
         fi
@@ -202,11 +185,10 @@ if [ -d /ComfyUI ]; then
 
     # Only run rsync if ComfyUI is not complete
     if [ "$COMFYUI_COMPLETE" = false ]; then
-        echo "**** syncing ComfyUI to workspace, please wait ****"
+        echo "**** syncing ComfyUI to workspace... ****"
 
         SRC_MODELS="/ComfyUI/models"
         DST_MODELS="/workspace/ComfyUI/models"
-
         EXCLUDE_MODELS=""
 
         if [ -d "$DST_MODELS" ] && [ "$(ls -A "$DST_MODELS")" ]; then
@@ -215,41 +197,34 @@ if [ -d /ComfyUI ]; then
                 folder_name=$(basename "$d")
                 EXCLUDE_MODELS="$EXCLUDE_MODELS --exclude='models/$folder_name/**'"
             done
-            echo "**** Excluding existing model folders: $EXCLUDE_MODELS ****"
         fi
 
         if [ -d /workspace/ComfyUI/output ]; then
             EXCLUDE_MODELS="$EXCLUDE_MODELS --exclude='output/'"
-            echo "**** Excluding existing output folder ****"
         fi
 
-        # Use optimized ComfyUI sync
-        echo "**** Using optimized ComfyUI sync ****"
         if rsync -auz --compress-level=6 --partial --inplace \
                   --exclude='__pycache__/' --exclude='*.pyc' --exclude='.git/' \
                   $EXCLUDE_MODELS /ComfyUI/ /workspace/ComfyUI/ && rm -rf /ComfyUI; then
-            # Create completion marker
             touch /workspace/ComfyUI/.sync_complete
-            echo "✅ ComfyUI sync completed successfully with optimizations."
+            echo "✅ ComfyUI sync completed"
         else
-            echo "❌ Optimized ComfyUI sync failed, trying fallback"
             if rsync -au --remove-source-files $EXCLUDE_MODELS /ComfyUI/ /workspace/ComfyUI/ && rm -rf /ComfyUI; then
                 touch /workspace/ComfyUI/.sync_complete
-                echo "✅ ComfyUI sync completed with fallback method."
+                echo "✅ ComfyUI sync completed"
             else
                 echo "❌ ComfyUI sync failed"
                 exit 1
             fi
         fi
+    else
+        echo "Skip: ComfyUI already synced"
     fi
 
 else
     echo "Skip: /ComfyUI does not exist."
-
-    # Check if workspace ComfyUI exists and mark as complete if it does
     if [ -d /workspace/ComfyUI ] && [ -f /workspace/ComfyUI/main.py ]; then
         touch /workspace/ComfyUI/.sync_complete
-        echo "Workspace ComfyUI exists, marked as complete."
     fi
 fi
 

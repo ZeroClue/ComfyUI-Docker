@@ -21,8 +21,9 @@ if script_dir not in sys.path:
     sys.path.insert(0, script_dir)
 
 from preset_manager.web_interface import PresetManagerWeb
+from preset_manager.config import DEFAULT_HOST, DEFAULT_PORT
 
 if __name__ == '__main__':
     # Create and run the preset manager web interface
     web_interface = PresetManagerWeb()
-    web_interface.run(host='0.0.0.0', port=9001, debug=False)
+    web_interface.run(host=DEFAULT_HOST, port=DEFAULT_PORT, debug=False)

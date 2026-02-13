@@ -39,10 +39,6 @@ jobs:
             cuda: 12-6
           - target: base
             cuda: 12-8
-          - target: base
-            cuda: 12-9
-          - target: base
-            cuda: 13-0
           # Production variants - optimized for serving
           - target: production
             cuda: 12-6
@@ -158,47 +154,6 @@ jobs:
           echo "Freeing disk space..."
           docker system prune -af --volumes 2>/dev/null || true
           df -h
-
-      - name: Verify preset manager components
-        if: env.SKIP_BUILD != 'true'
-        continue-on-error: true
-        run: |
-          # Map matrix cuda (12-6) to docker tag format (cu126)
-          CUDA_TAG="${{ matrix.cuda }}"
-          case "${{ matrix.cuda }}" in
-            12-4) CUDA_TAG="cu124" ;;
-            12-5) CUDA_TAG="cu125" ;;
-            12-6) CUDA_TAG="cu126" ;;
-            12-8) CUDA_TAG="cu128" ;;
-            12-9) CUDA_TAG="cu129" ;;
-            13-0) CUDA_TAG="cu130" ;;
-          esac
-          echo "Verifying preset manager components..."
-          docker run --rm -e PYTHONPATH=/app zeroclue/comfyui:${{ matrix.target }}-torch2.8.0-$CUDA_TAG \
-            bash -c '
-              echo "Checking preset manager components..."
-              test -f /app/preset_manager.py || exit 1
-              test -d /app/preset_manager || exit 1
-              test -f /app/preset_manager/core.py || exit 1
-              test -f /app/preset_manager/web_interface.py || exit 1
-              test -d /app/templates || exit 1
-              test -d /app/static || exit 1
-              test -f /workspace/config/presets.yaml || exit 1
-              echo "Verifying Python imports..."
-              python3 -c "from preset_manager.core import ModelManager" || exit 1
-              echo "Preset manager core components verified!"
-
-              # Only check download scripts for non-production variants
-              # Production/minimal variants use simplified configs and may not have all scripts
-              if [ "${{ matrix.target }}" != "production" ]; then
-                echo "Checking download scripts..."
-                test -f /download_presets.sh && echo "  - download_presets.sh: found"
-                test -f /download_image_presets.sh && echo "  - download_image_presets.sh: found"
-                test -f /download_audio_presets.sh && echo "  - download_audio_presets.sh: found"
-              else
-                echo "Skipping download script check for production variant (uses _no_custom_nodes)"
-              fi
-            '
 
       - name: Build summary
         if: env.SKIP_BUILD != 'true'

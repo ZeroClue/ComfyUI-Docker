@@ -4,25 +4,27 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: 'Build targets (comma-separated): base,production,modern'
+        description: 'Build targets (comma-separated): base,production,modern,minimal'
         required: false
-        default: 'base,production,modern'
+        default: 'base,production,modern,minimal'
       cuda_versions:
         description: 'CUDA versions (comma-separated): 12-6,12-8,12-9,13-0'
         required: false
         default: '12-6,12-8'
   schedule:
     - cron: "0 */8 * * *"
-  # Temporarily disabled for debugging
-  # push:
-  #   branches: [main]
-  #   paths:
-  #     - 'Dockerfile'
-  #     - 'Dockerfile.modern'
-  #     - 'docker-bake.hcl'
-  #     - 'docker-bake-modern.hcl'
-  #     - 'scripts/**'
-  #     - 'custom_nodes.txt'
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'Dockerfile.modern'
+      - 'docker-bake.hcl'
+      - 'docker-bake-modern.hcl'
+      - 'scripts/**'
+      - 'custom_nodes.txt'
+      - 'proxy/**'
+      - 'config/**'
+      - '.github/workflows/build.yml'
 
 jobs:
   bake:
@@ -59,7 +61,7 @@ jobs:
     steps:
       - name: Check if should run
         run: |
-          TARGETS="${{ github.event.inputs.targets || 'base,production,modern' }}"
+          TARGETS="${{ github.event.inputs.targets || 'base,production,modern,minimal' }}"
           CUDA="${{ github.event.inputs.cuda_versions || '12-6,12-8' }}"
 
           if [[ ",$TARGETS," != *",${{ matrix.target }},"* ]]; then
@@ -72,18 +74,53 @@ jobs:
             echo "Building ${{ matrix.target }}-${{ matrix.cuda }}"
           fi
 
-      - name: Maximize build space
+      - name: Aggressive disk cleanup
         if: env.SKIP_BUILD != 'true'
-        uses: AdityaGarg8/remove-unwanted-software@v5
-        with:
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
-          remove-large-packages: 'true'
-          remove-cached-tools: 'true'
-          remove-swapfile: 'true'
+        run: |
+          echo "=== Disk usage before cleanup ==="
+          df -h
+          echo ""
+
+          # Remove Java (JDKs)
+          sudo rm -rf /usr/lib/jvm
+
+          # Remove .NET SDKs
+          sudo rm -rf /usr/share/dotnet
+
+          # Remove Swift toolchain
+          sudo rm -rf /usr/share/swift
+
+          # Remove Haskell (GHC)
+          sudo rm -rf /usr/local/.ghcup
+
+          # Remove Julia
+          sudo rm -rf /usr/local/julia*
+
+          # Remove Android SDKs
+          sudo rm -rf /usr/local/lib/android
+
+          # Remove Chromium
+          sudo rm -rf /usr/local/share/chromium
+
+          # Remove Microsoft/Edge and Google Chrome
+          sudo rm -rf /opt/microsoft /opt/google
+
+          # Remove Azure CLI
+          sudo rm -rf /opt/az
+
+          # Remove PowerShell
+          sudo rm -rf /usr/local/share/powershell
+
+          # Remove CodeQL and other toolcaches
+          sudo rm -rf /opt/hostedtoolcache
+
+          # Docker cleanup
+          docker system prune -af || true
+          docker builder prune -af || true
+
+          echo ""
+          echo "=== Disk usage after cleanup ==="
+          df -h
 
       - name: Checkout
         if: env.SKIP_BUILD != 'true'

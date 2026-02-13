@@ -12,6 +12,7 @@
 
 | Use Case | Recommended Image | GPU | Cost Estimate |
 | -------- | ----------------- | --- | ------------- |
+| **RunPod Optimized** | `zeroclue/comfyui:minimal-torch2.8.0-cu126` | RTX A4000+ | $0.40-0.70/hr |
 | **Development** | `zeroclue/comfyui:base-torch2.8.0-cu126` | RTX A4000+ | $0.50-1.00/hr |
 | **Production** | `zeroclue/comfyui:production-torch2.8.0-cu126` | RTX A4000+ | $0.35-0.60/hr |
 
@@ -59,10 +60,13 @@ After pod starts, click the **Port 3000** link to access ComfyUI web interface.
 ### Container Images
 
 ```bash
+# RunPod Optimized (recommended - custom nodes, no dev tools)
+zeroclue/comfyui:minimal-torch2.8.0-cu126
+
 # Development (full tooling)
 zeroclue/comfyui:base-torch2.8.0-cu126
 
-# Production (cost optimized)
+# Production (no custom nodes)
 zeroclue/comfyui:production-torch2.8.0-cu126
 ```
 

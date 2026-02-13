@@ -23,6 +23,7 @@
 ## 🐳 Docker Configuration
 
 **Recommended Images**:
+- **RunPod Optimized**: `zeroclue/comfyui:minimal-torch2.8.0-cu126`
 - **Full Setup**: `zeroclue/comfyui:base-torch2.8.0-cu126`
 - **Cost Optimized**: `zeroclue/comfyui:production-torch2.8.0-cu126`
 

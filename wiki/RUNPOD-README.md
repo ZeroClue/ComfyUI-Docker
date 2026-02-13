@@ -12,6 +12,7 @@
 
 | Use Case | Recommended Image | GPU | Cost Estimate |
 | -------- | ----------------- | --- | ------------- |
+| **RunPod Optimized** | `zeroclue/comfyui:minimal-torch2.8.0-cu126` | RTX A4000+ | $0.40-0.70/hr |
 | **Development** | `zeroclue/comfyui:base-torch2.8.0-cu126` | RTX A4000+ | $0.50-1.00/hr |
 | **Production** | `zeroclue/comfyui:production-torch2.8.0-cu126` | RTX A4000+ | $0.35-0.60/hr |
 
@@ -59,6 +60,12 @@ After pod starts, click the **Port 3000** link to access ComfyUI web interface.
 
 ### Container Image Selection
 
+#### RunPod Optimized Variants (Recommended)
+```bash
+# RunPod optimized - custom nodes without dev tools
+zeroclue/comfyui:minimal-torch2.8.0-cu126
+```
+
 #### Development Variants (Full Tooling)
 ```bash
 # Complete development environment with custom nodes
@@ -67,7 +74,7 @@ zeroclue/comfyui:base-torch2.8.0-cu126
 
 #### Production Variants (Cost Optimized)
 ```bash
-# Production optimized - recommended for most users
+# Production optimized - no custom nodes
 zeroclue/comfyui:production-torch2.8.0-cu126
 ```
 
@@ -221,7 +228,8 @@ All important data is automatically stored in network storage:
 | Budget Level | Recommended Variant | Savings |
 |--------------|---------------------|---------|
 | **Premium** | `base-torch2.8.0-cu126` | Full features, higher cost |
-| **Balanced** | `production-torch2.8.0-cu126` | 30-50% savings |
+| **Balanced** | `minimal-torch2.8.0-cu126` | Custom nodes, no dev tools |
+| **Budget** | `production-torch2.8.0-cu126` | 30-50% savings |
 
 ### GPU Selection Guide
 
@@ -256,7 +264,7 @@ ACCESS_PASSWORD=secure_password_123
 
 ### Template 2: High-Quality Image Generation
 
-**Image**: `zeroclue/comfyui:production-torch2.8.0-cu126`
+**Image**: `zeroclue/comfyui:minimal-torch2.8.0-cu126`
 **GPU**: RTX A4000
 **Environment Variables**:
 ```bash

@@ -113,7 +113,7 @@ Password: Use ACCESS_PASSWORD environment variable (if set)
 | Port | Service | Access Via | Description |
 |------|---------|------------|-------------|
 | 9000 | Preset Manager Web | Direct/Nginx | Main web interface |
-| 9001 | Preset Manager App | Internal | Flask application (internal) |
+| 8000 | Preset Manager App | Internal | Flask application (internal) |
 
 ### Disabling the Preset Manager
 

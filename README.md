@@ -2,8 +2,6 @@
 
 # ZeroClue ComfyUI-Docker
 
-> ⚠️ **Auto-updates temporarily disabled** while optimizing the build system.
-
 > 💬 Feedback & Issues → [GitHub Issues](https://github.com/ZeroClue/ComfyUI-Docker/issues)
 
 > 🚀 This Docker image is maintained by ZeroClue and designed for both cloud deployment and local use.
@@ -32,9 +30,11 @@
 zeroclue/comfyui:(A)-torch2.8.0-(B)
 ```
 
-* **(A)**: `base` or `production`
+* **(A)**: `base`, `production`, `minimal`, or `modern`
   * `base`: ComfyUI + Manager + custom nodes + code-server (**~8-12GB**)
   * `production`: ComfyUI + Manager, optimized for serving (**~4-5GB**)
+  * `minimal`: ComfyUI + Manager + custom nodes, no dev tools (**~6-7GB**)
+  * `modern`: Simplified Dockerfile, experimental (**~8-10GB**)
 * **(B)**: CUDA version → `cu126`, `cu128` (new variants), `cu124`, `cu129`, `cu130`
 
 ---
@@ -55,17 +55,20 @@ zeroclue/comfyui:(A)-torch2.8.0-(B)
 | `zeroclue/comfyui:production-torch2.8.0-cu126` | ❌ No         | ❌ No       | ❌ No      | ~4-5GB | 12.6 | Production serving |
 | `zeroclue/comfyui:production-torch2.8.0-cu128` | ❌ No         | ❌ No       | ❌ No      | ~4-5GB | 12.8 | Production serving |
 
+### 🎯 RunPod Optimized Variants (Minimal)
+| Image Name                                    | Custom Nodes | Code Server | JupyterLab | Size | CUDA | Use Case |
+| --------------------------------------------- | ------------ | ----------- | ---------- | ---- | ---- | -------- |
+| `zeroclue/comfyui:minimal-torch2.8.0-cu126` | ✅ Yes        | ❌ No       | ❌ No      | ~6-7GB | 12.6 | RunPod with custom nodes |
+| `zeroclue/comfyui:minimal-torch2.8.0-cu128` | ✅ Yes        | ❌ No       | ❌ No      | ~6-7GB | 12.8 | RunPod with custom nodes |
+
 > 👉 To switch: **Edit Pod/Template** → set `Container Image`.
 
 ### 🚀 Variant Selection Guide
 
 - **For Development**: Use `base` variant with full tooling and custom nodes
 - **For Production**: Use `production` variants (50% smaller, faster startup)
+- **For RunPod**: Use `minimal` variants (custom nodes without dev tools, optimal size)
 - **All variants** support the same preset systems and environment variables
-
-**Migration from removed variants:**
-- **slim/minimal users** → Use `base` variant and install custom nodes via ComfyUI Manager
-- **ultra-slim users** → Use `production` variant for similar size with production optimizations
 
 ### 🔄 Migration Guide
 
@@ -346,12 +349,10 @@ docker run --gpus all -p 3000:3000 \
 ### 📋 Auto-Built Variants (100% Success Rate)
 
 ✅ **Reliably built automatically:**
-- `base-torch2.8.0-cu126` - Full installation with CUDA 12.6
-- `base-torch2.8.0-cu128/129/130` - Full installation with latest CUDA versions
+- `base-torch2.8.0-cu126/128/129/130` - Full installation with CUDA 12.6-13.0
 - `production-torch2.8.0-cu126/128` - Optimized for serving
-
-🔧 **Manual build required for large variants:**
-- `base-torch2.8.0-cu128` - Due to disk space constraints
+- `minimal-torch2.8.0-cu126/128` - RunPod optimized with custom nodes
+- `modern-torch2.8.0-cu126/128` - Simplified Dockerfile (experimental)
 
 ### 📖 Detailed Instructions
 

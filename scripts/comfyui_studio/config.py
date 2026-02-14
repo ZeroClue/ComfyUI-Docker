@@ -2,6 +2,7 @@
 Configuration for ComfyUI Studio
 """
 import os
+import secrets
 
 
 class Config:
@@ -28,7 +29,8 @@ class Config:
 
     # Authentication
     ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD", "password")
-    SECRET_KEY = os.getenv("SECRET_KEY", "comfyui-studio-secret-key-change-in-production")
+    # Security: Generate random secret key if not provided
+    SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

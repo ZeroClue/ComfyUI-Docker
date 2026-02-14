@@ -5,14 +5,20 @@ import os
 import json
 import hashlib
 import logging
+import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Any
+from urllib.parse import urlparse
 
 import requests
 from flask import (
     Flask, render_template_string, request,
     jsonify, session, redirect, url_for, send_file
 )
+
+# Security: Blocked hosts for SSRF protection
+BLOCKED_HOSTS = {'localhost', '127.0.0.1', '169.254.169.254'}
+BLOCKED_PREFIXES = ('10.', '172.', '192.168.', '169.254.')
 
 try:
     from flask_session import Session
@@ -25,6 +31,46 @@ from .core import WorkflowManager
 from .comfyui_client import ComfyUIClient
 
 logger = logging.getLogger(__name__)
+
+
+def is_safe_url(url: str) -> bool:
+    """Validate URL to prevent SSRF attacks."""
+    try:
+        parsed = urlparse(url)
+        # Only allow http/https schemes
+        if parsed.scheme not in {'http', 'https'}:
+            return False
+        # Block internal network access
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        # Check blocked hosts
+        if hostname in BLOCKED_HOSTS:
+            return False
+        # Check blocked prefixes (private networks)
+        for prefix in BLOCKED_PREFIXES:
+            if hostname.startswith(prefix):
+                return False
+        return True
+    except Exception:
+        return False
+
+
+def safe_join_path(base_dir: str, filename: str) -> str:
+    """Safely join paths and prevent path traversal."""
+    # Get basename to remove any path components
+    safe_name = os.path.basename(filename)
+    if safe_name != filename or '..' in filename:
+        return None
+    # Build full path
+    full_path = os.path.join(base_dir, safe_name)
+    # Resolve to absolute path
+    full_path = os.path.abspath(full_path)
+    base_dir = os.path.abspath(base_dir)
+    # Ensure resolved path is within base directory
+    if not full_path.startswith(base_dir + os.sep):
+        return None
+    return full_path
 
 
 class StudioWeb:
@@ -152,13 +198,21 @@ class StudioWeb:
 
                 inputs = data.get('inputs', {})
 
-                # Handle image URLs
+                # Handle image URLs with SSRF protection
                 sha256_hash = hashlib.sha256()
                 for key, img_url in data.items():
                     if key.startswith('file_image_'):
                         input_id = key[11:]
                         try:
-                            response = requests.get(img_url, stream=True)
+                            # Security: Validate URL to prevent SSRF
+                            if not is_safe_url(img_url):
+                                logger.error(f"Blocked unsafe URL: {img_url}")
+                                return jsonify({
+                                    'success': False,
+                                    'error': f'Unsafe URL provided for image input'
+                                }), 400
+
+                            response = requests.get(img_url, stream=True, timeout=30)
                             response.raise_for_status()
                             sha256_hash.update(img_url.encode('utf-8'))
                             fname = sha256_hash.hexdigest()
@@ -174,6 +228,10 @@ class StudioWeb:
 
                         except Exception as e:
                             logger.error(f"Failed to upload image: {e}")
+                            return jsonify({
+                                'success': False,
+                                'error': f'Failed to upload image: {str(e)}'
+                            }), 400
 
                 # Apply inputs to workflow
                 workflow_copy = self.workflow_manager.apply_inputs(
@@ -242,8 +300,11 @@ class StudioWeb:
 
         @self.app.route('/outputs/<filename>')
         def serve_output(filename):
-            """Serve output images"""
-            filepath = os.path.join(config.OUTPUT_FOLDER, filename)
+            """Serve output images with path traversal protection"""
+            # Security: Use safe path joining to prevent path traversal
+            filepath = safe_join_path(config.OUTPUT_FOLDER, filename)
+            if filepath is None:
+                return "Invalid filename", 400
             if os.path.exists(filepath):
                 return send_file(filepath, mimetype='image/png')
             return "Image not found", 404

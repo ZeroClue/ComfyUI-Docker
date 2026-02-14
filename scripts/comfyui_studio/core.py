@@ -237,22 +237,48 @@ class WorkflowManager:
                 logger.info(f"Set text for node {node_id}")
 
             elif input_type == 'seed':
-                seed_value = int(value)
-                if seed_value == -1:
-                    seed_value = random.randint(0, 2147483647)
-                node['inputs']['seed'] = seed_value
+                try:
+                    seed_value = int(value)
+                    if seed_value == -1:
+                        seed_value = random.randint(0, 2147483647)
+                    elif seed_value < -1 or seed_value > 2147483647:
+                        seed_value = max(-1, min(2147483647, seed_value))
+                    node['inputs']['seed'] = seed_value
+                except (ValueError, TypeError):
+                    # Invalid input, use random seed
+                    node['inputs']['seed'] = random.randint(0, 2147483647)
 
             elif input_type == 'steps':
-                node['inputs']['steps'] = int(value)
+                try:
+                    steps_value = int(value)
+                    node['inputs']['steps'] = max(1, min(150, steps_value))
+                except (ValueError, TypeError):
+                    node['inputs']['steps'] = 20  # Default
 
             elif input_type == 'cfg':
-                node['inputs']['cfg'] = float(value)
+                try:
+                    cfg_value = float(value)
+                    node['inputs']['cfg'] = max(1.0, min(30.0, cfg_value))
+                except (ValueError, TypeError):
+                    node['inputs']['cfg'] = 7.0  # Default
 
             elif input_type == 'width':
-                node['inputs']['width'] = int(value)
+                try:
+                    width_value = int(value)
+                    # Round to nearest 64
+                    width_value = (width_value // 64) * 64
+                    node['inputs']['width'] = max(64, min(2048, width_value))
+                except (ValueError, TypeError):
+                    node['inputs']['width'] = 512  # Default
 
             elif input_type == 'height':
-                node['inputs']['height'] = int(value)
+                try:
+                    height_value = int(value)
+                    # Round to nearest 64
+                    height_value = (height_value // 64) * 64
+                    node['inputs']['height'] = max(64, min(2048, height_value))
+                except (ValueError, TypeError):
+                    node['inputs']['height'] = 512  # Default
 
         return workflow_copy
 

@@ -57,7 +57,14 @@ class ComfyUIWebSocketClient:
 
     def connect(self):
         """Connect to ComfyUI WebSocket"""
-        ws_url = f"ws://{self.server_address}/ws?clientId={self.client_id}"
+        # Strip any protocol prefix from server_address
+        server_addr = self.server_address
+        if server_addr.startswith('http://'):
+            server_addr = server_addr[7:]
+        elif server_addr.startswith('https://'):
+            server_addr = server_addr[8:]
+
+        ws_url = f"ws://{server_addr}/ws?clientId={self.client_id}"
 
         def on_message(ws, message):
             try:

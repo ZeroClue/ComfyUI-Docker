@@ -236,3 +236,8 @@ docs/notes/
 
 # runpod plugin config
 .runpod/
+
+# ntfy-me-mcp 
+.claude.json
+.claude.json.bak
+.mcp.json

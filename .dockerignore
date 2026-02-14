@@ -129,6 +129,9 @@ docs/notes/
 
 # runpod plugin config
 .runpod/
+.claude.json
+.claude.json.bak
+.mcp.json
 
 # Design playgrounds (dev tools only)
 playgrounds/

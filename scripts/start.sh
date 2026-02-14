@@ -75,6 +75,18 @@ export_env_vars() {
 
 # Start jupyter
 start_jupyter() {
+    # Check if JupyterLab is disabled
+    if [[ "${ENABLE_JUPYTERLAB,,}" == "false" ]]; then
+        echo "JupyterLab is disabled (ENABLE_JUPYTERLAB=false). Skipping startup."
+        return
+    fi
+
+    # Check if jupyter is installed
+    if ! command -v jupyter &> /dev/null; then
+        echo "JupyterLab not installed, skipping startup."
+        return
+    fi
+
     # Default to not using a password
     JUPYTER_PASSWORD=""
 
@@ -106,6 +118,12 @@ start_code_server() {
     # Check if code-server should be started (default: true)
     if [[ "${ENABLE_CODE_SERVER,,}" == "false" ]]; then
         echo "code-server is disabled (ENABLE_CODE_SERVER=false). Skipping startup."
+        return
+    fi
+
+    # Check if code-server is installed
+    if ! command -v code-server &> /dev/null; then
+        echo "code-server not installed, skipping startup."
         return
     fi
 

@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: 'Build targets (comma-separated): base,slim,modern,minimal'
+        description: 'Build targets (comma-separated): base,slim,minimal'
         required: false
-        default: 'base,slim,modern,minimal'
+        default: 'base,slim,minimal'
       cuda_versions:
         description: 'CUDA versions (comma-separated): 12-6,12-8,12-9,13-0'
         required: false
@@ -17,9 +17,7 @@ on:
     branches: [main]
     paths:
       - 'Dockerfile'
-      - 'Dockerfile.modern'
       - 'docker-bake.hcl'
-      - 'docker-bake-modern.hcl'
       - 'scripts/**'
       - 'custom_nodes.txt'
       - 'proxy/**'
@@ -44,11 +42,6 @@ jobs:
             cuda: 12-6
           - target: slim
             cuda: 12-8
-          # Modern variants - simplified Dockerfile.modern
-          - target: modern
-            cuda: 12-6
-          - target: modern
-            cuda: 12-8
           # Minimal variants - ComfyUI + Manager without dev tools
           - target: minimal
             cuda: 12-6
@@ -57,7 +50,7 @@ jobs:
     steps:
       - name: Check if should run
         run: |
-          TARGETS="${{ github.event.inputs.targets || 'base,slim,modern,minimal' }}"
+          TARGETS="${{ github.event.inputs.targets || 'base,slim,minimal' }}"
           CUDA="${{ github.event.inputs.cuda_versions || '12-6,12-8' }}"
 
           if [[ ",$TARGETS," != *",${{ matrix.target }},"* ]]; then
@@ -144,9 +137,6 @@ jobs:
         with:
           targets: ${{ matrix.target }}-${{ matrix.cuda }}
           push: true
-          # Use different bake file for modern variants
-          files: |
-            ${{ matrix.target == 'modern' && 'docker-bake-modern.hcl' || 'docker-bake.hcl' }}
 
       - name: Free disk space
         if: env.SKIP_BUILD != 'true'
@@ -163,7 +153,6 @@ jobs:
           echo "- **CUDA Version**: ${{ matrix.cuda }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Repository**: zeroclue/comfyui" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Date**: ${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Bake File**: ${{ matrix.target == 'modern' && 'docker-bake-modern.hcl' || 'docker-bake.hcl' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Mode**: Simple working version" >> $GITHUB_STEP_SUMMARY
           echo "- **Preset Manager**: Included (all variants)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -175,5 +164,4 @@ jobs:
           echo "### Image Variants" >> $GITHUB_STEP_SUMMARY
           echo "- **base**: Full development environment (~8-12GB)" >> $GITHUB_STEP_SUMMARY
           echo "- **slim**: Optimized for serving (~4-5GB)" >> $GITHUB_STEP_SUMMARY
-          echo "- **modern**: Simplified Dockerfile.modern" >> $GITHUB_STEP_SUMMARY
           echo "- **minimal**: ComfyUI + Manager without dev tools (~6-7GB)" >> $GITHUB_STEP_SUMMARY

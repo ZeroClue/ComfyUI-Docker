@@ -30,11 +30,10 @@
 zeroclue/comfyui:(A)-torch2.8.0-(B)
 ```
 
-* **(A)**: `base`, `slim`, `minimal`, or `modern`
+* **(A)**: `base`, `slim`, or `minimal`
   * `base`: ComfyUI + Manager + custom nodes + code-server (**~8-12GB**)
   * `slim`: ComfyUI + Manager, optimized for serving (**~4-5GB**)
   * `minimal`: ComfyUI + Manager + custom nodes, no dev tools (**~6-7GB**)
-  * `modern`: Simplified Dockerfile, experimental (**~8-10GB**)
 * **(B)**: CUDA version → `cu126`, `cu128` (new variants), `cu124`, `cu129`, `cu130`
 
 ---
@@ -353,7 +352,6 @@ docker run --gpus all -p 3000:3000 \
 - `base-torch2.8.0-cu126/128/129/130` - Full installation with CUDA 12.6-13.0
 - `slim-torch2.8.0-cu126/128` - Optimized for serving
 - `minimal-torch2.8.0-cu126/128` - RunPod optimized with custom nodes
-- `modern-torch2.8.0-cu126/128` - Simplified Dockerfile (experimental)
 
 ### 📖 Detailed Instructions
 

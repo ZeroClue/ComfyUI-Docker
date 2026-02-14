@@ -167,6 +167,8 @@ docker run -e ENABLE_PRESET_MANAGER=False zeroclue/comfyui:base-torch2.8.0-cu126
 ## 🎨 ComfyUI Studio Web Interface
 
 > **Simplified workflow execution interface** - Run pre-configured ComfyUI workflows without the node editor.
+>
+> 💡 Inspired by [am05mhz/comfy-dock](https://github.com/am05mhz/comfy-dock)
 
 ### Quick Access
 

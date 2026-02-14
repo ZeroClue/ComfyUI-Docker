@@ -10,6 +10,9 @@ ARG PYTHON_VERSION
 ARG TORCH_VERSION
 ARG CUDA_VERSION
 ARG SKIP_CUSTOM_NODES
+ARG INSTALL_CODE_SERVER=true
+ARG INSTALL_DEV_TOOLS=true
+ARG INSTALL_SCIENCE_PACKAGES=true
 
 # Set basic environment variables
 ENV SHELL=/bin/bash 
@@ -65,14 +68,16 @@ RUN uv python install ${PYTHON_VERSION} --default --preview && \
 ENV PATH="/workspace/venv/bin:/venv/bin:$PATH"
 
 # Install essential Python packages and dependencies
-RUN pip install --no-cache-dir -U \
-    pip setuptools wheel \
-    jupyterlab jupyterlab_widgets ipykernel ipywidgets \
-    huggingface_hub hf_transfer \
-    numpy scipy matplotlib pandas scikit-learn seaborn requests tqdm pillow pyyaml \
-    flask python-markdown pygments Flask Flask-Session markdown \
-    triton \
-    torch==${TORCH_VERSION} torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
+RUN pip install --no-cache-dir -U pip setuptools wheel && \
+    if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \
+        pip install --no-cache-dir jupyterlab jupyterlab_widgets ipykernel ipywidgets; \
+    fi && \
+    pip install --no-cache-dir huggingface_hub hf_transfer && \
+    if [ "$INSTALL_SCIENCE_PACKAGES" = "true" ]; then \
+        pip install --no-cache-dir numpy scipy matplotlib pandas scikit-learn seaborn; \
+    fi && \
+    pip install --no-cache-dir requests tqdm pillow pyyaml flask python-markdown pygments Flask Flask-Session markdown triton && \
+    pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
 
 # Install ComfyUI and ComfyUI Manager
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git && \
@@ -97,7 +102,9 @@ RUN if [ -z "$SKIP_CUSTOM_NODES" ]; then \
 #RUN wget -qO- cli.runpod.net | sudo bash
 
 # Install code-server
-RUN curl -fsSL https://code-server.dev/install.sh | sh
+RUN if [ "$INSTALL_CODE_SERVER" = "true" ]; then \
+        curl -fsSL https://code-server.dev/install.sh | sh; \
+    fi
 
 EXPOSE 22 3000 8080 8888
 

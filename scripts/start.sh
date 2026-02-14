@@ -309,6 +309,46 @@ check_preset_manager_health() {
     fi
 }
 
+# Start ComfyUI Studio
+start_comfyui_studio() {
+    # Check if studio should be started (default: true)
+    if [[ "${ENABLE_STUDIO,,}" == "false" ]]; then
+        echo "ComfyUI Studio is disabled (ENABLE_STUDIO=false). Skipping startup."
+        return
+    fi
+
+    echo "Starting ComfyUI Studio..."
+
+    # Check if studio script exists
+    if [[ ! -f /scripts/comfyui_studio.py ]]; then
+        echo "WARNING: /scripts/comfyui_studio.py not found, skipping startup"
+        return 1
+    fi
+
+    mkdir -p /workspace/logs
+    mkdir -p /workspace/config/workflows
+
+    # Set environment variables for studio
+    export WORKSPACE_ROOT="/workspace"
+    export STUDIO_PORT="${STUDIO_PORT:-5000}"
+
+    # Start the studio Flask application
+    cd /scripts
+    nohup /workspace/venv/bin/python3 comfyui_studio.py &> /workspace/logs/comfyui_studio.log &
+    local pid=$!
+    echo "ComfyUI Studio started with PID $pid on port ${STUDIO_PORT}"
+
+    # Wait briefly and verify
+    sleep 2
+    if ! pgrep -f "python3 comfyui_studio.py" > /dev/null; then
+        echo "WARNING: ComfyUI Studio process not running after startup"
+        echo "Check logs at /workspace/logs/comfyui_studio.log"
+        return 1
+    fi
+
+    echo "ComfyUI Studio started successfully"
+}
+
 # Install extra custom nodes at runtime if requested
 install_extra_nodes() {
     # Check if extra nodes should be installed (default: false)
@@ -416,6 +456,11 @@ if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then
         echo "NOTE: Preset Manager health check failed after $max_retries attempts, but continuing startup."
         echo "Preset Manager may not be fully functional. Check logs at /workspace/logs/preset_manager.log"
     fi
+fi
+
+# Start ComfyUI Studio (don't exit on failure)
+if ! start_comfyui_studio; then
+    echo "ComfyUI Studio failed to start - check logs at /workspace/logs/comfyui_studio.log"
 fi
 
 export_env_vars

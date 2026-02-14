@@ -130,7 +130,7 @@ target "_no_science_packages" {
     }
 }
 
-target "_production_base" {
+target "_slim_base" {
     args = {
         INSTALL_DEV_TOOLS = "false"
         INSTALL_SCIENCE_PACKAGES = "false"
@@ -143,7 +143,7 @@ target "_production_base" {
 target "_minimal_base" {
     args = {
         INSTALL_DEV_TOOLS = "false"
-        INSTALL_SCIENCE_PACKAGES = "false"
+        INSTALL_SCIENCE_PACKAGES = "true"
         INSTALL_CODE_SERVER = "false"
     }
 }
@@ -180,15 +180,15 @@ target "base-13-0" {
 
 
 
-# Production variants - optimized for serving, runtime CUDA images
-target "production-12-6" {
-    inherits = ["_cu126_runtime", "_no_custom_nodes", "_production_base"]
-    tags = tag("production", "cu126")
+# Slim variants - optimized for serving, runtime CUDA images
+target "slim-12-6" {
+    inherits = ["_cu126_runtime", "_no_custom_nodes", "_slim_base"]
+    tags = tag("slim", "cu126")
 }
 
-target "production-12-8" {
-    inherits = ["_cu128_runtime", "_no_custom_nodes", "_production_base"]
-    tags = tag("production", "cu128")
+target "slim-12-8" {
+    inherits = ["_cu128_runtime", "_no_custom_nodes", "_slim_base"]
+    tags = tag("slim", "cu128")
 }
 
 # Minimal variants - ComfyUI + Manager without dev tools

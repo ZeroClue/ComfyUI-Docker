@@ -6,7 +6,9 @@
 
 > 🚀 This Docker image is maintained by ZeroClue and designed for both cloud deployment and local use.
 
-> 💰 If you're feeling generous and this has value to you, consider donating. 
+> 💰 If you're feeling generous and this has value to you, consider <a href="https://www.buymeacoffee.com/thezeroclue" target="_blank" rel="noopener noreferrer">
+<img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffee" width="105px" />
+</a>
 
 > 🤍 Sign-up at runpod using my referrer link and you can get between $5 and $500 in your account. [Runpod](https://runpod.io?ref=lnnwdl3q)
 

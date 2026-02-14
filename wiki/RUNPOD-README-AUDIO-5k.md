@@ -1,162 +1,187 @@
 # RunPod Audio Generation Deployment Guide
 
-> 🎵 **Deploy ComfyUI for AI audio generation on RunPod with music and speech synthesis**
+> AI audio generation on RunPod - Music, speech synthesis, and more
 
-> ⚠️ **Note**: Audio generation is experimental and may have compatibility issues
+> Note: Audio generation is experimental and may have compatibility issues
 
-## 🚀 Quick Start
-
-1. **Deploy**: `zeroclue/comfyui:base-torch2.8.0-cu126`
-2. **Set Environment**: `AUDIO_PRESET_DOWNLOAD=MUSICGEN_MEDIUM,BARK_BASIC`
-3. **GPU Choice**: RTX 4090 (24GB VRAM) or A40 (48GB VRAM)
-4. **Access**: ComfyUI port 3000, Preset Manager port 9000
-
-## 🖥️ Hardware Recommendations
-
-| GPU | VRAM | Spot Price | Best For |
-|-----|------|------------|-----------|
-| **RTX 4090** | 24GB | $0.34/hr | Audio generation speed |
-| **A40** | 48GB | $0.79/hr | Large audio models |
-| **L40** | 48GB | ~$0.49/hr | Balance |
-| **RTX 3090** | 24GB | $0.26/hr | Budget audio |
-
-**Recommendation**: RTX 4090 is sufficient for most audio generation tasks.
-
-## 🐳 Docker Configuration
-
-**Recommended Images**:
-- **RunPod Optimized**: `zeroclue/comfyui:minimal-torch2.8.0-cu126`
-- **Full Setup**: `zeroclue/comfyui:base-torch2.8.0-cu126`
-- **Cost Optimized**: `zeroclue/comfyui:slim-torch2.8.0-cu126`
-
-**Features**: ComfyUI + Manager + Audio custom nodes + CUDA 12.6
-
-## ⚙️ Environment Variables
-
-**Essential Settings**:
-```bash
-AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC"
-ACCESS_PASSWORD="your-secure-password"
-```
-
-**Popular Combinations**:
-```bash
-# Music Generation
-AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,ACE_STEP"
-
-# Speech Synthesis
-AUDIO_PRESET_DOWNLOAD="BARK_BASIC,TTS_AUDIO_SUITE"
-
-# Complete Setup
-AUDIO_PRESET_DOWNLOAD="AUDIO_PRODUCTION"
-```
-
-## 💾 Network Volume Setup
-
-**Configuration**:
-- **Size**: 30GB+ (audio models are smaller than video)
-- **Type**: Secure Cloud (recommended)
-
-## 📋 Step-by-Step Deployment
-
-### 1. Create Network Volume
-1. **Storage** → **Network Volumes** → **Create**
-2. **Size**: 30GB+, **Data Center**: Same region as GPU
-
-### 2. Deploy Pod
-1. **Pods** → **Deploy Pod**
-2. **Container Image**: `zeroclue/comfyui:base-torch2.8.0-cu126`
-3. **GPU**: RTX 4090 or A40
-4. **Network Volume**: Select your volume
-5. **Ports**: Expose 3000, 8080, 8888, 9000
-
-### 3. Configure Environment
-```bash
-AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC"
-ACCESS_PASSWORD="your-password"
-```
-
-### 4. Launch and Access
-1. Click **Deploy**, wait 3-5 minutes
-2. **ComfyUI**: `https://[pod-id]-3000.proxy.runpod.net`
-3. **Preset Manager**: `https://[pod-id]-9000.proxy.runpod.net`
-
-## 💰 Cost Optimization: Template Switching
-
-**Strategy**: Build with base, then switch to slim
-
-**Phase 1**: Use `base` image initially, install audio nodes, download models, create workflows
-
-**Phase 2**: Stop pod, change to `slim`, restart with same network volume
-
-**Benefit**: 30-50% cost reduction, same audio functionality
-
-**Template Comparison**:
-| Template | Size | Use Case |
-|----------|------|----------|
-| **base** | ~8GB | Initial audio setup |
-| **slim** | ~6GB | Audio slim |
-
-**How to Switch**:
-1. **Stop Pod**: Pods → Select → Stop
-2. **Change Image**: Edit → `slim-torch2.8.0-cu126`
-3. **Restart**: Start with same network volume
-
-## 🎵 Audio Generation Presets
-
-**📖 Complete Documentation**: [AUDIO_PRESET_DOWNLOAD Wiki](https://github.com/ZeroClue/ComfyUI-Docker/wiki/AUDIO_PRESET_DOWNLOAD)
-
-**Popular Presets**:
-- `MUSICGEN_MEDIUM` - Medium-quality music generation
-- `BARK_BASIC` - High-quality text-to-speech
-- `TTS_AUDIO_SUITE` - Comprehensive TTS models
-- `PARLER_TTS` - Advanced voice synthesis
-
-**Beginner Setup**: `AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC"`
-
-**Music Production**: `AUDIO_PRESET_DOWNLOAD="AUDIO_MUSIC_COMPLETE"`
-
-## 🎤 Audio Workflows
-
-### Text-to-Speech (TTS)
-1. **Load TTS Model**: Use BARK or TTS preset
-2. **Text Input**: Enter your script or text
-3. **Voice Settings**: Choose voice style and parameters
-4. **Generate**: Queue prompt (takes 30 seconds - 2 minutes)
-
-### Music Generation
-1. **Load Music Model**: Use MusicGen preset
-2. **Prompt**: Describe the music style/mood
-3. **Duration**: Set desired length (typically 30-120 seconds)
-4. **Generate**: Queue prompt (takes 1-5 minutes)
-
-## 🔌 Web Interfaces
-
-- **ComfyUI**: `https://[pod-id]-3000.proxy.runpod.net` (Main audio interface)
-- **Preset Manager**: `https://[pod-id]-9000.proxy.runpod.net`
-
-## 📈 Best Practices
-
-**Cost Optimization**:
-- Start with `base`, switch to `slim` after setup
-- Use shorter audio clips for testing
-- Stop pods when not generating audio
-
-**Audio Quality**:
-- Use high-quality source text for TTS
-- Experiment with different voice models
-- Post-process audio for better results
-
-**Experimental Nature**: Audio nodes may have compatibility issues. Report bugs to custom node repositories.
+<a href="https://www.buymeacoffee.com/thezeroclue" target="_blank" rel="noopener noreferrer">
+<img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffee" width="105px" />
+</a>
 
 ---
 
-**Key Takeaways**:
-1. Audio generation is experimental - use with caution
-2. RTX 4090 is sufficient for most audio tasks
-3. Audio models are smaller than video models
-4. Report issues to custom node maintainers
+## Quick Start
 
-Happy audio creating! 🎵
+1. **Deploy**: `zeroclue/comfyui:minimal-torch2.8.0-cu126`
+2. **Set Environment**: `AUDIO_PRESET_DOWNLOAD=ACE_STEP_V1_3_5B`
+3. **GPU Choice**: RTX 4090 (24GB) or A40 (48GB)
+4. **Access**: ComfyUI port 3000, Studio port 5000
 
-**📚 Resources**: [Main README](README.md) | [AUDIO_PRESET_DOWNLOAD Wiki](https://github.com/ZeroClue/ComfyUI-Docker/wiki/AUDIO_PRESET_DOWNLOAD)
+---
+
+## Hardware Recommendations
+
+| GPU | VRAM | Spot Price | Best For |
+|-----|------|------------|----------|
+| **RTX 4090** | 24GB | $0.34/hr | Speed & value |
+| **A40** | 48GB | $0.79/hr | Large models |
+| **L40** | 48GB | ~$0.49/hr | Balanced |
+| **RTX 3090** | 24GB | $0.26/hr | Budget |
+
+---
+
+## Docker Images
+
+| Image | Use Case |
+|-------|----------|
+| `minimal-torch2.8.0-cu126` | RunPod optimized (recommended) |
+| `base-torch2.8.0-cu126` | Full development setup |
+| `slim-torch2.8.0-cu126` | Production, cost optimized |
+
+---
+
+## Environment Variables
+
+```bash
+# Audio presets (5 available)
+AUDIO_PRESET_DOWNLOAD="ACE_STEP_V1_3_5B"
+
+# Security
+ACCESS_PASSWORD="your-secure-password"
+
+# Enable Studio interface
+ENABLE_STUDIO=true
+```
+
+### Preset Combinations
+
+```bash
+# Music Generation
+AUDIO_PRESET_DOWNLOAD="ACE_STEP_V1_3_5B"
+
+# Multi-track Composition
+AUDIO_PRESET_DOWNLOAD="ACE_STEP_MULTI_TRACK"
+
+# Complete Audio Suite
+AUDIO_PRESET_DOWNLOAD="COMPLETE_AUDIO_SUITE"
+```
+
+---
+
+## Audio Presets (5 Available)
+
+### ACE Step Series
+| Preset | Size | Description |
+|--------|------|-------------|
+| `ACE_STEP_V1_3_5B` | 7.2GB | Music & lyrics generation |
+| `ACE_STEP_AUDIO_TO_AUDIO` | 7.2GB | Audio transformation & remixing |
+| `ACE_STEP_MUSIC_EXTENSION` | 7.3GB | Extend/continue music pieces |
+| `ACE_STEP_MULTI_TRACK` | 7.8GB | Multi-track composition |
+
+### Complete Suite
+| Preset | Size | Description |
+|--------|------|-------------|
+| `COMPLETE_AUDIO_SUITE` | 10.9GB | MusicGen + Bark + TTS |
+
+---
+
+## Network Access
+
+| Port | Service | Purpose |
+|------|---------|---------|
+| **3000** | ComfyUI | Node-based audio workflows |
+| **5000** | ComfyUI Studio | Simplified workflow execution |
+| **9000** | Preset Manager | Model download management |
+| 8080 | Code Server | VS Code IDE |
+| 8888 | JupyterLab | Notebook environment |
+
+---
+
+## ComfyUI Studio (Port 5000)
+
+Simplified interface for audio generation:
+
+- **Workflow Templates**: Pre-configured music/TTS workflows
+- **Progress Tracking**: Real-time generation updates
+- **Audio Upload**: Upload samples for transformation
+- **Output Gallery**: Download generated audio
+
+Access via **Port 5000** link in RunPod console.
+
+---
+
+## Deployment Steps
+
+### 1. Create Network Volume
+- **Storage** > **Network Volumes** > **Create**
+- **Size**: 30GB+ (audio models are smaller)
+- **Data Center**: Same region as GPU
+
+### 2. Deploy Pod
+- **Pods** > **Deploy Pod**
+- **Container Image**: `zeroclue/comfyui:minimal-torch2.8.0-cu126`
+- **GPU**: RTX 4090 or A40
+- **Network Volume**: Select your volume
+
+### 3. Configure
+```bash
+AUDIO_PRESET_DOWNLOAD="ACE_STEP_V1_3_5B"
+ACCESS_PASSWORD="your-password"
+```
+
+### 4. Access
+- **ComfyUI**: `https://[pod-id]-3000.proxy.runpod.net`
+- **Studio**: `https://[pod-id]-5000.proxy.runpod.net`
+- **Preset Manager**: `https://[pod-id]-9000.proxy.runpod.net`
+
+---
+
+## Audio Workflows
+
+### Music Generation
+1. Load ACE Step model via preset
+2. Enter prompt describing music style/mood
+3. Set duration (30-120 seconds typical)
+4. Generate (1-5 minutes)
+
+### Audio Transformation
+1. Upload audio sample
+2. Load ACE_STEP_AUDIO_TO_AUDIO preset
+3. Apply transformation settings
+4. Generate remix/variation
+
+---
+
+## Cost Optimization
+
+**Template Switching Strategy**:
+1. Use `base` image for initial setup
+2. Download models, create workflows
+3. Stop pod, switch to `slim`
+4. Restart with same network volume
+
+**Benefit**: 30-50% cost reduction
+
+---
+
+## Storage Paths
+
+```
+/workspace/ComfyUI/models/     # Audio models
+/workspace/ComfyUI/output/     # Generated audio
+/workspace/ComfyUI/input/      # Upload samples
+/workspace/config/workflows/   # Studio workflows
+```
+
+---
+
+## Tips
+
+- RTX 4090 sufficient for most audio tasks
+- Audio models smaller than video (30GB storage enough)
+- Use Studio for simple generation, ComfyUI for complex
+- Report custom node issues to maintainers
+
+---
+
+**Resources**: [Main README](RUNPOD-README-5k.md) | [GitHub](https://github.com/ZeroClue/ComfyUI-Docker)

@@ -1,174 +1,155 @@
 # ZeroClue ComfyUI-Docker - RunPod Deployment Guide
 
-> 🚀 **Optimized for RunPod Cloud GPU Platform** - Deploy ComfyUI with one click using our pre-configured Docker images.
+> Optimized for RunPod Cloud GPU - Deploy ComfyUI with one click.
 
-> 💬 **Questions & Support** → [GitHub Issues](https://github.com/ZeroClue/ComfyUI-Docker/issues)
+> Support: [GitHub Issues](https://github.com/ZeroClue/ComfyUI-Docker/issues)
+
+<a href="https://www.buymeacoffee.com/thezeroclue" target="_blank" rel="noopener noreferrer">
+<img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy me a coffee" width="105px" />
+</a>
 
 ---
 
-## 🎯 Quick Start - 5 Minute Setup
+## Quick Start
 
-### 1. Choose Your Image Variant
+### 1. Choose Your Image
 
-| Use Case | Recommended Image | GPU | Cost Estimate |
-| -------- | ----------------- | --- | ------------- |
-| **RunPod Optimized** | `zeroclue/comfyui:minimal-torch2.8.0-cu126` | RTX A4000+ | $0.40-0.70/hr |
-| **Development** | `zeroclue/comfyui:base-torch2.8.0-cu126` | RTX A4000+ | $0.50-1.00/hr |
-| **Production** | `zeroclue/comfyui:slim-torch2.8.0-cu126` | RTX A4000+ | $0.35-0.60/hr |
+| Use Case | Image | GPU | Cost/hr |
+|----------|-------|-----|---------|
+| **RunPod Optimized** | `zeroclue/comfyui:minimal-torch2.8.0-cu126` | RTX A4000+ | $0.40-0.70 |
+| Development | `zeroclue/comfyui:base-torch2.8.0-cu126` | RTX A4000+ | $0.50-1.00 |
+| Production | `zeroclue/comfyui:slim-torch2.8.0-cu126` | RTX A4000+ | $0.35-0.60 |
 
-### 2. Create RunPod Pod
+### 2. Create Pod
 
-1. Go to [RunPod Console](https://runpod.io/console)
-2. Click **Deploy → Secure Cloud**
-3. **GPU Selection**: Choose `NVIDIA RTX A4000` or better
-4. **Container Image**: Enter your chosen image from table above
-5. **Storage**: Add 50GB+ network storage
-6. Click **Deploy**
+1. Go to [RunPod Console](https://runpod.io/console) > **Deploy > Secure Cloud**
+2. **GPU**: RTX A4000 or better
+3. **Container Image**: Enter image from table above
+4. **Storage**: Add 50GB+ network storage
+5. Click **Deploy**
 
 ### 3. Configure Presets (Optional)
 
-Add these environment variables in **Pod Settings → Environment Variables**:
+Add environment variables in **Pod Settings > Environment Variables**:
 
 ```bash
-# For Video Generation
-PRESET_DOWNLOAD=WAN_22_5B_TIV2
+# Video Generation (26 presets available)
+PRESET_DOWNLOAD=WAN_2_2_T2V_BASIC,WAN_2_1_LIGHTWEIGHT_1_3B
 
-# For Image Generation
-IMAGE_PRESET_DOWNLOAD=SDXL_BASE_V1,REALISTIC_VISION_V6
+# Image Generation (25 presets available)
+IMAGE_PRESET_DOWNLOAD=SDXL_BASE_V1,FLUX_DEV_BASIC,SD3_5_LARGE_BASIC
 
-# For Audio Generation (Experimental)
-AUDIO_PRESET_DOWNLOAD=MUSICGEN_MEDIUM,BARK_BASIC
+# Audio Generation (5 presets available)
+AUDIO_PRESET_DOWNLOAD=ACE_STEP_V1_3_5B,COMPLETE_AUDIO_SUITE
 ```
 
-### 4. Access ComfyUI
+### 4. Access Services
 
-After pod starts, click the **Port 3000** link to access ComfyUI web interface.
-
----
-
-## 🏗️ Pod Configuration
-
-### Recommended Settings
-
-| Setting | Recommended Value | Notes |
-|---------|-------------------|-------|
-| **GPU Type** | RTX A4000 / RTX A5000 / RTX A6000 | Higher GPUs = faster generation |
-| **CPU Cores** | 4-8 vCPUs | Adequate for preprocessing |
-| **Memory** | 16-32 GB RAM | Depends on model size |
-| **Storage** | 50-200 GB Network Storage | For models and outputs |
-
-### Container Images
-
-```bash
-# RunPod Optimized (recommended - custom nodes, no dev tools)
-zeroclue/comfyui:minimal-torch2.8.0-cu126
-
-# Development (full tooling)
-zeroclue/comfyui:base-torch2.8.0-cu126
-
-# Production (no custom nodes)
-zeroclue/comfyui:slim-torch2.8.0-cu126
-```
+Click port links in RunPod console to access interfaces.
 
 ---
 
-## 🔧 Environment Variables
+## Environment Variables
 
-### Required Variables
-- `ACCESS_PASSWORD`: Optional password protection
-
-### Optional Variables
-- `TIME_ZONE`: Set your local timezone
-- `COMFYUI_EXTRA_ARGS`: ComfyUI performance tweaks
-- `INSTALL_SAGEATTENTION`: Ampere+ GPUs for speed boost
-- `FORCE_SYNC_ALL`: Force fresh workspace setup
-
-### Preset Downloads
-```bash
-# Video Generation
-PRESET_DOWNLOAD=WAN_22_5B_TIV2,WAN22_LIGHTNING_LORA
-
-# Image Generation
-IMAGE_PRESET_DOWNLOAD=SDXL_BASE_V1,REALISTIC_VISION_V6,ESRGAN_MODELS
-
-# Audio Generation (Experimental)
-AUDIO_PRESET_DOWNLOAD=MUSICGEN_MEDIUM,BARK_BASIC
-```
+### Core Variables
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ACCESS_PASSWORD` | - | Password for web UIs |
+| `TIME_ZONE` | UTC | Container timezone |
+| `ENABLE_STUDIO` | true | Enable ComfyUI Studio |
+| `INSTALL_SAGEATTENTION` | false | Speed boost for Ampere+ GPUs |
 
 ---
 
-## 🎬 Preset Systems
+## Preset Systems (56 Total)
 
-### Video Generation
-- **WAN_22_5B_TIV2**: Main video model
-- **WAN22_LIGHTNING_LORA**: Faster inference
-- **WAN22_I2V_A14B_GGUF_Q8_0**: Image-to-Video
-- **WAINSFW_V140**: Image model for video
+### Video Generation (26 Presets)
 
-### Image Generation
-- **SDXL_BASE_V1**: Professional SDXL base
-- **REALISTIC_VISION_V6**: High-quality realistic images
-- **FLUX_DEV_BASIC**: State-of-the-art 12B model
-- **QWEN_IMAGE_CHINESE**: Chinese text optimization
-- **ESRGAN_MODELS**: Image upscaling
+**WAN 2.2 Series** - Latest video models:
+- `WAN_2_2_T2V_BASIC` - Text-to-video (15.5GB)
+- `WAN_2_2_I2V_BASIC` - Image-to-video (15.7GB)
+- `WAN_2_2_S2V` - Sound-to-video (12.6GB)
+- `WAN_2_2_FUN_CAMERA` - Camera control (16.9GB)
 
-### Audio Generation (Experimental)
-- **MUSICGEN_MEDIUM**: Music generation
-- **BARK_BASIC**: Voice synthesis
-- **AUDIO_PRODUCTION**: Complete audio workflow
+**WAN 2.1 Series** - Lightweight alternatives:
+- `WAN_2_1_LIGHTWEIGHT_1_3B` - Consumer GPU friendly (8.5GB)
+- `WAN_2_1_T2V_14B` / `WAN_2_1_I2V_14B` - High quality (13.5GB)
+
+**Other Video Models**:
+- `LTX_VIDEO_T2V` / `LTX_VIDEO_I2V` - LTX-Video (14-16GB)
+- `HUNYUAN_T2V_720P` / `HUNYUAN_I2V_*` - Tencent Hunyuan (7-11GB)
+- `COSMOS_PREDICT2_VIDEO2WORLD` - NVIDIA physical world (31GB)
+
+### Image Generation (25 Presets)
+
+**SDXL/SD3.5 Series**:
+- `SDXL_BASE_V1` / `SDXL_TURBO_BASIC` - SDXL models
+- `SD3_5_LARGE_BASIC` / `SD3_5_LARGE_TURBO` / `SD3_5_MEDIUM_BASIC`
+
+**FLUX Series**:
+- `FLUX_DEV_BASIC` - High quality (24GB)
+- `FLUX_SCHNELL_BASIC` - Fast generation (24GB)
+
+**Qwen 20B** - Superior text rendering:
+- `QWEN_IMAGE_BASIC` / `QWEN_IMAGE_EDIT` / `QWEN_IMAGE_CHINESE`
+
+**Realistic/Photorealistic**:
+- `REALISTIC_VISION_V6` / `REALVIS_XL_V4` / `JUGGERNAUT_XL_V8`
+
+### Audio Generation (5 Presets)
+
+- `ACE_STEP_V1_3_5B` - Music & lyrics generation (7.2GB)
+- `ACE_STEP_MULTI_TRACK` - Multi-track composition
+- `COMPLETE_AUDIO_SUITE` - MusicGen + Bark + TTS (10.9GB)
 
 ---
 
-## 🌐 Network Access
+## Network Access
 
-### Exposed Ports
-| Port | Service | Access Method |
-|------|---------|---------------|
-| **3000** | ComfyUI | Primary web interface |
-| 8080 | code-server | Development IDE (if in image) |
-| 8888 | JupyterLab | Notebook environment (if in image) |
-| 22 | SSH | Command line access (with SSH key) |
-
-### Access Services
-1. **ComfyUI**: Click **Port 3000** link in RunPod console
-2. **SSH Access**: Add SSH public key as `PUBLIC_KEY` environment variable
-3. **Security**: Set `ACCESS_PASSWORD` for web interfaces
+| Port | Service | Purpose |
+|------|---------|---------|
+| **3000** | ComfyUI | Node-based workflow editor |
+| **5000** | ComfyUI Studio | Simplified workflow UI |
+| **9000** | Preset Manager | Model download manager |
+| 8080 | Code Server | VS Code IDE (if in image) |
+| 8888 | JupyterLab | Notebook environment |
+| 22 | SSH | Command line access |
 
 ---
 
-## 💾 Storage Management
+## ComfyUI Studio (Port 5000)
 
-### Network Storage Setup
-1. Go to **Storage → Network Storage**
-2. Create volume with 50-200GB space
-3. Attach to your pod
+A simplified interface for executing pre-configured workflows without node editing:
 
-### Storage Paths
+- **Workflow Templates**: Execute saved workflows with auto-generated forms
+- **Progress Tracking**: Real-time updates during generation
+- **Image Upload**: Upload images for img2img workflows
+- **Output Gallery**: View and download generated content
+
+Access via **Port 5000** link in RunPod console. Uses same `ACCESS_PASSWORD` as other services.
+
+---
+
+## Storage
+
+### Paths
 ```
 /workspace/ComfyUI/models/     # AI models
 /workspace/ComfyUI/output/     # Generated content
-/workspace/ComfyUI/input/      # Upload files here
-/workspace/ComfyUI/user/       # Workflows and settings
+/workspace/ComfyUI/input/      # Upload files
+/workspace/config/workflows/   # Studio workflows
 ```
 
 ### Persistent Data
-- ✅ Downloaded models and presets
-- ✅ Custom nodes and workflows
-- ✅ Generated images and videos
-- ✅ Configuration files
+- Downloaded models and presets
+- Custom nodes and workflows
+- Generated images/videos
 
 ---
 
-## 💰 Cost Optimization
+## Tips
 
-### Variant Selection
-| Budget Level | Recommended Variant | Savings |
-|--------------|---------------------|---------|
-| **Premium** | `base-torch2.8.0-cu126` | Full features, higher cost |
-| **Balanced** | `slim-torch2.8.0-cu126` | 30-50% savings |
-
-### GPU Selection
-| GPU Type | Best For | Hourly Cost |
-|----------|----------|-------------|
-| **RTX A4000** | Production, development | $0.35-0.60 |
-| 
+- **GPU**: RTX A4000 minimum, A5000/A6000 for faster generation
+- **Storage**: 100GB+ recommended for multiple presets
+- **Security**: Always set `ACCESS_PASSWORD` for production
+- **Studio vs ComfyUI**: Use Studio for simple tasks, ComfyUI for complex workflows

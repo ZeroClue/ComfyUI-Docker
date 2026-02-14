@@ -172,7 +172,8 @@ RUN echo 'echo -e "\nFor detailed documentation and guides, please visit:\n\033[
 RUN echo "Build timestamp: $(date)" > /build-info.txt && \
     echo "Python version: $(python --version)" >> /build-info.txt && \
     echo "CUDA version: ${CUDA_VERSION}" >> /build-info.txt && \
-    echo "PyTorch version: ${TORCH_VERSION}" >> /build-info.txt
+    echo "PyTorch version: ${TORCH_VERSION}" >> /build-info.txt && \
+    echo "Variant flags: CODE_SERVER=${INSTALL_CODE_SERVER}, DEV_TOOLS=${INSTALL_DEV_TOOLS}, SCIENCE_PKGS=${INSTALL_SCIENCE_PACKAGES}" >> /build-info.txt
 
 # Set entrypoint to the start script
 CMD ["/start.sh"]

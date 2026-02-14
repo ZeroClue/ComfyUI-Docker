@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI Studio Design Playground</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-hue: 240;
+            --bg-sat: 28%;
+            --bg-light: 11%;
+            --card-hue: 220;
+            --card-sat: 44%;
+            --card-light: 16%;
+            --accent-hue: 347;
+            --accent-sat: 79%;
+            --accent-light: 59%;
+            --secondary-hue: 213;
+            --secondary-sat: 73%;
+            --secondary-light: 22%;
+            --text-primary: #eee;
+            --text-secondary: #aaa;
+            --border-radius: 8px;
+            --card-padding: 1.5rem;
+            --grid-gap: 1rem;
+            --font-family: system-ui;
+            --font-size: 16px;
+            --heading-weight: 700;
+            --hover-effects: 1;
+            --shadow-depth: 1;
+            --card-border: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            font-size: var(--font-size);
+            background: hsl(var(--bg-hue), var(--bg-sat), var(--bg-light));
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            grid-template-rows: 1fr auto;
+            height: 100vh;
+        }
+
+        /* Controls Panel */
+        .controls {
+            background: hsl(var(--card-hue), var(--card-sat), var(--card-light));
+            padding: 1rem;
+            overflow-y: auto;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .controls h2 {
+            font-size: 1.125rem;
+            margin-bottom: 0.5rem;
+            font-weight: var(--heading-weight);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 0.5rem;
+        }
+
+        .control-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-section h3 {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .control-group {
+            margin-bottom: 0.75rem;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.8125rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            accent-color: hsl(var(--accent-hue), var(--accent-sat), var(--accent-light));
+        }
+
+        .control-group input[type="color"] {
+            width: 100%;
+            height: 32px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            background: hsl(var(--bg-hue), var(--bg-sat), var(--bg-light));
+            color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+
+        .value-display {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .preset-btn {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: transparent;
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: hsl(var(--accent-hue), var(--accent-sat), var(--accent-light));
+            border-color: hsl(var(--accent-hue), var(--accent-sat), var(--accent-light));
+        }
+
+        .preset-btn.active {
+            background: hsl(var(--accent-hue), var(--accent-sat), var(--accent-light));
+            border-color: hsl(var(--accent-hue), var(--accent-sat), var(--accent-light));
+        }
+
+        /* Preview Panel */
+        .preview {
+            padding: 2rem;
+            overflow-y: auto;
+            background: hsl(var(--bg-hue), var(--bg-sat), var(--bg-light));
+        }
+
+        .preview-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Mock Login */
+        .mock-login {
+            max-width: 360px;
+            margin: 0 auto 2rem;
+            background: hsl(var(--card-hue), var(--card-sat), var(--card-light));
+            padding: var(--card-padding);
+            border-radius: var(--border-radius);
+            border: var(--card-border) ? '1px solid rgba(255,255,255,0.1)' : 'none';
+            box-shadow: var(--shadow-depth) == 0 ? 'none' :
+                        var(--shadow-depth) == 1 ? '0 2px 8px rgba(0,0,0,0.2)' :
+                        var(--shadow-depth) == 2 ? '0 4px 16px rgba(0,0,0,0.3)' :
+                        '0 8px 32px rgba(0,0,0,0.4)';
+        }
+
+        .mock-login h1 {
+            font-weight: var(--heading-weight);
+            margin-bottom: 1rem;
+        }
+
+        .mock-input {
+            width: 100%;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: calc(var(--border-radius) / 2);
+            background: hsl(var(--bg-hue), var(--bg-sat), var(--bg-light));
+            color: var(--text-primary);
+        }
+
+        .mock-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: hsl(var(--accent-hue), var(--accent-sat), var(--accent-light));
+            color: white;
+            border: none;
+            border-radius: calc(var(--border-radius) / 2);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .mock-btn:hover {
+            opacity: 0.9;
+            transform: var(--hover-effects) ? translateY(-1px) : none;
+        }
+
+        .mock-btn-secondary {
+            background: hsl(var(--secondary-hue), var(--secondary-sat), var(--secondary-light));
+        }
+
+        /* Mock Dashboard */
+        .mock-dashboard {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .mock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .mock-header h1 {
+            font-weight: var(--heading-weight);
+        }
+
+        .mock-header p {
+            color: var(--text-secondary);
+        }
+
+        .mock-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: var(--grid-gap);
+            margin-bottom: 2rem;
+        }
+
+        .mock-stat-card {
+            background: hsl(var(--card-hue), var(--card-sat), var(--card-light));
+            padding: var(--card-padding);
+            border-radius: var(--border-radius);
+            border: var(--card-border) ? '1px solid rgba(255,255,255,0.1)' : 'none';
+            box-shadow: var(--shadow-depth) == 0 ? 'none' :
+                        var(--shadow-depth) == 1 ? '0 2px 8px rgba(0,0,0,0.2)' :
+                        var(--shadow-depth) == 2 ? '0 4px 16px rgba(0,0,0,0.3)' :
+                        '0 8px 32px rgba(0,0,0,0.4)';
+        }
+
+        .mock-stat-value {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: hsl(var(--accent-hue), var(--accent-sat), var(--accent-light));
+        }
+
+        .mock-stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .mock-section-title {
+            margin-bottom: 1rem;
+            font-weight: var(--heading-weight);
+        }
+
+        .mock-workflows {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: var(--grid-gap);
+        }
+
+        .mock-workflow-card {
+            background: hsl(var(--card-hue), var(--card-sat), var(--card-light));
+            padding: var(--card-padding);
+            border-radius: var(--border-radius);
+            border: var(--card-border) ? '1px solid rgba(255,255,255,0.1)' : 'none';
+            box-shadow: var(--shadow-depth) == 0 ? 'none' :
+                        var(--shadow-depth) == 1 ? '0 2px 8px rgba(0,0,0,0.2)' :
+                        var(--shadow-depth) == 2 ? '0 4px 16px rgba(0,0,0,0.3)' :
+                        '0 8px 32px rgba(0,0,0,0.4)';
+            transition: transform 0.2s;
+        }
+
+        .mock-workflow-card:hover {
+            transform: var(--hover-effects) ? translateY(-2px) : none;
+        }
+
+        .mock-workflow-card h3 {
+            font-weight: var(--heading-weight);
+            margin-bottom: 0.5rem;
+        }
+
+        .mock-workflow-card p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        .mock-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .mock-actions .mock-btn {
+            flex: 1;
+            padding: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* Progress Bar */
+        .mock-progress-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .mock-progress-bar {
+            height: 20px;
+            background: hsl(var(--card-hue), var(--card-sat), var(--card-light));
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .mock-progress-fill {
+            height: 100%;
+            background: hsl(var(--accent-hue), var(--accent-sat), var(--accent-light));
+            width: 67%;
+            transition: width 0.3s;
+        }
+
+        /* Output Panel */
+        .output {
+            grid-column: 1 / -1;
+            background: hsl(var(--card-hue), var(--card-sat), var(--card-light));
+            padding: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .output h3 {
+            font-size: 0.875rem;
+            font-weight: var(--heading-weight);
+        }
+
+        .copy-btn {
+            padding: 0.5rem 1rem;
+            background: hsl(var(--accent-hue), var(--accent-sat), var(--accent-light));
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            opacity: 0.9;
+        }
+
+        .copy-btn.copied {
+            background: #22c55e;
+        }
+
+        .output-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .tab-btn {
+            padding: 0.25rem 0.75rem;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .tab-btn.active {
+            background: hsl(var(--bg-hue), var(--bg-sat), var(--bg-light));
+            color: var(--text-primary);
+        }
+
+        .output-content {
+            background: hsl(var(--bg-hue), var(--bg-sat), var(--bg-light));
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: ui-monospace, monospace;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <!-- Controls Panel -->
+        <div class="controls">
+            <h2>ComfyUI Studio Design</h2>
+
+            <!-- Presets -->
+            <div class="control-section">
+                <h3>Presets</h3>
+                <div class="presets">
+                    <button class="preset-btn active" data-preset="current">Current Dark</button>
+                    <button class="preset-btn" data-preset="ocean">Ocean Blue</button>
+                    <button class="preset-btn" data-preset="forest">Forest</button>
+                    <button class="preset-btn" data-preset="purple">Purple Haze</button>
+                    <button class="preset-btn" data-preset="contrast">High Contrast</button>
+                </div>
+            </div>
+
+            <!-- Color Controls -->
+            <div class="control-section">
+                <h3>Colors</h3>
+                <div class="control-group">
+                    <label>Background Hue</label>
+                    <input type="range" id="bgHue" min="0" max="360" value="240">
+                    <div class="value-display" id="bgHueVal">240</div>
+                </div>
+                <div class="control-group">
+                    <label>Background Saturation</label>
+                    <input type="range" id="bgSat" min="0" max="100" value="28">
+                    <div class="value-display" id="bgSatVal">28%</div>
+                </div>
+                <div class="control-group">
+                    <label>Background Lightness</label>
+                    <input type="range" id="bgLight" min="0" max="50" value="11">
+                    <div class="value-display" id="bgLightVal">11%</div>
+                </div>
+                <div class="control-group">
+                    <label>Card Hue</label>
+                    <input type="range" id="cardHue" min="0" max="360" value="220">
+                    <div class="value-display" id="cardHueVal">220</div>
+                </div>
+                <div class="control-group">
+                    <label>Card Saturation</label>
+                    <input type="range" id="cardSat" min="0" max="100" value="44">
+                    <div class="value-display" id="cardSatVal">44%</div>
+                </div>
+                <div class="control-group">
+                    <label>Card Lightness</label>
+                    <input type="range" id="cardLight" min="0" max="50" value="16">
+                    <div class="value-display" id="cardLightVal">16%</div>
+                </div>
+                <div class="control-group">
+                    <label>Accent Hue</label>
+                    <input type="range" id="accentHue" min="0" max="360" value="347">
+                    <div class="value-display" id="accentHueVal">347</div>
+                </div>
+                <div class="control-group">
+                    <label>Accent Saturation</label>
+                    <input type="range" id="accentSat" min="0" max="100" value="79">
+                    <div class="value-display" id="accentSatVal">79%</div>
+                </div>
+                <div class="control-group">
+                    <label>Accent Lightness</label>
+                    <input type="range" id="accentLight" min="30" max="80" value="59">
+                    <div class="value-display" id="accentLightVal">59%</div>
+                </div>
+                <div class="control-group">
+                    <label>Secondary Hue</label>
+                    <input type="range" id="secondaryHue" min="0" max="360" value="213">
+                    <div class="value-display" id="secondaryHueVal">213</div>
+                </div>
+                <div class="control-group">
+                    <label>Secondary Saturation</label>
+                    <input type="range" id="secondarySat" min="0" max="100" value="73">
+                    <div class="value-display" id="secondarySatVal">73%</div>
+                </div>
+                <div class="control-group">
+                    <label>Secondary Lightness</label>
+                    <input type="range" id="secondaryLight" min="0" max="50" value="22">
+                    <div class="value-display" id="secondaryLightVal">22%</div>
+                </div>
+                <div class="control-group">
+                    <label>Primary Text</label>
+                    <input type="color" id="textPrimary" value="#eeeeee">
+                </div>
+                <div class="control-group">
+                    <label>Secondary Text</label>
+                    <input type="color" id="textSecondary" value="#aaaaaa">
+                </div>
+            </div>
+
+            <!-- Spacing Controls -->
+            <div class="control-section">
+                <h3>Spacing</h3>
+                <div class="control-group">
+                    <label>Border Radius</label>
+                    <input type="range" id="borderRadius" min="0" max="24" value="8">
+                    <div class="value-display" id="borderRadiusVal">8px</div>
+                </div>
+                <div class="control-group">
+                    <label>Card Padding</label>
+                    <input type="range" id="cardPadding" min="8" max="32" value="24">
+                    <div class="value-display" id="cardPaddingVal">24px</div>
+                </div>
+                <div class="control-group">
+                    <label>Grid Gap</label>
+                    <input type="range" id="gridGap" min="8" max="32" value="16">
+                    <div class="value-display" id="gridGapVal">16px</div>
+                </div>
+            </div>
+
+            <!-- Typography Controls -->
+            <div class="control-section">
+                <h3>Typography</h3>
+                <div class="control-group">
+                    <label>Font Family</label>
+                    <select id="fontFamily">
+                        <option value="system-ui">System UI</option>
+                        <option value="Inter, system-ui">Inter</option>
+                        <option value="Roboto, system-ui">Roboto</option>
+                        <option value="'Segoe UI', system-ui">Segoe UI</option>
+                        <option value="'SF Pro Display', system-ui">SF Pro</option>
+                        <option value="ui-monospace, monospace">Monospace</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Base Font Size</label>
+                    <input type="range" id="fontSize" min="14" max="18" value="16">
+                    <div class="value-display" id="fontSizeVal">16px</div>
+                </div>
+                <div class="control-group">
+                    <label>Heading Weight</label>
+                    <select id="headingWeight">
+                        <option value="400">Regular (400)</option>
+                        <option value="500">Medium (500)</option>
+                        <option value="600">Semi-Bold (600)</option>
+                        <option value="700" selected>Bold (700)</option>
+                        <option value="800">Extra Bold (800)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Component Toggles -->
+            <div class="control-section">
+                <h3>Components</h3>
+                <div class="control-group">
+                    <label>Hover Effects</label>
+                    <select id="hoverEffects">
+                        <option value="1" selected>Enabled</option>
+                        <option value="0">Disabled</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Shadow Depth</label>
+                    <select id="shadowDepth">
+                        <option value="0">None</option>
+                        <option value="1" selected>Subtle</option>
+                        <option value="2">Medium</option>
+                        <option value="3">Pronounced</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Card Border</label>
+                    <select id="cardBorder">
+                        <option value="0" selected>None</option>
+                        <option value="1">Subtle</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview">
+            <div class="preview-header">
+                Live Preview - Adjust controls to see changes in real-time
+            </div>
+
+            <!-- Mock Login -->
+            <div class="mock-login">
+                <h1>ComfyUI Studio</h1>
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">Workflow execution made simple</p>
+                <input type="text" class="mock-input" placeholder="Password" readonly>
+                <button class="mock-btn">Login</button>
+            </div>
+
+            <!-- Mock Dashboard -->
+            <div class="mock-dashboard">
+                <div class="mock-header">
+                    <div>
+                        <h1>Dashboard</h1>
+                        <p>Manage your workflows</p>
+                    </div>
+                    <button class="mock-btn mock-btn-secondary" style="width: auto;">Logout</button>
+                </div>
+
+                <div class="mock-stats">
+                    <div class="mock-stat-card">
+                        <div class="mock-stat-value">12</div>
+                        <div class="mock-stat-label">Workflows</div>
+                    </div>
+                    <div class="mock-stat-card">
+                        <div class="mock-stat-value">2.4 GB</div>
+                        <div class="mock-stat-label">Storage Used</div>
+                    </div>
+                    <div class="mock-stat-card">
+                        <div class="mock-stat-value">156</div>
+                        <div class="mock-stat-label">Generations</div>
+                    </div>
+                </div>
+
+                <h2 class="mock-section-title">Workflows</h2>
+                <div class="mock-workflows">
+                    <div class="mock-workflow-card">
+                        <h3>Txt2Img SDXL</h3>
+                        <p>Generate images from text using SDXL model</p>
+                        <div class="mock-actions">
+                            <button class="mock-btn">Run</button>
+                            <button class="mock-btn mock-btn-secondary">Delete</button>
+                        </div>
+                    </div>
+                    <div class="mock-workflow-card">
+                        <h3>Img2Img FLUX</h3>
+                        <p>Transform images using FLUX model</p>
+                        <div class="mock-actions">
+                            <button class="mock-btn">Run</button>
+                            <button class="mock-btn mock-btn-secondary">Delete</button>
+                        </div>
+                    </div>
+                    <div class="mock-workflow-card">
+                        <h3>Video Wan</h3>
+                        <p>Generate videos from text prompts</p>
+                        <div class="mock-actions">
+                            <button class="mock-btn">Run</button>
+                            <button class="mock-btn mock-btn-secondary">Delete</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar Demo -->
+                <div class="mock-progress-section">
+                    <h3 style="font-weight: var(--heading-weight);">Generation Progress</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">Processing: KSampler</p>
+                    <div class="mock-progress-bar">
+                        <div class="mock-progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Panel -->
+        <div class="output">
+            <div class="output-header">
+                <h3>Output</h3>
+                <button class="copy-btn" id="copyBtn">Copy CSS</button>
+            </div>
+            <div class="output-tabs">
+                <button class="tab-btn active" data-tab="css">CSS Variables</button>
+                <button class="tab-btn" data-tab="description">Description</button>
+            </div>
+            <div class="output-content" id="outputContent">
+                <!-- Content updated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Presets
+        const presets = {
+            current: {
+                bgHue: 240, bgSat: 28, bgLight: 11,
+                cardHue: 220, cardSat: 44, cardLight: 16,
+                accentHue: 347, accentSat: 79, accentLight: 59,
+                secondaryHue: 213, secondarySat: 73, secondaryLight: 22,
+                textPrimary: '#eeeeee', textSecondary: '#aaaaaa',
+                borderRadius: 8, cardPadding: 24, gridGap: 16,
+                fontFamily: 'system-ui', fontSize: 16, headingWeight: '700',
+                hoverEffects: '1', shadowDepth: '1', cardBorder: '0'
+            },
+            ocean: {
+                bgHue: 210, bgSat: 35, bgLight: 10,
+                cardHue: 200, cardSat: 40, cardLight: 18,
+                accentHue: 195, accentSat: 85, accentLight: 55,
+                secondaryHue: 210, secondarySat: 50, secondaryLight: 25,
+                textPrimary: '#e8f4f8', textSecondary: '#8ab4c8',
+                borderRadius: 12, cardPadding: 20, gridGap: 16,
+                fontFamily: 'Inter, system-ui', fontSize: 16, headingWeight: '600',
+                hoverEffects: '1', shadowDepth: '2', cardBorder: '0'
+            },
+            forest: {
+                bgHue: 140, bgSat: 25, bgLight: 10,
+                cardHue: 150, cardSat: 30, cardLight: 16,
+                accentHue: 145, accentSat: 70, accentLight: 45,
+                secondaryHue: 140, secondarySat: 35, secondaryLight: 22,
+                textPrimary: '#e8f5e9', textSecondary: '#a5d6a7',
+                borderRadius: 6, cardPadding: 24, gridGap: 20,
+                fontFamily: 'system-ui', fontSize: 16, headingWeight: '600',
+                hoverEffects: '1', shadowDepth: '1', cardBorder: '0'
+            },
+            purple: {
+                bgHue: 270, bgSat: 30, bgLight: 10,
+                cardHue: 260, cardSat: 35, cardLight: 18,
+                accentHue: 280, accentSat: 75, accentLight: 60,
+                secondaryHue: 270, secondarySat: 45, secondaryLight: 25,
+                textPrimary: '#f3e8ff', textSecondary: '#c4b5fd',
+                borderRadius: 16, cardPadding: 20, gridGap: 16,
+                fontFamily: "'Segoe UI', system-ui", fontSize: 16, headingWeight: '600',
+                hoverEffects: '1', shadowDepth: '2', cardBorder: '1'
+            },
+            contrast: {
+                bgHue: 0, bgSat: 0, bgLight: 5,
+                cardHue: 0, cardSat: 0, cardLight: 12,
+                accentHue: 45, accentSat: 100, accentLight: 55,
+                secondaryHue: 0, secondarySat: 0, secondaryLight: 20,
+                textPrimary: '#ffffff', textSecondary: '#cccccc',
+                borderRadius: 4, cardPadding: 20, gridGap: 16,
+                fontFamily: 'system-ui', fontSize: 17, headingWeight: '700',
+                hoverEffects: '1', shadowDepth: '0', cardBorder: '1'
+            }
+        };
+
+        // Control IDs
+        const controls = [
+            'bgHue', 'bgSat', 'bgLight',
+            'cardHue', 'cardSat', 'cardLight',
+            'accentHue', 'accentSat', 'accentLight',
+            'secondaryHue', 'secondarySat', 'secondaryLight',
+            'textPrimary', 'textSecondary',
+            'borderRadius', 'cardPadding', 'gridGap',
+            'fontFamily', 'fontSize', 'headingWeight',
+            'hoverEffects', 'shadowDepth', 'cardBorder'
+        ];
+
+        // Get current values
+        function getValues() {
+            const values = {};
+            controls.forEach(id => {
+                const el = document.getElementById(id);
+                values[id] = el.value;
+            });
+            return values;
+        }
+
+        // Apply values to CSS variables
+        function applyStyles(values) {
+            const root = document.documentElement;
+
+            root.style.setProperty('--bg-hue', values.bgHue);
+            root.style.setProperty('--bg-sat', values.bgSat + '%');
+            root.style.setProperty('--bg-light', values.bgLight + '%');
+
+            root.style.setProperty('--card-hue', values.cardHue);
+            root.style.setProperty('--card-sat', values.cardSat + '%');
+            root.style.setProperty('--card-light', values.cardLight + '%');
+
+            root.style.setProperty('--accent-hue', values.accentHue);
+            root.style.setProperty('--accent-sat', values.accentSat + '%');
+            root.style.setProperty('--accent-light', values.accentLight + '%');
+
+            root.style.setProperty('--secondary-hue', values.secondaryHue);
+            root.style.setProperty('--secondary-sat', values.secondarySat + '%');
+            root.style.setProperty('--secondary-light', values.secondaryLight + '%');
+
+            root.style.setProperty('--text-primary', values.textPrimary);
+            root.style.setProperty('--text-secondary', values.textSecondary);
+
+            root.style.setProperty('--border-radius', values.borderRadius + 'px');
+            root.style.setProperty('--card-padding', values.cardPadding + 'px');
+            root.style.setProperty('--grid-gap', values.gridGap + 'px');
+
+            root.style.setProperty('--font-family', values.fontFamily);
+            root.style.setProperty('--font-size', values.fontSize + 'px');
+            root.style.setProperty('--heading-weight', values.headingWeight);
+
+            root.style.setProperty('--hover-effects', values.hoverEffects);
+            root.style.setProperty('--shadow-depth', values.shadowDepth);
+            root.style.setProperty('--card-border', values.cardBorder);
+
+            // Update value displays
+            document.getElementById('bgHueVal').textContent = values.bgHue;
+            document.getElementById('bgSatVal').textContent = values.bgSat + '%';
+            document.getElementById('bgLightVal').textContent = values.bgLight + '%';
+            document.getElementById('cardHueVal').textContent = values.cardHue;
+            document.getElementById('cardSatVal').textContent = values.cardSat + '%';
+            document.getElementById('cardLightVal').textContent = values.cardLight + '%';
+            document.getElementById('accentHueVal').textContent = values.accentHue;
+            document.getElementById('accentSatVal').textContent = values.accentSat + '%';
+            document.getElementById('accentLightVal').textContent = values.accentLight + '%';
+            document.getElementById('secondaryHueVal').textContent = values.secondaryHue;
+            document.getElementById('secondarySatVal').textContent = values.secondarySat + '%';
+            document.getElementById('secondaryLightVal').textContent = values.secondaryLight + '%';
+            document.getElementById('borderRadiusVal').textContent = values.borderRadius + 'px';
+            document.getElementById('cardPaddingVal').textContent = values.cardPadding + 'px';
+            document.getElementById('gridGapVal').textContent = values.gridGap + 'px';
+            document.getElementById('fontSizeVal').textContent = values.fontSize + 'px';
+        }
+
+        // Generate CSS output
+        function generateCSS(values) {
+            return `/* ComfyUI Studio Theme Variables */
+:root {
+    /* Background */
+    --bg-color: hsl(${values.bgHue}, ${values.bgSat}%, ${values.bgLight}%);
+
+    /* Cards */
+    --card-color: hsl(${values.cardHue}, ${values.cardSat}%, ${values.cardLight}%);
+
+    /* Accent Color */
+    --accent-color: hsl(${values.accentHue}, ${values.accentSat}%, ${values.accentLight}%);
+
+    /* Secondary Color */
+    --secondary-color: hsl(${values.secondaryHue}, ${values.secondarySat}%, ${values.secondaryLight}%);
+
+    /* Text */
+    --text-primary: ${values.textPrimary};
+    --text-secondary: ${values.textSecondary};
+
+    /* Spacing */
+    --border-radius: ${values.borderRadius}px;
+    --card-padding: ${values.cardPadding}px;
+    --grid-gap: ${values.gridGap}px;
+
+    /* Typography */
+    --font-family: ${values.fontFamily};
+    --font-size: ${values.fontSize}px;
+    --heading-weight: ${values.headingWeight};
+}`;
+        }
+
+        // Generate natural language description
+        function generateDescription(values) {
+            const accentNames = {
+                red: [[340, 360], [0, 20]],
+                orange: [[20, 45]],
+                yellow: [[45, 70]],
+                green: [[70, 165]],
+                cyan: [[165, 195]],
+                blue: [[195, 255]],
+                purple: [[255, 290]],
+                magenta: [[290, 340]]
+            };
+
+            function getColorName(hue) {
+                const h = parseInt(hue);
+                for (const [name, ranges] of Object.entries(accentNames)) {
+                    for (const range of ranges) {
+                        if (h >= range[0] && h < range[1]) return name;
+                    }
+                }
+                return 'red';
+            }
+
+            const accentName = getColorName(values.accentHue);
+            const bgTone = values.bgLight < 15 ? 'dark' : values.bgLight < 30 ? 'medium' : 'light';
+            const shadowDesc = values.shadowDepth === '0' ? 'flat, shadowless design' :
+                              values.shadowDepth === '1' ? 'subtle depth with light shadows' :
+                              values.shadowDepth === '2' ? 'medium shadows for moderate depth' :
+                              'pronounced shadows for strong depth';
+
+            const lines = [
+                `A ${bgTone} theme with a ${accentName} accent color.`,
+                '',
+                'Color Palette:',
+                `- Background: HSL(${values.bgHue}, ${values.bgSat}%, ${values.bgLight}%) - ${values.bgSat > 20 ? 'saturated' : 'muted'} ${bgTone} base`,
+                `- Cards: HSL(${values.cardHue}, ${values.cardSat}%, ${values.cardLight}%) - slightly lighter than background`,
+                `- Accent: HSL(${values.accentHue}, ${values.accentSat}%, ${values.accentLight}%) - ${accentName} for CTAs and highlights`,
+                `- Secondary: HSL(${values.secondaryHue}, ${values.secondarySat}%, ${values.secondaryLight}%) - for secondary buttons`,
+                '',
+                'Typography:',
+                `- Font: ${values.fontFamily.split(',')[0].replace(/'/g, '').trim()}`,
+                `- Base size: ${values.fontSize}px`,
+                `- Heading weight: ${values.headingWeight}`,
+                '',
+                'Design Details:',
+                `- Border radius: ${values.borderRadius}px (${values.borderRadius < 6 ? 'sharp corners' : values.borderRadius < 12 ? 'softly rounded' : 'heavily rounded'})`,
+                `- ${shadowDesc}`,
+                `- Hover effects: ${values.hoverEffects === '1' ? 'enabled with subtle lift animations' : 'disabled'}`,
+                `- Card borders: ${values.cardBorder === '1' ? 'subtle 1px borders' : 'borderless cards'}`
+            ];
+
+            return lines.join('\n');
+        }
+
+        // Update output
+        let currentTab = 'css';
+        function updateOutput() {
+            const values = getValues();
+            const content = document.getElementById('outputContent');
+
+            if (currentTab === 'css') {
+                content.textContent = generateCSS(values);
+            } else {
+                content.textContent = generateDescription(values);
+            }
+        }
+
+        // Initialize controls
+        controls.forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('input', () => {
+                applyStyles(getValues());
+                updateOutput();
+            });
+        });
+
+        // Preset buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const preset = presets[btn.dataset.preset];
+                if (!preset) return;
+
+                // Update all controls
+                Object.entries(preset).forEach(([key, value]) => {
+                    const el = document.getElementById(key);
+                    if (el) el.value = value;
+                });
+
+                // Apply styles
+                applyStyles(preset);
+                updateOutput();
+
+                // Update active state
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentTab = btn.dataset.tab;
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                updateOutput();
+            });
+        });
+
+        // Copy button
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const values = getValues();
+            const text = currentTab === 'css' ? generateCSS(values) : generateDescription(values);
+
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy CSS';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        });
+
+        // Initialize
+        applyStyles(getValues());
+        updateOutput();
+    </script>
+</body>
+</html>

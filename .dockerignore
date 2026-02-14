@@ -129,3 +129,6 @@ docs/notes/
 
 # runpod plugin config
 .runpod/
+
+# Design playgrounds (dev tools only)
+playgrounds/

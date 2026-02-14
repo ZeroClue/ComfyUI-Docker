@@ -334,20 +334,101 @@ def create_app():
 
 # HTML Templates (using safer DOM methods in JavaScript)
 
+# Shared theme variables - High Contrast accessibility theme
+_THEME_VARS = """
+    :root {
+        --bg-color: #0d0d0d;
+        --card-color: #1a1a1a;
+        --accent-color: #ffb819;
+        --accent-hover: #ffc940;
+        --secondary-color: #333333;
+        --text-primary: #ffffff;
+        --text-secondary: #b3b3b3;
+        --border-color: rgba(255,255,255,0.15);
+        --border-radius: 4px;
+        --spacing-sm: 0.5rem;
+        --spacing-md: 1rem;
+        --spacing-lg: 1.5rem;
+        --spacing-xl: 2rem;
+    }
+"""
+
 LOGIN_TEMPLATE = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ComfyUI Studio - Login</title>
     <style>
-        body { font-family: system-ui; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #1a1a2e; color: #eee; }
-        .login-box { background: #16213e; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-        h1 { margin-top: 0; }
-        input { width: 100%; padding: 0.75rem; margin: 0.5rem 0; border: 1px solid #333; border-radius: 4px; background: #1a1a2e; color: #eee; }
-        button { width: 100%; padding: 0.75rem; background: #e94560; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
-        button:hover { background: #ff6b6b; }
-        .error { color: #e94560; margin-bottom: 1rem; }
-        .warning { color: #ffc107; font-size: 0.875rem; }
+        """ + _THEME_VARS + """
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 17px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: var(--bg-color);
+            color: var(--text-primary);
+        }
+        .login-box {
+            background: var(--card-color);
+            padding: var(--spacing-xl);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            min-width: 320px;
+        }
+        h1 {
+            margin-bottom: var(--spacing-md);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        input {
+            width: 100%;
+            padding: var(--spacing-md);
+            margin: var(--spacing-sm) 0 var(--spacing-md);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: var(--bg-color);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        input:focus {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+        button {
+            width: 100%;
+            padding: var(--spacing-md);
+            background: var(--accent-color);
+            color: #000;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background 0.15s ease;
+        }
+        button:hover { background: var(--accent-hover); }
+        button:focus {
+            outline: 2px solid var(--text-primary);
+            outline-offset: 2px;
+        }
+        .error {
+            color: var(--accent-color);
+            margin-bottom: var(--spacing-md);
+            font-weight: 500;
+        }
+        .warning {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-sm);
+            background: var(--secondary-color);
+            border-radius: var(--border-radius);
+        }
     </style>
 </head>
 <body>
@@ -356,7 +437,7 @@ LOGIN_TEMPLATE = """
         {% if error %}<p class="error">{{ error }}</p>{% endif %}
         {% if using_default_password %}<p class="warning">Using default password</p>{% endif %}
         <form method="post">
-            <input type="password" name="password" placeholder="Password" required>
+            <input type="password" name="password" placeholder="Password" required autofocus>
             <button type="submit">Login</button>
         </form>
     </div>
@@ -366,27 +447,116 @@ LOGIN_TEMPLATE = """
 
 INDEX_TEMPLATE = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ComfyUI Studio</title>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: system-ui; margin: 0; background: #1a1a2e; color: #eee; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        h1 { margin-bottom: 0.5rem; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        .btn { padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; color: white; }
-        .btn-primary { background: #e94560; }
-        .btn-secondary { background: #0f3460; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-        .stat-card { background: #16213e; padding: 1rem; border-radius: 8px; }
-        .stat-value { font-size: 2rem; font-weight: bold; color: #e94560; }
-        .workflows { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
-        .workflow-card { background: #16213e; padding: 1.5rem; border-radius: 8px; transition: transform 0.2s; }
-        .workflow-card:hover { transform: translateY(-2px); }
-        .workflow-card h3 { margin-top: 0; }
-        .workflow-card p { color: #aaa; margin-bottom: 1rem; }
-        .workflow-actions { display: flex; gap: 0.5rem; }
+        """ + _THEME_VARS + """
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 17px;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: var(--spacing-xl); }
+        h1, h2 { margin-bottom: var(--spacing-sm); font-weight: 700; letter-spacing: -0.02em; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-xl);
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+        }
+        .header p { color: var(--text-secondary); }
+        .btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        .btn-primary {
+            background: var(--accent-color);
+            color: #000;
+            border-color: var(--accent-color);
+        }
+        .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+        .btn-secondary {
+            background: var(--secondary-color);
+            color: var(--text-primary);
+        }
+        .btn-secondary:hover { background: #444; }
+        .btn:focus {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+        }
+        .stat-card {
+            background: var(--card-color);
+            padding: var(--spacing-lg);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            letter-spacing: -0.03em;
+        }
+        .stat-label { color: var(--text-secondary); margin-top: var(--spacing-xs); }
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+        }
+        .workflows {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: var(--spacing-md);
+        }
+        .workflow-card {
+            background: var(--card-color);
+            padding: var(--spacing-lg);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            transition: border-color 0.15s ease, transform 0.15s ease;
+        }
+        .workflow-card:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+        }
+        .workflow-card h3 { margin-top: 0; font-weight: 600; }
+        .workflow-card p {
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+            font-size: 0.9375rem;
+        }
+        .workflow-actions { display: flex; gap: var(--spacing-sm); }
+        .workflow-actions .btn { flex: 1; justify-content: center; }
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xl) * 2;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -404,15 +574,15 @@ INDEX_TEMPLATE = """
         <div class="stats">
             <div class="stat-card">
                 <div class="stat-value">{{ workflows|length }}</div>
-                <div>Workflows</div>
+                <div class="stat-label">Workflows</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">{{ storage_info.total_size_mb }} MB</div>
-                <div>Storage Used</div>
+                <div class="stat-label">Storage Used</div>
             </div>
         </div>
 
-        <div class="header">
+        <div class="section-title">
             <h2>Workflows</h2>
             <button class="btn btn-primary" onclick="syncWorkflows()">Sync from ComfyUI</button>
         </div>
@@ -433,10 +603,19 @@ INDEX_TEMPLATE = """
 
     <script>
         async function syncWorkflows() {
-            const response = await fetch('/api/sync', { method: 'POST' });
-            const result = await response.json();
-            alert(result.message);
-            location.reload();
+            const btn = event.target;
+            btn.textContent = 'Syncing...';
+            btn.disabled = true;
+            try {
+                const response = await fetch('/api/sync', { method: 'POST' });
+                const result = await response.json();
+                alert(result.message);
+                location.reload();
+            } catch (e) {
+                alert('Sync failed: ' + e.message);
+                btn.textContent = 'Sync from ComfyUI';
+                btn.disabled = false;
+            }
         }
 
         async function deleteWorkflow(id) {
@@ -453,34 +632,162 @@ INDEX_TEMPLATE = """
 
 WORKFLOW_TEMPLATE = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ workflow.name }} - ComfyUI Studio</title>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: system-ui; margin: 0; background: #1a1a2e; color: #eee; }
-        .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
-        h1 { margin-bottom: 0.5rem; }
-        .back { color: #e94560; text-decoration: none; }
-        .form-group { margin-bottom: 1.5rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        .form-group input, .form-group textarea { width: 100%; padding: 0.75rem; border: 1px solid #333; border-radius: 4px; background: #16213e; color: #eee; }
-        .form-group textarea { min-height: 100px; resize: vertical; }
-        .btn { padding: 1rem 2rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
-        .btn-primary { background: #e94560; color: white; }
-        .btn:hover { opacity: 0.9; }
-        .progress { margin-top: 2rem; display: none; }
-        .progress-bar { height: 20px; background: #16213e; border-radius: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; background: #e94560; width: 0%; transition: width 0.3s; }
-        .outputs { margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
-        .output img { width: 100%; border-radius: 8px; }
+        """ + _THEME_VARS + """
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 17px;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: var(--spacing-xl); }
+        h1 { margin-bottom: var(--spacing-sm); font-weight: 700; letter-spacing: -0.02em; }
+        .description {
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xl);
+            font-size: 1.0625rem;
+        }
+        .back {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+            transition: color 0.15s ease;
+        }
+        .back:hover { color: var(--accent-hover); }
+        .form-group { margin-bottom: var(--spacing-lg); }
+        .form-group label {
+            display: block;
+            margin-bottom: var(--spacing-sm);
+            font-weight: 500;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group input[type="file"],
+        .form-group textarea {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: var(--card-color);
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+        .form-group input[type="file"] {
+            cursor: pointer;
+        }
+        .form-group input[type="file"]::file-selector-button {
+            background: var(--secondary-color);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            margin-right: var(--spacing-md);
+        }
+        .btn {
+            padding: var(--spacing-md) var(--spacing-xl);
+            border: 1px solid var(--accent-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.15s ease;
+        }
+        .btn-primary {
+            background: var(--accent-color);
+            color: #000;
+        }
+        .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+        .btn-primary:disabled {
+            background: var(--secondary-color);
+            border-color: var(--secondary-color);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+        .btn:focus {
+            outline: 2px solid var(--text-primary);
+            outline-offset: 2px;
+        }
+        .progress {
+            margin-top: var(--spacing-xl);
+            padding: var(--spacing-lg);
+            background: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            display: none;
+        }
+        .progress-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+        .progress-status span { font-weight: 500; }
+        .progress-percent {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+        .progress-bar {
+            height: 8px;
+            background: var(--secondary-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .outputs {
+            margin-top: var(--spacing-xl);
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+        }
+        .output {
+            background: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+        .output img {
+            width: 100%;
+            display: block;
+        }
+        .outputs-title {
+            margin-bottom: var(--spacing-md);
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <a href="/" class="back">&larr; Back to workflows</a>
         <h1>{{ workflow.name }}</h1>
-        <p>{{ workflow.description }}</p>
+        <p class="description">{{ workflow.description }}</p>
 
         <form id="generateForm">
             <input type="hidden" name="workflow_id" value="{{ workflow.id }}">
@@ -498,22 +805,31 @@ WORKFLOW_TEMPLATE = """
             </div>
             {% endfor %}
 
-            <button type="submit" class="btn btn-primary">Generate</button>
+            <button type="submit" class="btn btn-primary" id="submitBtn">Generate</button>
         </form>
 
         <div class="progress" id="progress">
-            <p id="status">Queued...</p>
+            <div class="progress-status">
+                <span id="status">Queued...</span>
+                <span class="progress-percent" id="progressPercent">0%</span>
+            </div>
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
         </div>
 
-        <div class="outputs" id="outputs"></div>
+        <div id="outputsContainer" style="display: none;">
+            <h3 class="outputs-title">Generated Images</h3>
+            <div class="outputs" id="outputs"></div>
+        </div>
     </div>
 
     <script>
         document.getElementById('generateForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Starting...';
 
             const formData = new FormData(e.target);
             const inputs = {};
@@ -523,46 +839,72 @@ WORKFLOW_TEMPLATE = """
                 }
             }
 
-            const response = await fetch('/api/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    workflow_id: formData.get('workflow_id'),
-                    inputs: inputs
-                })
-            });
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        workflow_id: formData.get('workflow_id'),
+                        inputs: inputs
+                    })
+                });
 
-            const result = await response.json();
-            if (result.success) {
-                pollJob(result.job_id);
-            } else {
-                alert('Error: ' + result.error);
+                const result = await response.json();
+                if (result.success) {
+                    pollJob(result.job_id);
+                } else {
+                    alert('Error: ' + result.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Generate';
+                }
+            } catch (e) {
+                alert('Request failed: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = 'Generate';
             }
         });
 
         async function pollJob(jobId) {
-            document.getElementById('progress').style.display = 'block';
+            const progress = document.getElementById('progress');
+            const progressFill = document.getElementById('progressFill');
+            const progressPercent = document.getElementById('progressPercent');
+            const status = document.getElementById('status');
+            const btn = document.getElementById('submitBtn');
+
+            progress.style.display = 'block';
+            btn.textContent = 'Generating...';
 
             const poll = async () => {
                 const response = await fetch('/api/jobs/' + jobId);
                 const job = await response.json();
 
-                document.getElementById('status').textContent = job.status;
-                document.getElementById('progressFill').style.width = (job.progress * 100) + '%';
+                const pct = Math.round(job.progress * 100);
+                status.textContent = job.current_node || job.status;
+                progressFill.style.width = pct + '%';
+                progressPercent.textContent = pct + '%';
 
                 if (job.status === 'completed') {
+                    btn.disabled = false;
+                    btn.textContent = 'Generate';
+
+                    const container = document.getElementById('outputsContainer');
                     const outputsDiv = document.getElementById('outputs');
                     outputsDiv.textContent = '';
+                    container.style.display = 'block';
+
                     for (const output of job.outputs) {
                         const div = document.createElement('div');
                         div.className = 'output';
                         const img = document.createElement('img');
                         img.src = '/outputs/' + encodeURIComponent(output.filename);
+                        img.alt = 'Generated image';
                         div.appendChild(img);
                         outputsDiv.appendChild(div);
                     }
                 } else if (job.status === 'failed') {
                     alert('Generation failed: ' + job.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Generate';
                 } else {
                     setTimeout(poll, 1000);
                 }

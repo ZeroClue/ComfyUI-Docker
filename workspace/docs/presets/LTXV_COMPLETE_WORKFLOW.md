@@ -31,7 +31,7 @@ Disk Space: 30GB minimum
 ```bash
 PRESET_DOWNLOAD=LTXV_COMPLETE_WORKFLOW
 ACCESS_PASSWORD=your_password  # Optional
-COMFYUI_EXTRA_ARGS=--fast      # Recommended for production
+COMFYUI_EXTRA_ARGS=--fast      # Recommended for slim
 ```
 
 ### Volume Mount (Recommended)
@@ -84,9 +84,9 @@ frame_enhancement: 60fps # Enhanced from 30fps
 
 ### Batch Production
 ```bash
-# For commercial video production
-# Use production-optimized image variant
-# Container: zeroclue/comfyui:production-torch2.8.0-cu126
+# For commercial video slim
+# Use slim-optimized image variant
+# Container: zeroclue/comfyui:slim-torch2.8.0-cu126
 # Reduces memory overhead, faster startup
 ```
 
@@ -115,17 +115,17 @@ frame_enhancement: 60fps # Enhanced from 30fps
 
 ### Recommended Settings
 ```bash
-# For production workloads
+# For slim workloads
 COMFYUI_EXTRA_ARGS=--fast --output-format mp4 --output-quality high
 
 # For batch processing
-# Consider using production image variant
-# Container: zeroclue/comfyui:production-torch2.8.0-cu126
+# Consider using slim image variant
+# Container: zeroclue/comfyui:slim-torch2.8.0-cu126
 ```
 
 ### Workflow Automation
 ```python
-# Automated production pipeline
+# Automated slim pipeline
 # 1. Queue multiple prompts
 # 2. Apply upscaling automatically
 # 3. Export in desired format
@@ -182,7 +182,7 @@ tail -f /workspace/ComfyUI/user/comfyui_3000.log
 ### Container Optimization
 ```bash
 # Production-ready configuration
-Container Image: zeroclue/comfyui:production-torch2.8.0-cu126
+Container Image: zeroclue/comfyui:slim-torch2.8.0-cu126
 Environment: PRESET_DOWNLOAD=LTXV_COMPLETE_WORKFLOW
 GPU: A100 (40GB) for best performance
 Storage: High-throughput SSD
@@ -195,7 +195,7 @@ Storage: High-throughput SSD
 
 ### Cost Optimization
 ```bash
-# For budget-conscious production
+# For budget-conscious slim
 # Use base model only, external upscaling
 PRESET_DOWNLOAD=LTXV_2B_FP8_SCALED
 

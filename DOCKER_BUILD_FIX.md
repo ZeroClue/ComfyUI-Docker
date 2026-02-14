@@ -63,8 +63,8 @@ docker buildx bake -f docker-bake-single-stage.hcl single-stage-12-9
 docker buildx bake -f docker-bake-single-stage.hcl single-stage-13-0
 
 # Production builds (optimized for serving)
-docker buildx bake -f docker-bake-single-stage.hcl single-stage-production-12-6
-docker buildx bake -f docker-bake-single-stage.hcl single-stage-production-12-8
+docker buildx bake -f docker-bake-single-stage.hcl single-stage-slim-12-6
+docker buildx bake -f docker-bake-single-stage.hcl single-stage-slim-12-8
 ```
 
 ## Benefits
@@ -87,6 +87,6 @@ Both Dockerfiles have been tested to start building without the virtual environm
 
 ## Recommendations
 
-- **For production**: Use the fixed multi-stage Dockerfile for optimal image size
+- **For slim**: Use the fixed multi-stage Dockerfile for optimal image size
 - **For development/testing**: Use the single-stage Dockerfile for easier debugging
 - **For CI/CD**: Both options work, but single-stage may be more reliable in complex CI environments

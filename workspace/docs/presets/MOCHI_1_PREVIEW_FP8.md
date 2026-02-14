@@ -49,7 +49,7 @@ docker run -e PRESET_DOWNLOAD=MOCHI_1_PREVIEW_FP8 --gpus all -p 3000:3000 zerocl
 ## Use Cases
 
 ### Best For
-- Professional film production
+- Professional film slim
 - High-end commercial work
 - Research and development
 - Quality benchmarking

@@ -47,7 +47,7 @@ The preset manager features a comprehensive dark/light theme system:
 
 #### Security Considerations
 - **Default Password**: The system uses 'password' as the default for development convenience
-- **Production Security**: Always set `ACCESS_PASSWORD` environment variable in production
+- **Production Security**: Always set `ACCESS_PASSWORD` environment variable in slim
 - **Warning System**: Visual alerts indicate when default password is being used
 - **Session Security**: Secure session handling with proper timeout mechanisms
 

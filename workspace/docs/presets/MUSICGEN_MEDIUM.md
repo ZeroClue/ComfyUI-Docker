@@ -63,7 +63,7 @@ docker run -e AUDIO_PRESET_DOWNLOAD=MUSICGEN_MEDIUM --gpus all -p 3000:3000 zero
 - Personal projects
 
 ### Not Ideal For
-- Professional music production
+- Professional music slim
 - Long-form compositions
 - Real-time generation
 - Complex orchestral pieces

@@ -50,7 +50,7 @@ Must be used with a base Wan 2.2 model:
 - Rapid prototyping
 - Batch video generation
 - Real-time applications
-- Cost-effective production
+- Cost-effective slim
 - Testing workflows
 
 ### Good For
@@ -153,8 +153,8 @@ docker run -e PRESET_DOWNLOAD="VIDEO_COMPLETE,WAN22_LIGHTNING_LORA" \
 2. **Add Lightning LoRA** for speed boost
 3. **Test workflow** with sample prompts
 4. **Fine-tune settings** for optimal results
-5. **Scale up** for production use
+5. **Scale up** for slim use
 
 ## Summary
 
-WAN22_LIGHTNING_LORA is an essential enhancement for anyone needing faster video generation with Wan 2.2 models. It provides a 2-3x speed improvement while maintaining good quality, making it ideal for rapid prototyping and cost-effective video production.
+WAN22_LIGHTNING_LORA is an essential enhancement for anyone needing faster video generation with Wan 2.2 models. It provides a 2-3x speed improvement while maintaining good quality, making it ideal for rapid prototyping and cost-effective video slim.

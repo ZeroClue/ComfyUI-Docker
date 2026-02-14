@@ -44,7 +44,7 @@ Complete video generation suite including multiple models, upscalers, and enhanc
 ## Use Cases
 
 ### Best For
-- Professional video production
+- Professional video slim
 - Content creation agencies
 - Research and development
 - Complete workflow testing
@@ -109,7 +109,7 @@ docker run -e PRESET_DOWNLOAD="VIDEO_COMPLETE,WAN22_LIGHTNING_LORA" \
 - **Speed**: ~30 seconds per clip
 - **VRAM**: ~12GB
 - **Quality**: Excellent
-- **Use**: Professional production
+- **Use**: Professional slim
 
 ### HUNYUAN_T2V_720P
 - **Speed**: ~45 seconds per clip

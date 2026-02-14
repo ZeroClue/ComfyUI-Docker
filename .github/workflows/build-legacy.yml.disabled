@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: 'Build targets (comma-separated): base,slim,minimal,production,ultra-slim'
+        description: 'Build targets (comma-separated): base,slim,minimal,slim,ultra-slim'
         required: false
         default: 'base,slim,minimal'
       cuda_versions:
@@ -33,9 +33,9 @@ jobs:
           - target: minimal
             cuda: 12-8
           # Production variants
-          - target: production
+          - target: slim
             cuda: 12-6
-          - target: production
+          - target: slim
             cuda: 12-8
           # Ultra-slim variants
           - target: ultra-slim

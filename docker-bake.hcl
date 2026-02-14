@@ -78,7 +78,7 @@ target "_cu130" {
     }
 }
 
-# Runtime CUDA targets for production variants
+# Runtime CUDA targets for slim variants
 target "_cu124_runtime" {
     inherits = ["_common"]
     args = {

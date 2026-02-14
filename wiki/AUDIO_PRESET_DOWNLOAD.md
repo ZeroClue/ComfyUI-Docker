@@ -160,7 +160,7 @@ docker run -e AUDIO_PRESET_DOWNLOAD=MUSICGEN_MEDIUM \
 
 ### Professional Audio Production
 ```bash
-# Complete audio production suite
+# Complete audio slim suite
 docker run -e AUDIO_PRESET_DOWNLOAD=AUDIO_PRODUCTION \
   --gpus all -p 3000:3000 \
   zeroclue/comfyui:base-torch2.8.0-cu126
@@ -293,7 +293,7 @@ AUDIO_PRESET_DOWNLOAD="AUDIO_ALL"
 
 ### Professional Audio Workflow
 1. Use `STABLE_AUDIO_OPEN` for highest quality generation
-2. Combine with music generation models for complete production
+2. Combine with music generation models for complete slim
 3. Use TTS models for voiceovers and narration
 4. Apply custom nodes for post-processing and effects
 
@@ -397,8 +397,8 @@ docker run \
   --gpus all -p 3000:3000 \
   zeroclue/comfyui:base-torch2.8.0-cu126
 ```
-> ⚠️ Audio presets may cause complete production pipeline instability
+> ⚠️ Audio presets may cause complete slim pipeline instability
 
-This enables creators to generate comprehensive multimedia content with AI, including videos with custom soundtracks, images with audio narration, and complete media productions.
+This enables creators to generate comprehensive multimedia content with AI, including videos with custom soundtracks, images with audio narration, and complete media slims.
 
 > ⚠️ **Final Reminder**: Audio presets are experimental. Start with image/video workflows first, then add audio components separately to isolate any issues.

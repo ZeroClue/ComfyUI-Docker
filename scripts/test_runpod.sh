@@ -58,4 +58,4 @@ echo "=== API Access Test Complete ==="
 echo ""
 echo "To create a CPU pod, use:"
 echo '  curl -X POST -H "Authorization: Bearer $RUNPOD_API_KEY" -H "Content-Type: application/json" \'
-echo '    "$API_BASE/pods" -d '"'"'{"name": "test-pod", "computeType": "CPU", "cpuFlavorIds": ["cpu3c"], "imageName": "zeroclue/comfyui:production-torch2.8.0-cu126", "volumeInGb": 20}'"'"''
+echo '    "$API_BASE/pods" -d '"'"'{"name": "test-pod", "computeType": "CPU", "cpuFlavorIds": ["cpu3c"], "imageName": "zeroclue/comfyui:slim-torch2.8.0-cu126", "volumeInGb": 20}'"'"''

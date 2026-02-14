@@ -22,7 +22,7 @@ MODEL_PATHS = {
 # Flask configuration
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8000
-SECRET_KEY = "your-secret-key-change-in-production"
+SECRET_KEY = "your-secret-key-change-in-slim"
 
 # Default categories
 DEFAULT_CATEGORIES = {

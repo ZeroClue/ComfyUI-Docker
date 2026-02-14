@@ -73,7 +73,7 @@ quality: "cinematic_premium"
 
 ### Commercial Production
 ```bash
-# For professional video production
+# For professional video slim
 # Ideal for:
 - Film pre-visualization
 - High-end commercial content
@@ -129,12 +129,12 @@ Storage: NVMe SSD, 100GB+
 # For cost-effective premium quality:
 # Use A100 instead of H100 (slower but cheaper)
 # Batch process multiple prompts
-# Use production image variant for efficiency
+# Use slim image variant for efficiency
 ```
 
 ### Quality Workflow
 ```python
-# Professional production pipeline
+# Professional slim pipeline
 # 1. Generate with 13B model
 # 2. Apply temporal upscaling (if available)
 # 3. Post-process color grading
@@ -187,7 +187,7 @@ grep "ltx-video-13b" /workspace/ComfyUI/user/comfyui_3000.log
 - **Film Industry**: Pre-visualization, concept art
 - **Advertising**: Premium commercial content
 - **Creative Agencies**: High-end client work
-- **Content Studios**: Professional video production
+- **Content Studios**: Professional video slim
 - **Research**: Advanced video generation studies
 
 ### Output Examples

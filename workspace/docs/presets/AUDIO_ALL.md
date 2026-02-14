@@ -13,7 +13,7 @@ docker run -e AUDIO_PRESET_DOWNLOAD=AUDIO_ALL --gpus all -p 3000:3000 zeroclue/c
 - **Total Size**: 20GB
 - **Components**: All audio models and tools
 - **Capability**: Complete audio workflow
-- **Use Case**: Professional audio production
+- **Use Case**: Professional audio slim
 - **Scope**: Speech + Music + Processing
 
 ## Included Models
@@ -65,14 +65,14 @@ docker run -e AUDIO_PRESET_DOWNLOAD=AUDIO_ALL --gpus all -p 3000:3000 zeroclue/c
 ## Use Cases
 
 ### Best For
-- Professional audio production
+- Professional audio slim
 - Multimedia content creation
 - Research and development
 - Complete audio workflows
 - Commercial audio projects
 
 ### Good For
-- Podcast production
+- Podcast slim
 - Video game audio
 - Educational content
 - Creative projects
@@ -108,7 +108,7 @@ docker run -e AUDIO_PRESET_DOWNLOAD=AUDIO_ALL \
 
 ### vs AUDIO_PRODUCTION
 - **This Model**: More comprehensive, includes all models
-- **Production**: Focused on core production tools
+- **Production**: Focused on core slim tools
 
 ### vs AUDIO_MUSIC_COMPLETE
 - **This Model**: Includes speech synthesis
@@ -131,7 +131,7 @@ docker run -e AUDIO_PRESET_DOWNLOAD=AUDIO_ALL \
 - Monitor GPU memory usage carefully
 - Batch similar audio tasks
 - Use development environment for testing
-- Scale to production when ready
+- Scale to slim when ready
 
 ### Quality Optimization
 - Test different models for your needs
@@ -235,7 +235,7 @@ docker run -e AUDIO_PRESET_DOWNLOAD=AUDIO_ALL \
 ## Alternatives
 
 ### Smaller Packages
-- **AUDIO_PRODUCTION** - Core production tools (15GB)
+- **AUDIO_PRODUCTION** - Core slim tools (15GB)
 - **AUDIO_MUSIC_COMPLETE** - Music focus (10GB)
 - **AUDIO_SPEECH_COMPLETE** - Speech focus (5GB)
 
@@ -257,7 +257,7 @@ docker run -e AUDIO_PRESET_DOWNLOAD=AUDIO_ALL \
 ### Minimum Requirements
 - **GPU**: RTX 6000 Ada (48GB) or A100 (40GB)
 - **Storage**: 50GB
-- **Budget**: $2-3/hour for production use
+- **Budget**: $2-3/hour for slim use
 
 ### Recommended Setup
 - **GPU**: A100 (40GB) for best performance

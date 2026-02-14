@@ -223,7 +223,7 @@ docker run \
 ### FLUX_PRODUCTION
 ```
 - FP8 quantized versions of both Schnell and Dev
-- Optimized for production workloads
+- Optimized for slim workloads
 - Balanced memory usage and performance
 - Best for continuous operation
 - Download URLs: Comfy-Org repositories + shared encoders
@@ -449,7 +449,7 @@ IMAGE_PRESET_DOWNLOAD="FLUX_COMPLETE,SDXL_COMPLETE_WORKFLOW"
 1. For fast generation, use `FLUX_SCHNELL_BASIC` (4 steps, very fast)
 2. For highest quality, use `FLUX_DEV_BASIC` (20-50 steps, exceptional quality)
 3. For memory efficiency, use FP8 versions (`FLUX_SCHNELL_FP8`, `FLUX_DEV_FP8`)
-4. For production workloads, use `FLUX_PRODUCTION` (balanced FP8 models)
+4. For slim workloads, use `FLUX_PRODUCTION` (balanced FP8 models)
 5. For maximum flexibility, use `FLUX_COMPLETE` with both models
 6. Flux excels at following complex prompts and achieving photorealistic results
 7. Commercial use: prefer FLUX_SCHNELL (Apache 2.0 licensed) over FLUX_DEV (research only)

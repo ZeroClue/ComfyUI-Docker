@@ -5,20 +5,20 @@
 
 ## Overview
 
-Create one CPU pod, test both verified images (production-12-6 and modern-12-6) sequentially, then terminate.
+Create one CPU pod, test both verified images (slim-12-6 and modern-12-6) sequentially, then terminate.
 
 **Estimated Cost:** ~$0.30-0.50 total (20-30 min runtime)
 
 ## Images to Test
 
-1. `zeroclue/comfyui:production-torch2.8.0-cu126`
+1. `zeroclue/comfyui:slim-torch2.8.0-cu126`
 2. `zeroclue/comfyui:modern-torch2.8.0-cu126`
 
 ## Test Sequence
 
 ### Phase 1: Production Image Test
 
-1. Create CPU pod with production image
+1. Create CPU pod with slim image
 2. Wait for container startup (~2-3 min)
 3. Run verification tests:
    - Check preset_manager imports
@@ -30,7 +30,7 @@ Create one CPU pod, test both verified images (production-12-6 and modern-12-6) 
 
 ### Phase 2: Modern Image Test
 
-1. Terminate production pod
+1. Terminate slim pod
 2. Create CPU pod with modern image
 3. Run same verification tests
 4. Record results

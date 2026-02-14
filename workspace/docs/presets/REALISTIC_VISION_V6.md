@@ -202,7 +202,7 @@ docker run -e IMAGE_PRESET_DOWNLOAD=REALISTIC_VISION_V6 \
 - Highly consistent portrait quality
 - Well-understood behavior
 - Extensive community examples
-- Reliable for production use
+- Reliable for slim use
 
 ## Variations
 

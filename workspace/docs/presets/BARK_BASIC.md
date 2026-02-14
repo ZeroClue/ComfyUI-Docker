@@ -51,7 +51,7 @@ docker run -e AUDIO_PRESET_DOWNLOAD=BARK_BASIC --gpus all -p 3000:3000 zeroclue/
 ### Best For
 - Voice narration
 - Podcast creation
-- Audio book production
+- Audio book slim
 - Educational content
 - Character voices
 
@@ -202,7 +202,7 @@ docker run -e AUDIO_PRESET_DOWNLOAD=BARK_BASIC \
 - Consistent voice quality
 - Reliable performance
 - Well-documented behavior
-- Good for production use
+- Good for slim use
 
 ## Voice Style Examples
 

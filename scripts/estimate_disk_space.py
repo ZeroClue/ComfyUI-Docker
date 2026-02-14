@@ -55,7 +55,7 @@ class DiskSpaceEstimator:
         cuda_formatted = cuda_mapping.get(cuda, cuda.replace('-', '.') + '.1')
 
         # Determine base images
-        if variant == 'production':
+        if variant == 'slim':
             base_devel = self.base_images[f'cuda:{cuda_formatted}-devel-ubuntu24.04']
             base_runtime = self.base_images[f'cuda:{cuda_formatted}-runtime-ubuntu24.04']
         else:
@@ -104,14 +104,14 @@ class DiskSpaceEstimator:
                 'code_server': 0,
                 'jupyter_lab': 0,
             })
-        elif variant == 'production':
+        elif variant == 'slim':
             # Optimized for serving, runtime base image
             components.update({
-                'dev_tools': 0,  # No dev tools in production
+                'dev_tools': 0,  # No dev tools in slim
                 'runtime_tools': self.package_sizes['runtime_tools'],
                 'comfyui_base': self.package_sizes['comfyui_base'],
                 'comfyui_manager': self.package_sizes['comfyui_manager'],
-                'custom_nodes': 0,  # No custom nodes in production
+                'custom_nodes': 0,  # No custom nodes in slim
                 'code_server': 0,
                 'jupyter_lab': 0,
             })
@@ -153,7 +153,7 @@ class DiskSpaceEstimator:
 
     def analyze_all_variants(self) -> Dict:
         """Analyze all current workflow variants"""
-        variants = ['base', 'production']
+        variants = ['base', 'slim']
         cuda_versions = ['12-6', '12-8']
 
         results = {}

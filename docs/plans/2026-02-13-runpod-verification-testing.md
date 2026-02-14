@@ -4,7 +4,7 @@
 
 **Goal:** Verify GitHub Issue #5 fix by testing preset manager functionality on RunPod with both verified Docker images.
 
-**Architecture:** Sequential pod testing - create CPU pod, test production image, terminate, create new pod, test modern image, report results.
+**Architecture:** Sequential pod testing - create CPU pod, test slim image, terminate, create new pod, test modern image, report results.
 
 **Tech Stack:** RunPod API, curl, Python, bash
 
@@ -15,7 +15,7 @@
 - RunPod API key (user will provide)
 - `curl` and `jq` available
 - Docker images already pushed to Docker Hub:
-  - `zeroclue/comfyui:production-torch2.8.0-cu126`
+  - `zeroclue/comfyui:slim-torch2.8.0-cu126`
   - `zeroclue/comfyui:modern-torch2.8.0-cu126`
 
 ---
@@ -66,7 +66,7 @@ Expected: List of CPU pod types with pricing
 
 set -e
 
-IMAGE_NAME="${1:-zeroclue/comfyui:production-torch2.8.0-cu126}"
+IMAGE_NAME="${1:-zeroclue/comfyui:slim-torch2.8.0-cu126}"
 POD_NAME="${2:-comfyui-test}"
 
 echo "=== RunPod Verification Testing ==="
@@ -149,7 +149,7 @@ git commit -m "Add RunPod verification test script"
 **Files:**
 - None (API calls only)
 
-**Step 1: Create CPU pod with production image**
+**Step 1: Create CPU pod with slim image**
 
 Run:
 ```bash
@@ -158,8 +158,8 @@ curl -s -X POST \
   -H "Content-Type: application/json" \
   "https://api.runpod.io/v2/pods" \
   -d '{
-    "name": "comfyui-production-test",
-    "imageName": "zeroclue/comfyui:production-torch2.8.0-cu126",
+    "name": "comfyui-slim-test",
+    "imageName": "zeroclue/comfyui:slim-torch2.8.0-cu126",
     "gpuTypeId": "NVIDIA A100",
     "cloudType": "SECURE",
     "networkVolumeId": null
@@ -201,7 +201,7 @@ ls /workspace/config/
 
 **Step 5: Record results**
 
-Document test results for production image.
+Document test results for slim image.
 
 ---
 
@@ -278,7 +278,7 @@ Run:
 ```bash
 gh issue comment 5 --repo ZeroClue/ComfyUI-Docker --body "## Verification Test Results
 
-### Production Image (zeroclue/comfyui:production-torch2.8.0-cu126)
+### Production Image (zeroclue/comfyui:slim-torch2.8.0-cu126)
 - [ ] Preset manager imports: [RESULT]
 - [ ] Web UI (port 9000): [RESULT]
 - [ ] ComfyUI (port 3000): [RESULT]

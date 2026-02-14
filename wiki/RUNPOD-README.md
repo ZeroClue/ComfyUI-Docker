@@ -14,7 +14,7 @@
 | -------- | ----------------- | --- | ------------- |
 | **RunPod Optimized** | `zeroclue/comfyui:minimal-torch2.8.0-cu126` | RTX A4000+ | $0.40-0.70/hr |
 | **Development** | `zeroclue/comfyui:base-torch2.8.0-cu126` | RTX A4000+ | $0.50-1.00/hr |
-| **Production** | `zeroclue/comfyui:production-torch2.8.0-cu126` | RTX A4000+ | $0.35-0.60/hr |
+| **Production** | `zeroclue/comfyui:slim-torch2.8.0-cu126` | RTX A4000+ | $0.35-0.60/hr |
 
 ### 2. Create RunPod Pod
 
@@ -75,7 +75,7 @@ zeroclue/comfyui:base-torch2.8.0-cu126
 #### Production Variants (Cost Optimized)
 ```bash
 # Production optimized - no custom nodes
-zeroclue/comfyui:production-torch2.8.0-cu126
+zeroclue/comfyui:slim-torch2.8.0-cu126
 ```
 
 ---
@@ -229,7 +229,7 @@ All important data is automatically stored in network storage:
 |--------------|---------------------|---------|
 | **Premium** | `base-torch2.8.0-cu126` | Full features, higher cost |
 | **Balanced** | `minimal-torch2.8.0-cu126` | Custom nodes, no dev tools |
-| **Budget** | `production-torch2.8.0-cu126` | 30-50% savings |
+| **Budget** | `slim-torch2.8.0-cu126` | 30-50% savings |
 
 ### GPU Selection Guide
 
@@ -253,7 +253,7 @@ All important data is automatically stored in network storage:
 
 ### Template 1: Professional Video Generation
 
-**Image**: `zeroclue/comfyui:production-torch2.8.0-cu126`
+**Image**: `zeroclue/comfyui:slim-torch2.8.0-cu126`
 **GPU**: RTX A4000
 **Environment Variables**:
 ```bash
@@ -314,7 +314,7 @@ ACCESS_PASSWORD=secure_password_123
 
 #### Slow Performance
 - **GPU Upgrade**: Try a more powerful GPU
-- **Use Production Variant**: Switch from `base` to `production`
+- **Use Production Variant**: Switch from `base` to `slim`
 - **Enable SageAttention**: Add `INSTALL_SAGEATTENTION=True` (Ampere+ GPUs)
 
 #### Access Issues
@@ -380,4 +380,4 @@ docker logs <container_name>
 
 ---
 
-> 💡 **Pro Tip**: Start with the `production` variant for the best balance of features and cost. You can always switch variants later without losing your data.
+> 💡 **Pro Tip**: Start with the `slim` variant for the best balance of features and cost. You can always switch variants later without losing your data.

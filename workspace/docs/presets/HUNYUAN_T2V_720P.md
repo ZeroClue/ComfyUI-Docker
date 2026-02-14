@@ -20,7 +20,7 @@ docker run -e PRESET_DOWNLOAD=HUNYUAN_T2V_720P --gpus all -p 3000:3000 zeroclue/
 
 ### Recommended GPU
 - **RTX 4000 Ada (16GB)** - Minimum requirement
-- **RTX 6000 Ada (48GB)** - Recommended for production
+- **RTX 6000 Ada (48GB)** - Recommended for slim
 - **A100 (40GB)** - Best performance
 
 ### Storage
@@ -48,7 +48,7 @@ docker run -e PRESET_DOWNLOAD=HUNYUAN_T2V_720P --gpus all -p 3000:3000 zeroclue/
 ## Use Cases
 
 ### Best For
-- Professional video production
+- Professional video slim
 - High-quality marketing content
 - Commercial applications
 - Cinematic video creation
@@ -130,7 +130,7 @@ docker run -e PRESET_DOWNLOAD=HUNYUAN_T2V_720P \
 ### Production Workflow
 - Test with shorter clips first
 - Use development setup for testing
-- Scale to production GPU when ready
+- Scale to slim GPU when ready
 - Monitor rendering times
 
 ## Advanced Features
@@ -188,7 +188,7 @@ docker run -e PRESET_DOWNLOAD=HUNYUAN_T2V_720P \
 
 ### Cost Management
 - Use spot instances for testing
-- Reserve production instances in advance
+- Reserve slim instances in advance
 - Batch rendering when possible
 - Monitor usage closely
 
@@ -213,7 +213,7 @@ docker run -e PRESET_DOWNLOAD=HUNYUAN_T2V_720P \
 2. **Set environment variable** `PRESET_DOWNLOAD=HUNYUAN_T2V_720P`
 3. **Access ComfyUI** at port 3000
 4. **Test with professional prompts**
-5. **Scale to production** when satisfied
+5. **Scale to slim** when satisfied
 
 ## Alternatives
 

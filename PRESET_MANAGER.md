@@ -165,7 +165,7 @@ docker run -e ENABLE_PRESET_MANAGER=False zeroclue/comfyui:base-torch2.8.0-cu126
 - **Parler TTS**: Advanced voice synthesis
 
 **Use Cases:**
-- Music composition and production
+- Music composition and slim
 - Voice-over and narration
 - Sound design and effects
 - Audio content creation

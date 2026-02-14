@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 # Build specific variants locally
 docker buildx bake base-12-6  # Full installation with custom nodes
-docker buildx bake production-12-6  # Production optimized
+docker buildx bake slim-12-6  # Production optimized
 
 # Build and push all variants
 docker buildx bake --push
@@ -28,7 +28,7 @@ python scripts/preset_updater.py update
 
 ## Image Variants & Matrix Builds
 - **base** (~8-12GB): ComfyUI + Manager + custom nodes + dev tools
-- **production** (~4-5GB): ComfyUI + Manager, optimized for serving
+- **slim** (~4-5GB): ComfyUI + Manager, optimized for serving
 
 **CUDA Support**: 12.4, 12.5, 12.6, 12.8, 12.9, 13.0. Matrix builds defined in `docker-bake.hcl`.
 

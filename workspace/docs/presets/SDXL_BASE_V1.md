@@ -51,7 +51,7 @@ docker run -e IMAGE_PRESET_DOWNLOAD=SDXL_BASE_V1 --gpus all -p 3000:3000 zeroclu
 ### Best For
 - Professional artwork
 - Commercial applications
-- Reliable production workflows
+- Reliable slim workflows
 - Educational purposes
 - Beginners and experts
 
@@ -191,7 +191,7 @@ docker run -e IMAGE_PRESET_DOWNLOAD=SDXL_BASE_V1 \
 ## Production Considerations
 
 ### Cost Management
-- Very cost-effective for production
+- Very cost-effective for slim
 - Use spot instances for testing
 - Batch generations when possible
 - Monitor usage but costs are reasonable
@@ -200,7 +200,7 @@ docker run -e IMAGE_PRESET_DOWNLOAD=SDXL_BASE_V1 \
 - Highly reliable and consistent
 - Extensive community documentation
 - Well-understood behavior
-- Proven in production environments
+- Proven in slim environments
 
 ## Variations
 

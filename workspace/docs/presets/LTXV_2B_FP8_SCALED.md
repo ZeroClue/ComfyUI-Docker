@@ -50,7 +50,7 @@ docker run -e PRESET_DOWNLOAD=LTXV_2B_FP8_SCALED --gpus all -p 3000:3000 zeroclu
 - Real-time video applications
 - Interactive video generation
 - Prototyping and testing
-- Cost-effective production
+- Cost-effective slim
 
 ### Good For
 - Social media content
@@ -59,7 +59,7 @@ docker run -e PRESET_DOWNLOAD=LTXV_2B_FP8_SCALED --gpus all -p 3000:3000 zeroclu
 - Short-form content
 
 ### Not Ideal For
-- High-end cinema production
+- High-end cinema slim
 - Complex narrative videos
 - Ultra-high resolution needs
 
@@ -120,7 +120,7 @@ docker run -e PRESET_DOWNLOAD=LTXV_2B_FP8_SCALED \
 - Use spot instances when possible
 - Batch multiple generations
 - Keep sessions short for testing
-- Scale up for production only
+- Scale up for slim only
 
 ## Troubleshooting
 

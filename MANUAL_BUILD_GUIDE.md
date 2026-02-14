@@ -9,7 +9,7 @@ The default workflow builds all variants successfully with a 100% success rate. 
 ✅ **Default Workflow Variants (100% success rate):**
 - `base-12-6` - Full ComfyUI with CUDA 12.6
 - `base-12-8`, `base-12-9`, `base-13-0` - Full ComfyUI with latest CUDA versions
-- `production-12-6`, `production-12-8` - Optimized for serving
+- `slim-12-6`, `slim-12-8` - Optimized for serving
 
 ## Manual Build Required
 
@@ -84,8 +84,8 @@ docker run --gpus all -p 3000:3000 zeroclue/comfyui:base-torch2.8.0-cu126
 
 ### For Production Serving
 ```bash
-# Use production-12-8 (optimized for serving, no custom nodes)
-docker run --gpus all -p 3000:3000 zeroclue/comfyui:production-torch2.8.0-cu128
+# Use slim-12-8 (optimized for serving, no custom nodes)
+docker run --gpus all -p 3000:3000 zeroclue/comfyui:slim-torch2.8.0-cu128
 ```
 
 ## Troubleshooting
@@ -99,8 +99,8 @@ If manual build fails due to disk space:
 
 ### Alternative Approaches
 ```bash
-# Use production variant for smaller base image
-docker build --target runtime -t zeroclue/comfyui:production-torch2.8.0-cu128 .
+# Use slim variant for smaller base image
+docker build --target runtime -t zeroclue/comfyui:slim-torch2.8.0-cu128 .
 
 # Then add custom nodes in a separate step via ComfyUI Manager
 ```
@@ -111,7 +111,7 @@ docker build --target runtime -t zeroclue/comfyui:production-torch2.8.0-cu128 .
 ```bash
 # See what's currently available
 curl -s https://registry.hub.docker.com/v2/repositories/zeroclue/comfyui/tags/ | \
-  jq -r '.results[].name' | grep -E "(base|production)"
+  jq -r '.results[].name' | grep -E "(base|slim)"
 ```
 
 ### Update Schedule

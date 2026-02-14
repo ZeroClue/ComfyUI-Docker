@@ -57,7 +57,7 @@ workspace/logs/
 # Environment and configuration files
 .env
 .env.local
-.env.production
+.env.slim
 .env.staging
 config.json
 settings.json

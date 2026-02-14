@@ -52,7 +52,7 @@ docker run -e IMAGE_PRESET_DOWNLOAD=FLUX_SCHNELL_BASIC --gpus all -p 3000:3000 z
 - Rapid prototyping
 - Batch image generation
 - Real-time applications
-- Cost-effective production
+- Cost-effective slim
 - Quick iterations
 
 ### Good For
@@ -193,7 +193,7 @@ docker run -e IMAGE_PRESET_DOWNLOAD=FLUX_SCHNELL_BASIC \
 - Use spot instances for testing
 - Batch generations when possible
 - Monitor usage closely
-- Scale up for production only
+- Scale up for slim only
 
 ### Quality Assurance
 - Test prompts thoroughly

@@ -30,9 +30,9 @@
 zeroclue/comfyui:(A)-torch2.8.0-(B)
 ```
 
-* **(A)**: `base`, `production`, `minimal`, or `modern`
+* **(A)**: `base`, `slim`, `minimal`, or `modern`
   * `base`: ComfyUI + Manager + custom nodes + code-server (**~8-12GB**)
-  * `production`: ComfyUI + Manager, optimized for serving (**~4-5GB**)
+  * `slim`: ComfyUI + Manager, optimized for serving (**~4-5GB**)
   * `minimal`: ComfyUI + Manager + custom nodes, no dev tools (**~6-7GB**)
   * `modern`: Simplified Dockerfile, experimental (**~8-10GB**)
 * **(B)**: CUDA version → `cu126`, `cu128` (new variants), `cu124`, `cu129`, `cu130`
@@ -52,8 +52,8 @@ zeroclue/comfyui:(A)-torch2.8.0-(B)
 ### 🆕 Production Optimized Variants
 | Image Name                                    | Custom Nodes | Code Server | JupyterLab | Size | CUDA | Use Case |
 | --------------------------------------------- | ------------ | ----------- | ---------- | ---- | ---- | -------- |
-| `zeroclue/comfyui:production-torch2.8.0-cu126` | ❌ No         | ❌ No       | ❌ No      | ~4-5GB | 12.6 | Production serving |
-| `zeroclue/comfyui:production-torch2.8.0-cu128` | ❌ No         | ❌ No       | ❌ No      | ~4-5GB | 12.8 | Production serving |
+| `zeroclue/comfyui:slim-torch2.8.0-cu126` | ❌ No         | ❌ No       | ❌ No      | ~4-5GB | 12.6 | Production serving |
+| `zeroclue/comfyui:slim-torch2.8.0-cu128` | ❌ No         | ❌ No       | ❌ No      | ~4-5GB | 12.8 | Production serving |
 
 ### 🎯 RunPod Optimized Variants (Minimal)
 | Image Name                                    | Custom Nodes | Code Server | JupyterLab | Size | CUDA | Use Case |
@@ -66,7 +66,7 @@ zeroclue/comfyui:(A)-torch2.8.0-(B)
 ### 🚀 Variant Selection Guide
 
 - **For Development**: Use `base` variant with full tooling and custom nodes
-- **For Production**: Use `production` variants (50% smaller, faster startup)
+- **For Production**: Use `slim` variants (50% smaller, faster startup)
 - **For RunPod**: Use `minimal` variants (custom nodes without dev tools, optimal size)
 - **All variants** support the same preset systems and environment variables
 
@@ -79,12 +79,12 @@ Switching between variants is easy and preserves all your data:
 # 1. Stop current container
 docker stop my_comfyui
 
-# 2. Start with production variant (same volume)
+# 2. Start with slim variant (same volume)
 docker run --gpus all \
   -v my_workspace:/workspace \
   -e PRESET_DOWNLOAD="WAN_22_5B_TIV2" \
   -e IMAGE_PRESET_DOWNLOAD="SDXL_BASE_V1" \
-  zeroclue/comfyui:production-torch2.8.0-cu126
+  zeroclue/comfyui:slim-torch2.8.0-cu126
 ```
 
 #### Benefits of Migration
@@ -341,16 +341,16 @@ docker run --gpus all -p 3000:3000 \
 
 #### **Need Production Ready?**
 ```bash
-# Use production-12-8 (optimized for serving)
+# Use slim-12-8 (optimized for serving)
 docker run --gpus all -p 3000:3000 \
-  zeroclue/comfyui:production-torch2.8.0-cu128
+  zeroclue/comfyui:slim-torch2.8.0-cu128
 ```
 
 ### 📋 Auto-Built Variants (100% Success Rate)
 
 ✅ **Reliably built automatically:**
 - `base-torch2.8.0-cu126/128/129/130` - Full installation with CUDA 12.6-13.0
-- `production-torch2.8.0-cu126/128` - Optimized for serving
+- `slim-torch2.8.0-cu126/128` - Optimized for serving
 - `minimal-torch2.8.0-cu126/128` - RunPod optimized with custom nodes
 - `modern-torch2.8.0-cu126/128` - Simplified Dockerfile (experimental)
 

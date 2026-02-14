@@ -45,7 +45,7 @@ Complete image generation suite including multiple state-of-the-art models, upsc
 ## Use Cases
 
 ### Best For
-- Professional image production
+- Professional image slim
 - Content creation agencies
 - Research and development
 - Complete workflow testing
@@ -114,19 +114,19 @@ docker run -e IMAGE_PRESET_DOWNLOAD="IMAGE_COMPLETE_WORKFLOW,ESRGAN_MODELS" \
 - **Speed**: 8-15 seconds per image
 - **VRAM**: ~14GB
 - **Quality**: Exceptional
-- **Use**: Premium production
+- **Use**: Premium slim
 
 ### FLUX_SCHNELL_BASIC
 - **Speed**: 4-8 seconds per image
 - **VRAM**: ~12GB
 - **Quality**: Excellent
-- **Use**: Fast production
+- **Use**: Fast slim
 
 ### SDXL_BASE_V1
 - **Speed**: 6-12 seconds per image
 - **VRAM**: ~8GB
 - **Quality**: Very good
-- **Use**: Standard production
+- **Use**: Standard slim
 
 ### REALISTIC_VISION_V6
 - **Speed**: 4-8 seconds per image
@@ -265,7 +265,7 @@ docker run -e IMAGE_PRESET_DOWNLOAD=IMAGE_COMPLETE_WORKFLOW \
 
 ### Workflow Optimization
 - Start with FLUX_SCHNELL for testing
-- Switch to FLUX_DEV for final production
+- Switch to FLUX_DEV for final slim
 - Use QWEN for text-heavy images
 - Apply upscaling for final output
 

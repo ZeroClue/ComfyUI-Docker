@@ -102,6 +102,7 @@ docker run --gpus all \
 | Variable                | Description                                                                | Default   |
 | ----------------------- | -------------------------------------------------------------------------- | --------- |
 | `ACCESS_PASSWORD`       | Password for JupyterLab & code-server                                      | (unset)   |
+| `ENABLE_JUPYTERLAB`     | Enable/disable JupyterLab notebook interface (`True`/`False`)             | `True`    |
 | `ENABLE_CODE_SERVER`    | Enable/disable code-server (VS Code web IDE) (`True`/`False`)             | `True`    |
 | `TIME_ZONE`             | [Timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (e.g., `Asia/Seoul`)   | `Etc/UTC` |
 | `COMFYUI_EXTRA_ARGS`    | Extra ComfyUI options (e.g. `--fast`)                        | (unset)   |

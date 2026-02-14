@@ -60,11 +60,20 @@ zeroclue/comfyui:(A)-torch2.8.0-(B)
 | `zeroclue/comfyui:minimal-torch2.8.0-cu126` | ✅ Yes        | ❌ No       | ❌ No      | ~6-7GB | 12.6 | RunPod with custom nodes |
 | `zeroclue/comfyui:minimal-torch2.8.0-cu128` | ✅ Yes        | ❌ No       | ❌ No      | ~6-7GB | 12.8 | RunPod with custom nodes |
 
+### 🎨 Extended Variants (with Extra Nodes)
+| Image Name | Extra Nodes | Size | CUDA | Use Case |
+|------------|-------------|------|------|----------|
+| `zeroclue/comfyui:base-extra-torch2.8.0-cu126` | ✅ Yes | ~10-14GB | 12.6 | Full-featured with all nodes |
+| `zeroclue/comfyui:base-extra-torch2.8.0-cu128` | ✅ Yes | ~10-14GB | 12.8 | Full-featured with all nodes |
+
+> 📦 **Extra Nodes**: LayerStyle (compositing), IC-Light (relighting), SAM3 (segmentation), RMBG (background removal)
+
 > 👉 To switch: **Edit Pod/Template** → set `Container Image`.
 
 ### 🚀 Variant Selection Guide
 
-- **For Development**: Use `base` variant with full tooling and custom nodes
+- **For Development**: Use `base` variant with full tooling and 27 custom nodes
+- **For Full Features**: Use `base-extra` variants with all 31 nodes (27 core + 4 extra)
 - **For Production**: Use `slim` variants (50% smaller, faster startup)
 - **For RunPod**: Use `minimal` variants (custom nodes without dev tools, optimal size)
 - **All variants** support the same preset systems and environment variables
@@ -106,6 +115,7 @@ docker run --gpus all \
 | `TIME_ZONE`             | [Timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (e.g., `Asia/Seoul`)   | `Etc/UTC` |
 | `COMFYUI_EXTRA_ARGS`    | Extra ComfyUI options (e.g. `--fast`)                        | (unset)   |
 | `INSTALL_SAGEATTENTION` | Install [SageAttention2](https://github.com/thu-ml/SageAttention) on start (`True`/`False`) | `False`    |
+| `INSTALL_EXTRA_NODES`   | Install optional extra custom nodes at runtime (`True`/`False`). Includes: LayerStyle, IC-Light, SAM3, RMBG | `False` |
 | `FORCE_SYNC_ALL`        | Force full resync of venv and ComfyUI on startup (`True`/`False`) | `False`    |
 | `ENABLE_PRESET_MANAGER` | Enable/disable preset manager web interface (`True`/`False`) | `True`     |
 | `PRESET_DOWNLOAD`       | Download video generation model presets at startup (comma-separated list). **See below**. | (unset)   |

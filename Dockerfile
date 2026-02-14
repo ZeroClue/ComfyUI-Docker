@@ -10,6 +10,7 @@ ARG PYTHON_VERSION
 ARG TORCH_VERSION
 ARG CUDA_VERSION
 ARG SKIP_CUSTOM_NODES
+ARG ENABLE_EXTRA_NODES=false
 ARG INSTALL_CODE_SERVER=true
 ARG INSTALL_DEV_TOOLS=true
 ARG INSTALL_SCIENCE_PACKAGES=true
@@ -88,6 +89,7 @@ RUN git clone https://github.com/comfyanonymous/ComfyUI.git && \
     pip install --no-cache-dir -r requirements.txt
 
 COPY custom_nodes.txt /custom_nodes.txt
+COPY custom_nodes_extra.txt /custom_nodes_extra.txt
 
 RUN if [ -z "$SKIP_CUSTOM_NODES" ]; then \
         cd /ComfyUI/custom_nodes && \
@@ -96,6 +98,14 @@ RUN if [ -z "$SKIP_CUSTOM_NODES" ]; then \
         find /ComfyUI/custom_nodes -name "install.py" -exec python {} \; ; \
     else \
         echo "Skipping custom nodes installation because SKIP_CUSTOM_NODES is set"; \
+    fi
+
+# Install extra custom nodes (optional)
+RUN if [ "$ENABLE_EXTRA_NODES" = "true" ] && [ -z "$SKIP_CUSTOM_NODES" ]; then \
+        cd /ComfyUI/custom_nodes && \
+        xargs -n 1 git clone --recursive < /custom_nodes_extra.txt && \
+        find /ComfyUI/custom_nodes -maxdepth 2 -name "requirements.txt" -exec pip install --no-cache-dir -r {} \; && \
+        find /ComfyUI/custom_nodes -maxdepth 2 -name "install.py" -exec python {} \; ; \
     fi
 
 # Install Runpod CLI

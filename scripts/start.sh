@@ -309,6 +309,59 @@ check_preset_manager_health() {
     fi
 }
 
+# Install extra custom nodes at runtime if requested
+install_extra_nodes() {
+    # Check if extra nodes should be installed (default: false)
+    if [[ "${INSTALL_EXTRA_NODES,,}" != "true" ]]; then
+        return
+    fi
+
+    echo "==== Installing Extra Custom Nodes ===="
+
+    if [[ ! -f /custom_nodes_extra.txt ]]; then
+        echo "WARNING: /custom_nodes_extra.txt not found, skipping extra nodes installation"
+        return 1
+    fi
+
+    local custom_nodes_dir="/workspace/ComfyUI/custom_nodes"
+
+    if [[ ! -d "$custom_nodes_dir" ]]; then
+        echo "WARNING: Custom nodes directory not found at $custom_nodes_dir"
+        return 1
+    fi
+
+    cd "$custom_nodes_dir"
+
+    while IFS= read -r url; do
+        # Skip empty lines and comments
+        [[ -z "$url" || "$url" =~ ^[[:space:]]*# ]] && continue
+
+        local node_name=$(basename "$url" .git)
+
+        if [[ -d "$node_name" ]]; then
+            echo "  $node_name already installed, skipping..."
+            continue
+        fi
+
+        echo "  Cloning $node_name..."
+        if git clone --recursive "$url" "$node_name" 2>&1; then
+            echo "  ✅ $node_name cloned successfully"
+        else
+            echo "  ❌ Failed to clone $node_name"
+        fi
+    done < /custom_nodes_extra.txt
+
+    # Install requirements for extra nodes
+    echo "  Installing requirements for extra nodes..."
+    find "$custom_nodes_dir" -maxdepth 2 -name "requirements.txt" -exec pip install --no-cache-dir -r {} \; 2>/dev/null || true
+
+    # Run install scripts
+    echo "  Running install scripts for extra nodes..."
+    find "$custom_nodes_dir" -maxdepth 2 -name "install.py" -exec python {} \; 2>/dev/null || true
+
+    echo "✅ Extra custom nodes installation complete"
+}
+
 # ---------------------------------------------------------------------------- #
 #                               Main Program                                   #
 # ---------------------------------------------------------------------------- #
@@ -323,6 +376,9 @@ if [ -f "/scripts/sync_monitor.sh" ]; then
 fi
 
 execute_script "/pre_start.sh" "Running pre-start script..."
+
+# Install extra custom nodes if requested
+install_extra_nodes
 
 echo "Pod Started - Optimizations applied"
 

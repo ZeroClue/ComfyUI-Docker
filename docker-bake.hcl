@@ -130,6 +130,12 @@ target "_no_science_packages" {
     }
 }
 
+target "_extra_nodes" {
+    args = {
+        ENABLE_EXTRA_NODES = "true"
+    }
+}
+
 target "_slim_base" {
     args = {
         INSTALL_DEV_TOOLS = "false"
@@ -176,6 +182,18 @@ target "base-12-9" {
 target "base-13-0" {
     inherits = ["_cu130"]
     tags = tag("base", "cu130")
+}
+
+# Extended variants with extra nodes pre-installed
+# Build manually: docker buildx bake base-extra-12-6
+target "base-extra-12-6" {
+    inherits = ["_cu126", "_extra_nodes"]
+    tags = tag("base-extra", "cu126")
+}
+
+target "base-extra-12-8" {
+    inherits = ["_cu128", "_extra_nodes"]
+    tags = tag("base-extra", "cu128")
 }
 
 

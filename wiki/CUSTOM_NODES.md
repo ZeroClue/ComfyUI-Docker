@@ -1,6 +1,6 @@
 # Custom Nodes
 
-The **base** images include 24 carefully selected custom nodes for ComfyUI. These nodes provide enhanced functionality for AI image and video generation workflows, from basic utilities to advanced model optimization.
+The **base** images include 27 carefully selected custom nodes for ComfyUI, plus 4 optional extra nodes. These nodes provide enhanced functionality for AI image and video generation workflows, from basic utilities to advanced model optimization.
 
 ## Included Custom Nodes
 
@@ -65,6 +65,19 @@ The **base** images include 24 carefully selected custom nodes for ComfyUI. Thes
 |------|-------------|---------|
 | **ComfyUI-Openrouter_node** | External API integration | Cloud model access |
 | **ComfyUI-KJNodes** | Network and connectivity | External services |
+
+### ControlNet & Conditioning
+
+| Node | Description | Purpose |
+|------|-------------|---------|
+| **comfyui_controlnet_aux** | ControlNet preprocessors | Depth, edges, poses, lineart extraction |
+| **ComfyUI_IPAdapter_plus** | Image-to-image conditioning | Style transfer, face preservation |
+
+### Video Upscaling
+
+| Node | Description | Purpose |
+|------|-------------|---------|
+| **ComfyUI-SeedVR2_VideoUpscaler** | One-step 4K upscaling | ByteDance SeedVR2 video restoration |
 
 ### Development & Quality of Life
 
@@ -204,6 +217,47 @@ The **base** images include 24 carefully selected custom nodes for ComfyUI. Thes
 - **Dependencies**: requests, openai
 - **Usage**: Connect to external language models via OpenRouter
 
+### ControlNet & Conditioning
+
+#### **comfyui_controlnet_aux**
+- **Repository**: Fannovel16/comfyui_controlnet_aux
+- **Purpose**: ControlNet preprocessors for precise generation control
+- **Key Features**:
+  - Depth map extraction (MiDaS, ZoeDepth)
+  - Edge detection (Canny, Hed, Pidinet)
+  - Pose estimation (OpenPose, DWPose)
+  - Normal map generation
+  - Lineart and scribble extraction
+  - AIO Aux Preprocessor for quick setup
+- **Dependencies**: PyTorch, OpenCV, controlnet_aux
+- **Usage**: Essential for ControlNet workflows requiring structural guidance
+
+#### **ComfyUI_IPAdapter_plus**
+- **Repository**: cubiq/ComfyUI_IPAdapter_plus
+- **Purpose**: Image-to-image conditioning and style transfer
+- **Key Features**:
+  - Reference image style transfer
+  - Face preservation (FaceID)
+  - Multiple adapter types (Plus, FaceID, Composition)
+  - Batch processing support
+  - LoRA integration
+- **Dependencies**: PyTorch, insightface, IPAdapter models
+- **Usage**: Industry standard for reference-based image generation
+
+### Video Upscaling
+
+#### **ComfyUI-SeedVR2_VideoUpscaler**
+- **Repository**: numz/ComfyUI-SeedVR2_VideoUpscaler
+- **Purpose**: High-quality video upscaling using ByteDance's SeedVR2
+- **Key Features**:
+  - One-step 4K video upscaling
+  - Diffusion-based restoration
+  - FP8 support for reduced VRAM
+  - Archive-quality restoration
+  - Blockswapping for memory efficiency
+- **Dependencies**: PyTorch, diffusers, SeedVR2 models
+- **Usage**: Upscale low-resolution video outputs to production quality
+
 ## WAN 2.2 Video Generation
 
 The ZeroClue ComfyUI images are optimized for **WAN 2.2** video generation workflows:
@@ -261,6 +315,86 @@ fast_video = ApplyLoRA(
     strength=1.0
 )
 ```
+
+## Optional Extra Nodes
+
+The following nodes are available but not installed by default. These provide advanced features for professional workflows.
+
+### Available Extra Nodes
+
+| Node | Description | Purpose |
+|------|-------------|---------|
+| **ComfyUI_LayerStyle** | Photoshop-like layer compositing | Drop shadows, blending, masking |
+| **ComfyUI-IC-Light** | AI relighting | Change lighting direction/intensity |
+| **ComfyUI-SAM3** | Meta Segment Anything 3 | Text-prompted object segmentation |
+| **ComfyUI-RMBG** | Background removal | Subject isolation |
+
+### Enabling Extra Nodes
+
+#### Option 1: Pre-built Extended Image
+```bash
+# Use extended variant with all nodes pre-installed
+docker run --gpus all zeroclue/comfyui:base-extra-torch2.8.0-cu126
+```
+
+#### Option 2: Runtime Installation
+```bash
+# Install extra nodes on container start
+docker run --gpus all -e INSTALL_EXTRA_NODES=True \
+  zeroclue/comfyui:base-torch2.8.0-cu126
+```
+
+#### Option 3: Build-time Flag
+```bash
+# Build custom image with extra nodes
+docker buildx bake base-extra-12-6
+```
+
+### Extra Node Details
+
+#### **ComfyUI_LayerStyle**
+- **Repository**: chflame163/ComfyUI_LayerStyle
+- **Purpose**: Photoshop-like layer styles and compositing
+- **Key Features**:
+  - Drop shadows and outer glow effects
+  - Layer blending modes
+  - Mask operations and compositing
+  - Color adjustments
+- **Dependencies**: PyTorch, OpenCV, PIL
+- **Usage**: Professional image compositing and post-processing
+
+#### **ComfyUI-IC-Light**
+- **Repository**: kijai/ComfyUI-IC-Light
+- **Purpose**: AI-powered image relighting
+- **Key Features**:
+  - Relight images with custom lighting
+  - Change light direction and intensity
+  - Composite subjects into new backgrounds
+  - Product photography enhancement
+- **Dependencies**: diffusers, transformers
+- **Usage**: Professional product photography and compositing
+
+#### **ComfyUI-SAM3**
+- **Repository**: PozzettiAndrea/ComfyUI-SAM3
+- **Purpose**: Meta's Segment Anything Model 3 integration
+- **Key Features**:
+  - Text-prompted object segmentation
+  - Video object tracking
+  - Open-vocabulary detection
+  - Zero-shot segmentation
+- **Dependencies**: segment-anything-3, PyTorch
+- **Usage**: Precise masking and object isolation
+
+#### **ComfyUI-RMBG**
+- **Repository**: 1038lab/ComfyUI-RMBG
+- **Purpose**: Automatic background removal
+- **Key Features**:
+  - One-click background removal
+  - High-quality edge detection
+  - Batch processing support
+  - Multiple model options
+- **Dependencies**: PyTorch, transformers
+- **Usage**: Quick subject isolation for compositing
 
 ## Installation Notes
 

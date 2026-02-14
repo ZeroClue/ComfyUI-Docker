@@ -1,0 +1,4 @@
+https://github.com/chflame163/ComfyUI_LayerStyle.git
+https://github.com/kijai/ComfyUI-IC-Light.git
+https://github.com/PozzettiAndrea/ComfyUI-SAM3.git
+https://github.com/1038lab/ComfyUI-RMBG.git

@@ -18,6 +18,7 @@
 | ---- | ---- | --------------------- |
 | 22   | TCP  | SSH                   |
 | 3000 | HTTP | ComfyUI               |
+| 5001 | HTTP | ComfyUI Studio        |
 | 8080 | HTTP | code-server           |
 | 8888 | HTTP | JupyterLab            |
 | 9000 | HTTP | Preset Manager Web UI |
@@ -118,6 +119,8 @@ docker run --gpus all \
 | `INSTALL_EXTRA_NODES`   | Install optional extra custom nodes at runtime (`True`/`False`). Includes: LayerStyle, IC-Light, SAM3, RMBG | `False` |
 | `FORCE_SYNC_ALL`        | Force full resync of venv and ComfyUI on startup (`True`/`False`) | `False`    |
 | `ENABLE_PRESET_MANAGER` | Enable/disable preset manager web interface (`True`/`False`) | `True`     |
+| `ENABLE_STUDIO`         | Enable/disable ComfyUI Studio web interface (`True`/`False`) | `True`     |
+| `STUDIO_PORT`           | ComfyUI Studio internal port | `5000`     |
 | `PRESET_DOWNLOAD`       | Download video generation model presets at startup (comma-separated list). **See below**. | (unset)   |
 | `IMAGE_PRESET_DOWNLOAD` | Download image generation model presets at startup (comma-separated list). **See below**. | (unset)   |
 | `AUDIO_PRESET_DOWNLOAD` | Download audio generation model presets at startup (comma-separated list). ⚠️ **Experimental** - **See below**. | (unset)   |
@@ -158,6 +161,48 @@ docker run -e ENABLE_PRESET_MANAGER=False zeroclue/comfyui:base-torch2.8.0-cu126
 ```
 
 > 👉 **Complete Guide**: See [PRESET_MANAGER.md](PRESET_MANAGER.md) for detailed documentation, screenshots, and advanced features.
+
+---
+
+## 🎨 ComfyUI Studio Web Interface
+
+> **Simplified workflow execution interface** - Run pre-configured ComfyUI workflows without the node editor.
+
+### Quick Access
+
+- **URL**: `http://your-pod-url:5001` (nginx proxy) or `http://your-pod-url:5000` (direct)
+- **Authentication**: Use `ACCESS_PASSWORD` environment variable (if set)
+- **Features**: Real-time progress tracking, workflow templates, auto-generated input forms
+
+### Key Capabilities
+
+- **📝 Workflow Templates**: Browse and run pre-configured workflows
+- **🎛️ Auto-Generated Forms**: Inputs automatically extracted from workflow nodes
+- **📊 Real-Time Progress**: WebSocket-based progress tracking
+- **🔄 Sync from ComfyUI**: Import workflows saved in ComfyUI
+- **🔐 Password Protected**: Uses the same `ACCESS_PASSWORD` as other services
+
+### Usage Examples
+
+```bash
+# Enable studio (default - enabled)
+docker run -e ACCESS_PASSWORD=mypassword zeroclue/comfyui:base-torch2.8.0-cu126
+
+# Disable studio to save resources
+docker run -e ENABLE_STUDIO=False zeroclue/comfyui:base-torch2.8.0-cu126
+
+# Custom studio port
+docker run -e STUDIO_PORT=6000 zeroclue/comfyui:base-torch2.8.0-cu126
+```
+
+### Adding Workflows
+
+1. Create a workflow in ComfyUI's node editor
+2. Export using **"Save (API Format)"** button (not regular Save)
+3. Save the JSON file to `/workspace/config/workflows/`
+4. Or use the **"Sync from ComfyUI"** button in Studio
+
+> ⚠️ **Note**: Workflows must be in API format, not the full UI format. The sync feature automatically validates and converts workflows.
 
 ---
 
@@ -270,6 +315,7 @@ docker run -e AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC" zeroclue/comfyu
 | code-server    | `/workspace/logs/code-server.log`             |
 | JupyterLab     | `/workspace/logs/jupyterlab.log`              |
 | Preset Manager | `/workspace/logs/preset_manager.log`          |
+| ComfyUI Studio | `/workspace/logs/comfyui_studio.log`          |
 
 ---
 

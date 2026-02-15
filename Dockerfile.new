@@ -1,0 +1,299 @@
+# ==============================================================================
+# ComfyUI-Docker - Revolutionary Architecture
+# ==============================================================================
+# Key Architecture Changes:
+# - App code lives in /app/ (container volume - no rsync needed)
+# - Models live in /workspace/models/ (network volume - persistent)
+# - ComfyUI uses extra_model_paths.yaml to find models
+# - Near-instant startup (eliminates 5-15 minute rsync)
+# ==============================================================================
+
+# ==============================================================================
+# Build Arguments
+# ==============================================================================
+ARG BASE_IMAGE
+ARG PYTHON_VERSION=3.12
+ARG TORCH_VERSION=2.5.1
+ARG CUDA_VERSION=cu126
+ARG VARIANT=standard
+ARG SKIP_CUSTOM_NODES=false
+ARG ENABLE_EXTRA_NODES=false
+ARG INSTALL_CODE_SERVER=true
+ARG INSTALL_DEV_TOOLS=true
+ARG INSTALL_SCIENCE_PACKAGES=true
+
+# ==============================================================================
+# Stage 1: Builder - Compile dependencies
+# ==============================================================================
+FROM ${BASE_IMAGE} AS builder
+
+ARG PYTHON_VERSION
+ARG TORCH_VERSION
+ARG CUDA_VERSION
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git wget curl build-essential cmake ninja-build \
+    libgl1 libglib2.0-0 clang libomp-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install UV package manager
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Create virtual environment in /app/venv (container location)
+RUN uv python install ${PYTHON_VERSION} --default --preview && \
+    uv venv --seed /app/venv
+ENV PATH="/app/venv/bin:$PATH"
+
+# Install PyTorch and core dependencies
+RUN pip install --no-cache-dir -U pip setuptools wheel && \
+    pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio \
+    --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
+
+# ==============================================================================
+# Stage 2: ComfyUI Builder - Install ComfyUI and custom nodes
+# ==============================================================================
+FROM builder AS comfyui-builder
+
+# Clone ComfyUI to /app/comfyui (container location)
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git /app/comfyui && \
+    cd /app/comfyui && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Install ComfyUI Manager
+RUN cd /app/comfyui && \
+    git clone https://github.com/ltdrdata/ComfyUI-Manager.git custom_nodes/ComfyUI-Manager && \
+    cd custom_nodes/ComfyUI-Manager && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy custom nodes lists
+COPY custom_nodes.txt /build/custom_nodes.txt
+COPY custom_nodes_extra.txt /build/custom_nodes_extra.txt
+
+ARG SKIP_CUSTOM_NODES
+ARG ENABLE_EXTRA_NODES
+
+# Install standard custom nodes
+RUN if [ -z "$SKIP_CUSTOM_NODES" ]; then \
+        cd /app/comfyui/custom_nodes && \
+        xargs -n 1 git clone --recursive < /build/custom_nodes.txt && \
+        find /app/comfyui/custom_nodes -name "requirements.txt" -exec pip install --no-cache-dir -r {} \; && \
+        find /app/comfyui/custom_nodes -name "install.py" -exec python {} \; ; \
+    fi
+
+# Install extra custom nodes
+RUN if [ "$ENABLE_EXTRA_NODES" = "true" ] && [ -z "$SKIP_CUSTOM_NODES" ]; then \
+        cd /app/comfyui/custom_nodes && \
+        xargs -n 1 git clone --recursive < /build/custom_nodes_extra.txt && \
+        find /app/comfyui/custom_nodes -maxdepth 2 -name "requirements.txt" -exec pip install --no-cache-dir -r {} \; && \
+        find /app/comfyui/custom_nodes -maxdepth 2 -name "install.py" -exec python {} \; ; \
+    fi
+
+# ==============================================================================
+# Stage 3: Runtime - Final production image
+# ==============================================================================
+FROM ${BASE_IMAGE} AS runtime
+
+ARG INSTALL_CODE_SERVER
+ARG INSTALL_DEV_TOOLS
+ARG INSTALL_SCIENCE_PACKAGES
+ARG VARIANT
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Environment variables
+ENV SHELL=/bin/bash
+ENV PYTHONUNBUFFERED=True
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+
+# App paths (container volume - ephemeral)
+ENV APP_ROOT=/app
+ENV COMFYUI_ROOT=/app/comfyui
+ENV VENV_PATH=/app/venv
+
+# Workspace paths (network volume - persistent)
+ENV RP_WORKSPACE=/workspace
+ENV MODELS_PATH=/workspace/models
+ENV OUTPUT_PATH=/workspace/output
+
+# Cache paths (network volume for persistence)
+ENV HF_HOME=/workspace/.cache/huggingface/
+ENV PIP_CACHE_DIR=/workspace/.cache/pip/
+ENV UV_CACHE_DIR=/workspace/.cache/uv/
+
+# Faster HuggingFace transfers
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
+ENV HF_XET_HIGH_PERFORMANCE=1
+
+# Modern pip workarounds
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+ENV PIP_ROOT_USER_ACTION=ignore
+
+# Add venv to PATH
+ENV PATH="${VENV_PATH}/bin:$PATH"
+
+WORKDIR /
+
+# Install runtime packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git wget curl bash nginx-light sudo binutils ffmpeg lshw nano tzdata file \
+    libgl1 libglib2.0-0 \
+    openssh-server ca-certificates \
+    && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Install monitoring tools for full variant
+RUN if [ "$VARIANT" = "full" ] || [ "$VARIANT" = "dev" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends nvtop && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# Install UV package manager
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Install code-server
+RUN if [ "$INSTALL_CODE_SERVER" = "true" ]; then \
+        curl -fsSL https://code-server.dev/install.sh | sh; \
+    fi
+
+# Copy virtual environment from builder
+COPY --from=comfyui-builder /app/venv /app/venv
+
+# Copy ComfyUI from builder
+COPY --from=comfyui-builder /app/comfyui /app/comfyui
+
+# Install additional Python packages
+RUN pip install --no-cache-dir -U pip setuptools wheel && \
+    if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \
+        pip install --no-cache-dir jupyterlab jupyterlab_widgets ipykernel ipywidgets; \
+    fi && \
+    pip install --no-cache-dir \
+        huggingface_hub hf_transfer \
+        requests tqdm pillow pyyaml flask python-markdown pygments \
+        Flask Flask-Session markdown websocket-client && \
+    if [ "$INSTALL_SCIENCE_PACKAGES" = "true" ]; then \
+        pip install --no-cache-dir numpy scipy matplotlib pandas scikit-learn seaborn; \
+    fi
+
+# Create directory structure
+RUN mkdir -p \
+    /workspace/models/checkpoints \
+    /workspace/models/diffusion_models \
+    /workspace/models/text_encoders \
+    /workspace/models/vae \
+    /workspace/models/clip_vision \
+    /workspace/models/loras \
+    /workspace/models/audio_encoders \
+    /workspace/models/upscale_models \
+    /workspace/models/controlnet \
+    /workspace/models/embeddings \
+    /workspace/models/TTS \
+    /workspace/output \
+    /workspace/logs \
+    /workspace/config \
+    /workspace/uploads \
+    /app/templates \
+    /app/static \
+    /app/dashboard
+
+# Create extra_model_paths.yaml for ComfyUI
+# This tells ComfyUI to look for models in /workspace/models/
+RUN cat > /app/comfyui/extra_model_paths.yaml << 'EOF'
+# ComfyUI extra_model_paths.yaml
+# Models are stored on the network volume for persistence
+workspace_models:
+    base_path: /workspace/models
+    checkpoints: checkpoints/
+    diffusion_models: diffusion_models/
+    text_encoders: text_encoders/
+    vae: vae/
+    clip_vision: clip_vision/
+    loras: loras/
+    audio_encoders: audio_encoders/
+    upscale_models: upscale_models/
+    controlnet: controlnet/
+    embeddings: embeddings/
+    TTS: TTS/
+
+# Output directory
+output:
+    base_path: /workspace
+    output: output/
+EOF
+
+# Expose ports
+# 3000: ComfyUI
+# 5000: Dashboard (NEW)
+# 8080: Code Server
+# 8888: JupyterLab
+# 9000: Preset Manager (via Nginx)
+# 22: SSH
+EXPOSE 22 3000 5000 8080 8888 9000
+
+# NGINX Proxy configuration
+COPY proxy/nginx.conf /etc/nginx/nginx.conf
+COPY proxy/snippets /etc/nginx/snippets
+COPY proxy/readme.html /usr/share/nginx/html/readme.html
+
+# Remove SSH host keys (generated at runtime)
+RUN rm -f /etc/ssh/ssh_host_*
+
+# Documentation
+COPY README.md /usr/share/nginx/html/README.md
+COPY logo/runpod.txt /etc/runpod.txt
+
+# Start Scripts (NEW - no rsync!)
+COPY --chmod=755 scripts/start_v2.sh /start.sh
+COPY --chmod=755 scripts/generate_extra_paths.py /scripts/
+
+# Download scripts
+COPY --chmod=755 scripts/download_presets.sh /
+COPY --chmod=755 scripts/download_image_presets.sh /
+COPY --chmod=755 scripts/download_audio_presets.sh /
+COPY --chmod=755 scripts/unified_preset_downloader.py /scripts/
+
+# Preset configuration
+COPY --chmod=644 config/presets.yaml /workspace/config/presets.yaml
+COPY --chmod=644 config/presets-schema.json /workspace/config/presets-schema.json
+COPY --chmod=755 scripts/preset_updater.py /scripts/
+COPY --chmod=755 scripts/generate_download_scripts.py /scripts/
+COPY --chmod=755 scripts/preset_validator.py /scripts/
+
+# Preset Manager web application
+COPY --chmod=755 scripts/preset_manager_cli.py /app/preset_manager.py
+COPY --chmod=644 scripts/preset_manager/ /app/preset_manager/
+COPY --chmod=644 scripts/templates/ /app/templates/
+COPY --chmod=644 scripts/static/ /app/static/
+
+# ComfyUI Studio (integrated into dashboard later)
+COPY --chmod=644 scripts/comfyui_studio/ /app/comfyui_studio/
+COPY --chmod=755 scripts/comfyui_studio.py /scripts/
+
+# Welcome message
+RUN echo 'cat /etc/runpod.txt' >> /root/.bashrc && \
+    echo 'echo -e "\nFor documentation: https://github.com/zeroclue/comfyui-docker\n"' >> /root/.bashrc
+
+# Build information
+ARG TORCH_VERSION
+ARG CUDA_VERSION
+RUN echo "Build timestamp: $(date)" > /build-info.txt && \
+    echo "Architecture: Revolutionary (no rsync)" >> /build-info.txt && \
+    echo "Python version: $(python --version 2>&1)" >> /build-info.txt && \
+    echo "CUDA version: ${CUDA_VERSION}" >> /build-info.txt && \
+    echo "PyTorch version: ${TORCH_VERSION}" >> /build-info.txt && \
+    echo "Variant: ${VARIANT}" >> /build-info.txt
+
+# Validate installation
+RUN python3 -c "import torch; print(f'PyTorch: {torch.__version__}')" && \
+    python3 -c "from preset_manager.core import ModelManager; print('Preset Manager OK')" && \
+    test -f /app/comfyui/extra_model_paths.yaml && \
+    echo "Validation successful"
+
+# Set entrypoint
+CMD ["/start.sh"]

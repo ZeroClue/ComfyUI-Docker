@@ -423,6 +423,8 @@ start_unified_dashboard() {
 
     # Start the dashboard FastAPI application
     cd /app/dashboard
+    # Add /scripts to PYTHONPATH for generate_download_scripts import
+    export PYTHONPATH="/scripts:/app:$PYTHONPATH"
     nohup /venv/bin/python3 app.py &> /workspace/logs/unified_dashboard.log &
     local pid=$!
     echo "Unified Dashboard started with PID $pid on port ${DASHBOARD_PORT}"

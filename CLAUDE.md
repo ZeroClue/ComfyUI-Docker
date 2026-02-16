@@ -13,6 +13,15 @@ docker buildx bake slim-12-6  # Production optimized
 # Build and push all variants
 docker buildx bake --push
 
+# Trigger GitHub Actions build (preferred over local builds)
+gh workflow run build.yml
+
+# Trigger specific variant
+gh workflow run build.yml -f targets=minimal -f cuda_versions=12-8
+
+# Watch build progress
+gh run watch --interval 30s
+
 # Test preset configuration
 python scripts/preset_validator.py
 
@@ -65,8 +74,9 @@ Each preset contains complete model definitions with URLs, sizes, file paths, an
 
 ## Core Services Architecture
 **Container orchestration via `scripts/start.sh`:**
+- **Unified Dashboard (port 8082)**: PRIMARY INTERFACE - FastAPI + htmx, replaces Preset Manager/Studio
 - ComfyUI (port 3000): Main AI generation interface
-- Preset Manager (port 9000): Web-based preset management
+- Preset Manager (port 9000): Web-based preset management (DISABLED if Unified Dashboard enabled)
 - Code Server (port 8080): VS Code development environment
 - JupyterLab (port 8888): Notebook interface
 - Nginx: Reverse proxy for service routing
@@ -110,18 +120,63 @@ GitHub Actions workflow (`.github/workflows/build.yml`) provides:
 - `PRESET_DOWNLOAD`: Video generation models to install (comma-separated)
 - `IMAGE_PRESET_DOWNLOAD`: Image generation models to install (comma-separated)
 - `AUDIO_PRESET_DOWNLOAD`: Audio generation models to install (comma-separated)
+- `ENABLE_UNIFIED_DASHBOARD`: Enable/disable Unified Dashboard (default: true). When enabled, Preset Manager and Studio are automatically disabled.
 - `ENABLE_PRESET_MANAGER`: Enable/disable preset manager web UI (default: true)
 - `ACCESS_PASSWORD`: Password for web interfaces (code-server, Jupyter, preset manager)
 - `ENABLE_CODE_SERVER`: Enable/disable VS Code server (default: true)
 - `TIME_ZONE`: Container timezone (default: Etc/UTC)
 - `FORCE_SYNC_ALL`: Force full resync of venv and ComfyUI on startup (default: false)
 
+## RunPod Deployment
+
+### Setup
+```bash
+# Configure API key (one-time)
+echo "RUNPOD_API_KEY=your_key_here" > .runpod/.env
+```
+
+### Deploy Pod
+```bash
+# Source environment and deploy
+# GPU preference: RTX 2000 Ada > RTX 4000 Ada > RTX 4090
+# Region: EU-RO-1 recommended (better CUDA 12.8+ driver support)
+source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
+  -H "Authorization: Bearer $RUNPOD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "comfyui-dashboard",
+    "imageName": "zeroclue/comfyui:minimal-py3.13-cu128",
+    "computeType": "GPU",
+    "gpuTypeIds": ["NVIDIA RTX 2000 Ada Generation"],
+    "dataCenterIds": ["EU-RO-1"],
+    "volumeInGb": 100,
+    "networkVolumeId": "your-volume-id",
+    "ports": ["3000/http", "8082/http", "22/tcp"],
+    "supportPublicIp": true
+  }'
+```
+
+### Image Tag Format
+**CRITICAL:** Image tags use DOTS in Python version: `py3.13` NOT `py313`
+- ✅ Correct: `zeroclue/comfyui:minimal-py3.13-cu128`
+- ❌ Wrong: `zeroclue/comfyui:minimal-py313-cu128`
+
 ## Container Ports
+- **8082**: Unified Dashboard (PRIMARY INTERFACE - FastAPI + htmx + Alpine.js)
+- **Internal**: Runs on port 8000 inside container (for debugging)
 - **3000**: ComfyUI main interface
 - **8080**: VS Code server (if enabled)
 - **8888**: JupyterLab notebook interface
-- **9000**: Preset Manager web UI
+- **9000**: Preset Manager web UI (being replaced by dashboard)
 - **22**: SSH access
+
+## Service Port Conflicts (CRITICAL)
+
+**IMPORTANT:** Unified Dashboard runs on **external port 8082**, not 8081.
+- Port 8081 is used by code-server (proxies to 8080)
+- Dashboard runs internally on port 8000
+- If dashboard shows README page, check: `curl http://localhost:8000/` from inside the pod
+- **Preset Manager is DISABLED automatically when Unified Dashboard is enabled** (both use port 8000)
 
 # Development & Testing
 

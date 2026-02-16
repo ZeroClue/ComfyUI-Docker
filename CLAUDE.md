@@ -83,7 +83,7 @@ Each preset contains complete model definitions with URLs, sizes, file paths, an
 
 ## Core Services Architecture
 **Container orchestration via `scripts/start.sh`:**
-- **Unified Dashboard (port 8081)**: Primary interface - FastAPI + htmx, replaces Preset Manager/Studio
+- **Unified Dashboard (port 8082)**: Primary interface - FastAPI + htmx, replaces Preset Manager/Studio
 - ComfyUI (port 3000): Main AI generation interface
 - Preset Manager (port 9000): Web-based preset management
 - Code Server (port 8080): VS Code development environment
@@ -137,6 +137,8 @@ echo "RUNPOD_API_KEY=your_key_here" > .runpod/.env
 ### Deploy Pod
 ```bash
 # Source environment and deploy
+# GPU preference: RTX 2000 Ada > RTX 4000 Ada > RTX 4090
+# Region: EU-RO-1 recommended (better CUDA 12.8+ driver support)
 source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
   -H "Authorization: Bearer $RUNPOD_API_KEY" \
   -H "Content-Type: application/json" \
@@ -144,11 +146,11 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
     "name": "comfyui-dashboard",
     "imageName": "zeroclue/comfyui:minimal-py3.13-cu128",
     "computeType": "GPU",
-    "gpuTypeIds": ["NVIDIA GeForce RTX 4090"],
-    "dataCenterIds": ["US-NC-1"],
+    "gpuTypeIds": ["NVIDIA RTX 2000 Ada Generation"],
+    "dataCenterIds": ["EU-RO-1"],
     "volumeInGb": 100,
     "networkVolumeId": "your-volume-id",
-    "ports": ["3000/http", "8081/http", "22/tcp"],
+    "ports": ["3000/http", "8082/http", "22/tcp"],
     "supportPublicIp": true
   }'
 ```
@@ -168,8 +170,16 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
 - `TIME_ZONE`: Container timezone (default: Etc/UTC)
 - `FORCE_SYNC_ALL`: Force full resync of venv and ComfyUI on startup (default: false)
 
+## Service Port Conflicts (CRITICAL)
+
+**IMPORTANT:** Unified Dashboard runs on **external port 8082**, not 8081.
+- Port 8081 is used by code-server (proxies to 8080)
+- Dashboard runs internally on port 8000
+- If dashboard shows README page, check: `curl http://localhost:8000/` from inside the pod
+
 ## Container Ports
-- **8081**: Unified Dashboard (PRIMARY INTERFACE - FastAPI + htmx + Alpine.js)
+- **8082**: Unified Dashboard (PRIMARY INTERFACE - FastAPI + htmx + Alpine.js)
+- **Internal**: Runs on port 8000 inside container (for debugging)
 - **3000**: ComfyUI main interface
 - **8080**: VS Code server (if enabled)
 - **8888**: JupyterLab notebook interface
@@ -211,6 +221,45 @@ python scripts/unified_preset_downloader.py status
 - Review `docker-bake.hcl` for target definitions and CUDA variants
 - Monitor GitHub Actions build logs for disk space and timeout issues
 - Use manual workflow triggers for large variants (base-12-8 requires manual build)
+
+## Troubleshooting Dashboard Issues
+
+### Dashboard shows README instead of login page
+**Symptom:** Accessing dashboard URL shows project README.md
+**Cause:** Nginx routing issue or dashboard not running on expected port
+
+**Diagnosis:**
+```bash
+# SSH into pod and check if dashboard is running
+ps aux | grep dashboard
+
+# Check if port 8000 is listening (internal dashboard port)
+netstat -tuln | grep 8000
+
+# Check nginx configuration
+cat /etc/nginx/nginx.conf | grep -A 10 '8082'
+```
+
+**Recovery:**
+1. If dashboard process not running: Check `/workspace/logs/unified_dashboard.log`
+2. If port 8000 not listening: Dashboard failed to start, check logs for dependency errors
+3. If nginx misconfigured: Manual fix required (rebuild image with corrected nginx.conf)
+
+### Manual dependency recovery (if FastAPI missing)
+**Symptom:** `ModuleNotFoundError: No module named 'fastapi'` in dashboard logs
+**Cause:** Docker image built before FastAPI dependencies were added
+
+**Temporary fix (for testing):**
+```bash
+# SSH into pod and install dependencies manually
+pip install --no-cache-dir fastapi uvicorn[standard] python-multipart starlette jinja2
+
+# Restart dashboard
+pkill -f "python3 app.py"
+cd /app/dashboard && nohup /venv/bin/python3 app.py &> /workspace/logs/unified_dashboard.log &
+```
+
+**Permanent fix:** Rebuild Docker image with updated Dockerfile (includes FastAPI dependencies)
 
 ## Model Path Structure
 All models are installed to `/workspace/ComfyUI/models/` with standardized paths:

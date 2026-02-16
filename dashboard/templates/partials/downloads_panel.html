@@ -1,0 +1,93 @@
+<!-- Downloads Panel -->
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold">Download Status</h2>
+        <button hx-get="/partials/downloads-panel" hx-trigger="load, every 3s" hx-swap="outerHTML"
+                class="px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+            <span class="htmx-indicator">
+                <svg class="inline-block w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+            </span>
+            Refresh
+        </button>
+    </div>
+
+    {% if status is not defined %}
+    <!-- Loading state -->
+    <div class="text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        <p class="mt-4 text-slate-400">Loading download status...</p>
+    </div>
+    {% else %}
+    <!-- Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+            <p class="text-slate-400 text-sm">Total</p>
+            <p class="text-3xl font-bold mt-2">{{ status.preset_downloads.total }}</p>
+        </div>
+        <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+            <p class="text-slate-400 text-sm">Completed</p>
+            <p class="text-3xl font-bold mt-2 text-green-400">{{ status.preset_downloads.completed }}</p>
+        </div>
+        <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+            <p class="text-slate-400 text-sm">Failed</p>
+            <p class="text-3xl font-bold mt-2 text-red-400">{{ status.preset_downloads.failed }}</p>
+        </div>
+        <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+            <p class="text-slate-400 text-sm">Progress</p>
+            <p class="text-3xl font-bold mt-2 text-primary-400">
+                {{ (status.preset_downloads.completed / status.preset_downloads.total * 100)|int if status.preset_downloads.total > 0 else 0 }}%
+            </p>
+        </div>
+    </div>
+
+    <!-- Progress details -->
+    {% if status.preset_downloads.progress %}
+    <div class="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-800 bg-slate-800/50">
+            <h3 class="font-semibold">Download Details</h3>
+        </div>
+
+        <div class="divide-y divide-slate-800">
+            {% for preset_id, progress in status.preset_downloads.progress.items() %}
+            <div class="px-6 py-4">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-3">
+                        <span class="w-2 h-2 rounded-full {{ 'bg-green-500' if progress.status == 'completed' else 'bg-yellow-500' if progress.status == 'downloading' else 'bg-red-500' }}"></span>
+                        <span class="font-medium">{{ progress.preset_name }}</span>
+                    </div>
+                    <span class="text-sm text-slate-400">{{ progress.status|capitalize }}</span>
+                </div>
+
+                {% if progress.status == 'downloading' and progress.total_files > 0 %}
+                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div id="progress-{{ preset_id }}"
+                         class="bg-gradient-to-r from-primary-500 to-accent-500 h-full transition-all duration-300"
+                         style="width: {{ (progress.completed_files / progress.total_files * 100)|int }}%">
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mt-1 text-sm text-slate-400">
+                    <span>{{ progress.completed_files }} / {{ progress.total_files }} files</span>
+                    <span>{{ progress.downloaded_size }} / {{ progress.total_size }}</span>
+                </div>
+                {% endif %}
+
+                {% if progress.error_message %}
+                <p class="mt-2 text-sm text-red-400">{{ progress.error_message }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-12 text-center">
+        <svg class="w-16 h-16 mx-auto text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+        </svg>
+        <p class="mt-4 text-slate-400">No downloads in progress</p>
+        <p class="text-sm text-slate-500 mt-1">Select presets to download from the Presets page</p>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>

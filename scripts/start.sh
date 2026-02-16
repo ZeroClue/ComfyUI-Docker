@@ -283,18 +283,12 @@ start_preset_downloads() {
 
     # Check if any preset downloads are requested
     local has_presets=false
-    if [[ -n "${PRESET_DOWNLOAD}" ]]; then
-        has_presets=true
-    fi
-    if [[ -n "${IMAGE_PRESET_DOWNLOAD}" ]]; then
-        has_presets=true
-    fi
-    if [[ -n "${AUDIO_PRESET_DOWNLOAD}" ]]; then
+    if [[ -n "${PRESET_DOWNLOAD}" ]] || [[ -n "${IMAGE_PRESET_DOWNLOAD}" ]] || [[ -n "${AUDIO_PRESET_DOWNLOAD}" ]] || [[ -n "${UNIFIED_PRESET_DOWNLOAD}" ]]; then
         has_presets=true
     fi
 
     if [[ "$has_presets" == "false" ]]; then
-        echo "No preset downloads requested (set PRESET_DOWNLOAD, IMAGE_PRESET_DOWNLOAD, or AUDIO_PRESET_DOWNLOAD)"
+        echo "No preset downloads requested (set PRESET_DOWNLOAD, IMAGE_PRESET_DOWNLOAD, AUDIO_PRESET_DOWNLOAD, or UNIFIED_PRESET_DOWNLOAD)"
         return
     fi
 
@@ -307,8 +301,11 @@ start_preset_downloads() {
     echo "Starting preset downloads in background..."
     mkdir -p /workspace/logs
 
-    # Start preset downloader in background with logging
-    nohup python3 /scripts/unified_preset_downloader.py download &> /workspace/logs/preset_downloads.log &
+    # Show what will be downloaded
+    python3 /scripts/unified_preset_downloader.py status
+
+    # Start preset downloader in background mode with progress tracking
+    nohup python3 /scripts/unified_preset_downloader.py download --background --quiet &> /workspace/logs/preset_downloads.log &
     local pid=$!
     echo "Preset downloader started with PID $pid"
 
@@ -316,7 +313,10 @@ start_preset_downloads() {
     echo $pid > /tmp/preset_downloader.pid
 
     echo "Preset downloads running in background"
-    echo "Check progress: tail -f /workspace/logs/preset_downloads.log"
+    echo "Check progress:"
+    echo "  - Tail logs:    tail -f /workspace/logs/preset_downloads.log"
+    echo "  - Watch mode:   python3 /scripts/unified_preset_downloader.py progress --watch"
+    echo "  - JSON status:  cat /tmp/preset_download_progress.json"
 }
 
 # Check preset manager health
@@ -451,64 +451,59 @@ install_extra_nodes() {
 
 start_nginx
 
-# Revolutionary Architecture: No sync monitor needed (no rsync)
-# Background preset downloads handled separately
+# Revolutionary Architecture: No sync monitor needed (no rsync!)
+# Background preset downloads for instant startup
 
 execute_script "/pre_start.sh" "Running pre-start script..."
 
 # Install extra custom nodes if requested
 install_extra_nodes
 
-echo "Pod Started - Optimizations applied"
+echo "=================================================="
+echo "  ComfyUI-Docker Revolutionary Architecture"
+echo "  No rsync - instant startup!"
+echo "=================================================="
 
 setup_ssh
+
+# Start preset downloads in background (non-blocking)
+start_preset_downloads
+
 start_jupyter
 start_code_server
 
 # Start preset manager (don't exit on failure)
 if ! start_preset_manager; then
-    echo "[DEBUG] Preset Manager failed - dumping logs..."
-    echo "[DEBUG] === preset_manager.log ==="
-    cat /workspace/logs/preset_manager.log 2>/dev/null || echo "[DEBUG] Log file not found"
-    echo "[DEBUG] === end of log ==="
-fi
-
-# Start preset downloads in background (don't exit on failure)
-start_preset_downloads
-
-# Run health check if preset manager was started
-if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then
-    # Wait for preset manager to fully initialize with retries
-    max_retries=5
-    retry_delay=3
-    retry_count=0
-
-    while [[ $retry_count -lt $max_retries ]]; do
-        if check_preset_manager_health; then
-            break
-        fi
-        ((retry_count++))
-        if [[ $retry_count -lt $max_retries ]]; then
-            echo "Retrying health check in ${retry_delay}s... ($retry_count/$max_retries)"
-            sleep $retry_delay
-        fi
-    done
-
-    if [[ $retry_count -ge $max_retries ]]; then
-        echo "NOTE: Preset Manager health check failed after $max_retries attempts, but continuing startup."
-        echo "Preset Manager may not be fully functional. Check logs at /workspace/logs/preset_manager.log"
-    fi
+    echo "[WARN] Preset Manager failed to start - check logs"
 fi
 
 # Start ComfyUI Studio (don't exit on failure)
 if ! start_comfyui_studio; then
-    echo "ComfyUI Studio failed to start - check logs at /workspace/logs/comfyui_studio.log"
+    echo "[WARN] ComfyUI Studio failed to start - check logs"
 fi
 
 export_env_vars
 
 execute_script "/post_start.sh" "Running post-start script..."
 
-echo "Start script(s) finished, pod is ready to use."
+echo ""
+echo "=================================================="
+echo "  ComfyUI-Docker is ready!"
+echo "=================================================="
+echo ""
+echo "  Services:"
+echo "    - Preset Manager: http://localhost:9000"
+echo "    - Code Server:    http://localhost:8080"
+echo "    - JupyterLab:     http://localhost:8888"
+echo "    - Studio:         http://localhost:5000"
+echo ""
+echo "  Architecture:"
+echo "    - App code:   /app (container volume)"
+echo "    - Models:     /workspace/models (network volume)"
+echo "    - No rsync needed!"
+echo ""
+echo "  Preset downloads running in background."
+echo "  Check: tail -f /workspace/logs/preset_downloads.log"
+echo "=================================================="
 
 sleep infinity

@@ -13,6 +13,12 @@ docker buildx bake slim-12-6  # Production optimized
 # Build and push all variants
 docker buildx bake --push
 
+# Trigger GitHub Actions build (preferred over local builds)
+gh workflow run build.yml
+
+# Watch build progress
+gh run watch --interval 30s
+
 # Test preset configuration
 python scripts/preset_validator.py
 
@@ -40,6 +46,18 @@ The project uses a sophisticated multi-stage build (`Dockerfile`):
 - **Runtime Stage**: Production-optimized final image with minimal footprint
 - **Matrix Builds**: Supports multiple CUDA versions and image variants via `docker-bake.hcl`
 
+## Revolutionary Architecture (February 2026)
+**Apps in container, models on network volume - no rsync needed:**
+- `/app/comfyui/`: ComfyUI core (container volume, baked into image)
+- `/app/dashboard/`: Unified Dashboard FastAPI app (container volume)
+- `/app/venv/`: Python virtual environment (container volume)
+- `/workspace/models/`: Model files (network volume, persists across pods)
+- `/workspace/output/`: Generated content (network volume)
+
+**Key benefit:** Near-instant pod startup (no rsync), clean separation of app vs data.
+
+ComfyUI model paths configured via `extra_model_paths.yaml` at startup to point to `/workspace/models/`.
+
 ## Preset Management System
 Located in `scripts/preset_manager/` with three core components:
 
@@ -65,6 +83,7 @@ Each preset contains complete model definitions with URLs, sizes, file paths, an
 
 ## Core Services Architecture
 **Container orchestration via `scripts/start.sh`:**
+- **Unified Dashboard (port 8081)**: Primary interface - FastAPI + htmx, replaces Preset Manager/Studio
 - ComfyUI (port 3000): Main AI generation interface
 - Preset Manager (port 9000): Web-based preset management
 - Code Server (port 8080): VS Code development environment
@@ -99,12 +118,45 @@ GitHub Actions workflow (`.github/workflows/build.yml`) provides:
 - `Dockerfile`: Multi-stage build definition with UV optimization
 - `docker-bake.hcl`: Build matrix configuration for all variants
 - `scripts/start.sh`: Container entrypoint and service orchestration
+- `dashboard/app.py`: FastAPI unified dashboard (requires: fastapi, uvicorn, python-multipart, starlette, jinja2)
 - `scripts/preset_manager/core.py`: Main preset management logic and ModelManager class
 - `config/presets.yaml`: Central preset configuration (currently 56 presets)
 - `scripts/preset_updater.py`: GitHub-based preset updating system
 - `scripts/unified_preset_downloader.py`: Unified download system for all preset types
 
 # Environment Configuration
+
+## RunPod Deployment
+
+### Setup
+```bash
+# Configure API key (one-time)
+echo "RUNPOD_API_KEY=your_key_here" > .runpod/.env
+```
+
+### Deploy Pod
+```bash
+# Source environment and deploy
+source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
+  -H "Authorization: Bearer $RUNPOD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "comfyui-dashboard",
+    "imageName": "zeroclue/comfyui:minimal-py3.13-cu128",
+    "computeType": "GPU",
+    "gpuTypeIds": ["NVIDIA GeForce RTX 4090"],
+    "dataCenterIds": ["US-NC-1"],
+    "volumeInGb": 100,
+    "networkVolumeId": "your-volume-id",
+    "ports": ["3000/http", "8081/http", "22/tcp"],
+    "supportPublicIp": true
+  }'
+```
+
+### Image Tag Format
+**CRITICAL:** Image tags use DOTS in Python version: `py3.13` NOT `py313`
+- ✅ Correct: `zeroclue/comfyui:minimal-py3.13-cu128`
+- ❌ Wrong: `zeroclue/comfyui:minimal-py313-cu128`
 
 ## Key Environment Variables
 - `PRESET_DOWNLOAD`: Video generation models to install (comma-separated)
@@ -117,10 +169,11 @@ GitHub Actions workflow (`.github/workflows/build.yml`) provides:
 - `FORCE_SYNC_ALL`: Force full resync of venv and ComfyUI on startup (default: false)
 
 ## Container Ports
+- **8081**: Unified Dashboard (PRIMARY INTERFACE - FastAPI + htmx + Alpine.js)
 - **3000**: ComfyUI main interface
 - **8080**: VS Code server (if enabled)
 - **8888**: JupyterLab notebook interface
-- **9000**: Preset Manager web UI
+- **9000**: Preset Manager web UI (being replaced by dashboard)
 - **22**: SSH access
 
 # Development & Testing

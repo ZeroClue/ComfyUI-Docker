@@ -392,6 +392,52 @@ start_comfyui_studio() {
     echo "ComfyUI Studio started successfully"
 }
 
+# Start unified dashboard
+start_unified_dashboard() {
+    # Check if dashboard should be started (default: true)
+    if [[ "${ENABLE_UNIFIED_DASHBOARD,,}" == "false" ]]; then
+        echo "Unified Dashboard is disabled (ENABLE_UNIFIED_DASHBOARD=false). Skipping startup."
+        return
+    fi
+
+    echo "Starting Unified Dashboard..."
+
+    # Check if dashboard app exists
+    if [[ ! -f /app/dashboard/app.py ]]; then
+        echo "WARNING: /app/dashboard/app.py not found, skipping startup"
+        echo "Your Docker image may not include the unified dashboard. Please rebuild."
+        return 1
+    fi
+
+    mkdir -p /workspace/logs
+
+    # Set environment variables for dashboard
+    export DASHBOARD_PORT="${DASHBOARD_PORT:-8081}"
+    export DASHBOARD_HOST="0.0.0.0"
+    export DASHBOARD_SECRET_KEY="${DASHBOARD_SECRET_KEY:-$(python3 -c 'import secrets; print(secrets.token_hex(32))')}"
+
+    # Use ACCESS_PASSWORD for dashboard if set, otherwise no auth
+    if [[ -n "${ACCESS_PASSWORD}" ]]; then
+        export ACCESS_PASSWORD="${ACCESS_PASSWORD}"
+    fi
+
+    # Start the dashboard FastAPI application
+    cd /app/dashboard
+    nohup /venv/bin/python3 app.py &> /workspace/logs/unified_dashboard.log &
+    local pid=$!
+    echo "Unified Dashboard started with PID $pid on port ${DASHBOARD_PORT}"
+
+    # Verify process started successfully
+    sleep 2
+    if ! pgrep -f "python3 app.py" > /dev/null; then
+        echo "WARNING: Unified Dashboard process not running after startup"
+        echo "Check logs at /workspace/logs/unified_dashboard.log"
+        return 1
+    fi
+
+    echo "Unified Dashboard started successfully"
+}
+
 # Install extra custom nodes at runtime if requested
 install_extra_nodes() {
     # Check if extra nodes should be installed (default: false)
@@ -482,6 +528,11 @@ if ! start_comfyui_studio; then
     echo "[WARN] ComfyUI Studio failed to start - check logs"
 fi
 
+# Start Unified Dashboard (don't exit on failure)
+if ! start_unified_dashboard; then
+    echo "[WARN] Unified Dashboard failed to start - check logs"
+fi
+
 export_env_vars
 
 execute_script "/post_start.sh" "Running post-start script..."
@@ -492,10 +543,12 @@ echo "  ComfyUI-Docker is ready!"
 echo "=================================================="
 echo ""
 echo "  Services:"
-echo "    - Preset Manager: http://localhost:9000"
-echo "    - Code Server:    http://localhost:8080"
-echo "    - JupyterLab:     http://localhost:8888"
-echo "    - Studio:         http://localhost:5000"
+echo "    - Unified Dashboard: http://localhost:8081 (NEW!)"
+echo "    - ComfyUI:          http://localhost:3000"
+echo "    - Code Server:      http://localhost:8080"
+echo "    - JupyterLab:       http://localhost:8888"
+echo "    - Preset Manager:   http://localhost:9000"
+echo "    - Studio:           http://localhost:5000"
 echo ""
 echo "  Architecture:"
 echo "    - App code:   /app (container volume)"

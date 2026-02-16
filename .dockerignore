@@ -81,6 +81,7 @@ CHANGELOG-*
 # Text files - exclude most but keep important ones
 *.txt
 !custom_nodes.txt
+!custom_nodes_extra.txt
 !requirements.txt
 
 # Temporary and Cache Files

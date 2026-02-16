@@ -162,6 +162,12 @@ COPY --chmod=755 scripts/test_preset_system.py /scripts/
 # Copy preset manager web application to /app/
 COPY --chmod=755 scripts/preset_manager_cli.py /app/preset_manager.py
 COPY --chmod=644 scripts/preset_manager/ /app/preset_manager/
+
+# Copy unified dashboard (FastAPI + htmx + Alpine.js)
+COPY --chmod=755 dashboard/app.py /app/dashboard/
+COPY --chmod=644 dashboard/templates/ /app/dashboard/templates/
+COPY --chmod=644 dashboard/static/ /app/dashboard/static/
+COPY --chmod=644 dashboard/README.md /app/dashboard/README.md
 COPY --chmod=644 scripts/templates/ /app/templates/
 COPY --chmod=644 scripts/static/ /app/static/
 COPY --chmod=644 workspace/docs/presets/ /app/workspace/docs/presets/

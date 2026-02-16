@@ -197,6 +197,10 @@ ai_generated_*
 *_claude_*
 .agents
 
+# Git worktrees (isolated development workspaces)
+.worktrees/
+worktrees/
+
 # GitHub Actions and CI/CD artifacts
 .github/workflows/*.tmp
 .github/actions/

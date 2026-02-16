@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+
+{% block title %}Models - ComfyUI Dashboard{% endblock %}
+
+{% block page_breadcrumb %}
+<span class="text-text-primary font-medium">Models</span>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 lg:p-8" x-data="modelsPage()" x-init="initModelsPage()">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight mb-1">Model Presets</h1>
+            <p class="text-text-secondary text-sm">Browse and install AI model presets</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                    hx-get="/api/models/refresh"
+                    hx-indicator="#refresh-spinner">
+                <span class="htmx-indicator" id="refresh-spinner">
+                    <span class="spinner inline-block"></span>
+                </span>
+                <span class="htmx-indicator-hide">↻ Refresh</span>
+            </button>
+            <button class="btn btn-primary py-2 px-4 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all"
+                    @click="showUploadModal = true">
+                + Import Model
+            </button>
+        </div>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="flex gap-2 border-b border-border-subtle mb-6 overflow-x-auto">
+        <button class="tab py-2 px-4 text-text-secondary text-sm font-medium border-b-2 border-transparent hover:text-text-primary transition-all"
+                :class="{ 'active': activeCategory === 'all', 'text-accent-primary border-accent-primary': activeCategory === 'all' }"
+                @click="activeCategory = 'all'">
+            All Models
+            <span class="ml-2 bg-bg-tertiary px-2 py-0.5 rounded-full text-xs" x-text="modelCounts.all"></span>
+        </button>
+        <button class="tab py-2 px-4 text-text-secondary text-sm font-medium border-b-2 border-transparent hover:text-text-primary transition-all"
+                :class="{ 'active': activeCategory === 'video', 'text-accent-primary border-accent-primary': activeCategory === 'video' }"
+                @click="activeCategory = 'video'">
+            Video
+            <span class="ml-2 bg-bg-tertiary px-2 py-0.5 rounded-full text-xs" x-text="modelCounts.video"></span>
+        </button>
+        <button class="tab py-2 px-4 text-text-secondary text-sm font-medium border-b-2 border-transparent hover:text-text-primary transition-all"
+                :class="{ 'active': activeCategory === 'image', 'text-accent-primary border-accent-primary': activeCategory === 'image' }"
+                @click="activeCategory = 'image'">
+            Image
+            <span class="ml-2 bg-bg-tertiary px-2 py-0.5 rounded-full text-xs" x-text="modelCounts.image"></span>
+        </button>
+        <button class="tab py-2 px-4 text-text-secondary text-sm font-medium border-b-2 border-transparent hover:text-text-primary transition-all"
+                :class="{ 'active': activeCategory === 'audio', 'text-accent-primary border-accent-primary': activeCategory === 'audio' }"
+                @click="activeCategory = 'audio'">
+            Audio
+            <span class="ml-2 bg-bg-tertiary px-2 py-0.5 rounded-full text-xs" x-text="modelCounts.audio"></span>
+        </button>
+    </div>
+
+    <!-- Search & Filters -->
+    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+        <div class="flex-1 relative">
+            <input type="text"
+                   x-model="searchQuery"
+                   placeholder="Search models by name, tag, or description..."
+                   class="w-full px-4 py-2 pl-10 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary">◉</span>
+        </div>
+        <div class="flex gap-2">
+            <select x-model="statusFilter"
+                    class="px-4 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all appearance-none cursor-pointer">
+                <option value="all">All Status</option>
+                <option value="installed">Installed</option>
+                <option value="available">Available</option>
+                <option value="downloading">Downloading</option>
+            </select>
+            <select x-model="sortBy"
+                    class="px-4 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all appearance-none cursor-pointer">
+                <option value="name">Sort by Name</option>
+                <option value="size">Sort by Size</option>
+                <option value="recent">Most Recent</option>
+                <option value="popular">Most Popular</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Models Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <template x-for="model in filteredModels" :key="model.id">
+            <div class="preset-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover relative"
+                 x-data="presetCard(model)"
+                 @download-progress.window="updateProgress($event.detail)">
+
+                <!-- Status Badge -->
+                <div class="absolute top-3 right-3 text-xs font-semibold px-2.5 py-1 rounded-full"
+                     :class="{
+                         'bg-accent-success/15 text-accent-success': model.status === 'installed',
+                         'bg-accent-info/15 text-accent-info': model.status === 'available',
+                         'bg-accent-warning/15 text-accent-warning': model.status === 'partial',
+                         'bg-accent-primary/15 text-accent-primary': model.status === 'downloading'
+                     }"
+                     x-text="statusText">
+                </div>
+
+                <!-- Title -->
+                <div class="text-base font-semibold mb-2 pr-14" x-text="model.name"></div>
+
+                <!-- Description -->
+                <div class="text-text-secondary text-sm leading-relaxed mb-3 min-h-10" x-text="model.description"></div>
+
+                <!-- Meta Info -->
+                <div class="flex gap-4 mb-3 text-xs text-text-tertiary">
+                    <div class="flex items-center gap-1">
+                        <span>◉</span> <span x-text="model.size"></span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span>◈</span> <span x-text="model.category"></span>
+                    </div>
+                    <template x-for="tag in model.tags.slice(0, 2)">
+                        <div class="flex items-center gap-1">
+                            <span>⚡</span> <span x-text="tag"></span>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Progress Bar (when downloading) -->
+                <div x-show="model.status === 'downloading'" class="mb-3" style="display: none;">
+                    <div class="progress h-2 bg-bg-tertiary rounded-full overflow-hidden mb-2">
+                        <div class="progress-bar-animated h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full transition-all duration-300"
+                             :style="`width: ${model.progress}%`"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-text-tertiary">
+                        <span x-text="progressText"></span>
+                        <span x-text="`${model.progress}%`"></span>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-2">
+                    <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                            @click="showDetails = true">
+                        Details
+                    </button>
+                    <button class="btn flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all"
+                            :class="{
+                                'btn-primary': model.status === 'available',
+                                'btn-secondary': model.status === 'installed',
+                                'bg-bg-tertiary text-text-secondary': model.status === 'downloading'
+                            }"
+                            :disabled="model.status === 'downloading'"
+                            @click="handleAction">
+                        <span x-text="actionText"></span>
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="filteredModels.length === 0" class="text-center py-12" style="display: none;">
+        <div class="text-6xl mb-4">◉</div>
+        <h3 class="text-xl font-semibold mb-2">No models found</h3>
+        <p class="text-text-secondary mb-4">Try adjusting your search or filters</p>
+        <button class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                @click="resetFilters">
+            Reset Filters
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function modelsPage() {
+    return {
+        models: [],
+        activeCategory: 'all',
+        searchQuery: '',
+        statusFilter: 'all',
+        sortBy: 'name',
+        showUploadModal: false,
+        modelCounts: { all: 0, video: 0, image: 0, audio: 0 },
+
+        async initModelsPage() {
+            await this.loadModels();
+            this.calculateCounts();
+
+            // Listen for download progress updates
+            window.addEventListener('download-progress', (e) => {
+                this.updateModelProgress(e.detail);
+            });
+        },
+
+        async loadModels() {
+            try {
+                const response = await fetch('/api/models');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.models = data.models || [];
+                    this.calculateCounts();
+                }
+            } catch (error) {
+                console.error('Failed to load models:', error);
+                // Use mock data for demo
+                this.models = this.getMockModels();
+                this.calculateCounts();
+            }
+        },
+
+        getMockModels() {
+            return [
+                {
+                    id: 'wan_21_14b',
+                    name: 'WAN 2.1 14B',
+                    description: 'State-of-the-art text-to-video generation with 14B parameter model',
+                    size: '14.5 GB',
+                    category: 'Video Generation',
+                    type: 'video',
+                    status: 'installed',
+                    progress: 100,
+                    tags: ['t2v', 'hq', '14b']
+                },
+                {
+                    id: 'ltx_video',
+                    name: 'LTX Video',
+                    description: 'Lightning-fast text-to-video with real-time preview capabilities',
+                    size: '2.1 GB',
+                    category: 'Video Generation',
+                    type: 'video',
+                    status: 'available',
+                    progress: 0,
+                    tags: ['fast', 't2v', 'efficient']
+                },
+                {
+                    id: 'hunyuan_video',
+                    name: 'Hunyuan Video',
+                    description: 'High-quality video generation with advanced motion control',
+                    size: '8.2 GB',
+                    category: 'Video Generation',
+                    type: 'video',
+                    status: 'downloading',
+                    progress: 67,
+                    tags: ['hq', 't2v', '720p']
+                },
+                {
+                    id: 'flux_schnell',
+                    name: 'FLUX Schnell',
+                    description: 'Fast, high-quality image generation with FLUX model',
+                    size: '24 GB',
+                    category: 'Image Generation',
+                    type: 'image',
+                    status: 'available',
+                    progress: 0,
+                    tags: ['fast', 'quality', 'sdxl']
+                },
+                {
+                    id: 'sdxl_turbo',
+                    name: 'SDXL Turbo',
+                    description: 'Real-time image generation with 1-4 step inference',
+                    size: '6.9 GB',
+                    category: 'Image Generation',
+                    type: 'image',
+                    status: 'installed',
+                    progress: 100,
+                    tags: ['turbo', 'real-time', 'sdxl']
+                },
+                {
+                    id: 'musicgen',
+                    name: 'MusicGen Medium',
+                    description: 'Music generation model for creating original compositions',
+                    size: '2.8 GB',
+                    category: 'Audio Generation',
+                    type: 'audio',
+                    status: 'available',
+                    progress: 0,
+                    tags: ['music', 'generation', 'audio']
+                }
+            ];
+        },
+
+        calculateCounts() {
+            this.modelCounts = {
+                all: this.models.length,
+                video: this.models.filter(m => m.type === 'video').length,
+                image: this.models.filter(m => m.type === 'image').length,
+                audio: this.models.filter(m => m.type === 'audio').length
+            };
+        },
+
+        get filteredModels() {
+            return this.models
+                .filter(model => {
+                    // Category filter
+                    if (this.activeCategory !== 'all' && model.type !== this.activeCategory) {
+                        return false;
+                    }
+
+                    // Status filter
+                    if (this.statusFilter !== 'all' && model.status !== this.statusFilter) {
+                        return false;
+                    }
+
+                    // Search filter
+                    if (this.searchQuery) {
+                        const query = this.searchQuery.toLowerCase();
+                        return model.name.toLowerCase().includes(query) ||
+                               model.description.toLowerCase().includes(query) ||
+                               model.tags.some(tag => tag.toLowerCase().includes(query));
+                    }
+
+                    return true;
+                })
+                .sort((a, b) => {
+                    switch (this.sortBy) {
+                        case 'name':
+                            return a.name.localeCompare(b.name);
+                        case 'size':
+                            return parseFloat(a.size) - parseFloat(b.size);
+                        case 'recent':
+                            return b.id.localeCompare(a.id);
+                        case 'popular':
+                            return (b.popularity || 0) - (a.popularity || 0);
+                        default:
+                            return 0;
+                    }
+                });
+        },
+
+        updateModelProgress(detail) {
+            const model = this.models.find(m => m.id === detail.presetId);
+            if (model) {
+                model.progress = detail.progress;
+                if (detail.status) {
+                    model.status = detail.status;
+                }
+            }
+        },
+
+        resetFilters() {
+            this.activeCategory = 'all';
+            this.searchQuery = '';
+            this.statusFilter = 'all';
+            this.sortBy = 'name';
+        }
+    }
+}
+
+function presetCard(model) {
+    return {
+        model,
+        showDetails: false,
+        statusText: '',
+        actionText: '',
+        progressText: '',
+
+        init() {
+            this.updateText();
+        },
+
+        updateText() {
+            const statusMap = {
+                'installed': { statusText: 'Installed', actionText: 'Generate', progressText: '' },
+                'available': { statusText: 'Available', actionText: 'Install', progressText: '' },
+                'partial': { statusText: 'Partial', actionText: 'Resume', progressText: 'Downloading...' },
+                'downloading': { statusText: 'Downloading', actionText: 'Pause', progressText: 'Downloading...' }
+            };
+
+            const config = statusMap[this.model.status] || statusMap['available'];
+            this.statusText = config.statusText;
+            this.actionText = config.actionText;
+            this.progressText = config.progressText;
+        },
+
+        updateProgress(detail) {
+            if (detail.presetId === this.model.id) {
+                this.model.progress = detail.progress;
+                this.model.status = 'downloading';
+                this.updateText();
+            }
+        },
+
+        async handleAction() {
+            if (this.model.status === 'available') {
+                // Install the model
+                try {
+                    const response = await fetch(`/api/models/${this.model.id}/install`, { method: 'POST' });
+                    if (response.ok) {
+                        this.model.status = 'downloading';
+                        this.updateText();
+                        window.showToast('success', 'Download Started', `${this.model.name} is being downloaded`);
+                    }
+                } catch (error) {
+                    console.error('Failed to install model:', error);
+                    window.showToast('error', 'Install Failed', 'Could not start download');
+                }
+            } else if (this.model.status === 'installed') {
+                // Navigate to generate page
+                window.location.href = `/generate?model=${this.model.id}`;
+            } else if (this.model.status === 'downloading') {
+                // Pause download
+                try {
+                    await fetch(`/api/models/${this.model.id}/pause`, { method: 'POST' });
+                    this.model.status = 'partial';
+                    this.updateText();
+                } catch (error) {
+                    console.error('Failed to pause download:', error);
+                }
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

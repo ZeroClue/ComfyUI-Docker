@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block title %}Workflows - ComfyUI Dashboard{% endblock %}
+
+{% block page_breadcrumb %}
+<span class="text-text-primary font-medium">Workflows</span>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 lg:p-8" x-data="workflowsPage()" x-init="initWorkflowsPage()">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight mb-1">Workflow Library</h1>
+            <p class="text-text-secondary text-sm">Manage and execute ComfyUI workflows</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                    @click="importWorkflow">
+                Import Workflow
+            </button>
+            <button class="btn btn-primary py-2 px-4 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all"
+                    @click="createWorkflow">
+                + Create New
+            </button>
+        </div>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="flex gap-2 border-b border-border-subtle mb-6">
+        <button class="tab py-2 px-4 text-sm font-medium border-b-2 transition-all"
+                :class="activeCategory === 'all' ? 'text-accent-primary border-accent-primary' : 'text-text-secondary border-transparent hover:text-text-primary'"
+                @click="activeCategory = 'all'">
+            All Workflows
+        </button>
+        <button class="tab py-2 px-4 text-sm font-medium border-b-2 transition-all"
+                :class="activeCategory === 'video' ? 'text-accent-primary border-accent-primary' : 'text-text-secondary border-transparent hover:text-text-primary'"
+                @click="activeCategory = 'video'">
+            Video
+        </button>
+        <button class="tab py-2 px-4 text-sm font-medium border-b-2 transition-all"
+                :class="activeCategory === 'image' ? 'text-accent-primary border-accent-primary' : 'text-text-secondary border-transparent hover:text-text-primary'"
+                @click="activeCategory = 'image'">
+            Image
+        </button>
+        <button class="tab py-2 px-4 text-sm font-medium border-b-2 transition-all"
+                :class="activeCategory === 'audio' ? 'text-accent-primary border-accent-primary' : 'text-text-secondary border-transparent hover:text-text-primary'"
+                @click="activeCategory = 'audio'">
+            Audio
+        </button>
+        <button class="tab py-2 px-4 text-sm font-medium border-b-2 transition-all"
+                :class="activeCategory === 'custom' ? 'text-accent-primary border-accent-primary' : 'text-text-secondary border-transparent hover:text-text-primary'"
+                @click="activeCategory = 'custom'">
+            Custom
+        </button>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="relative mb-6">
+        <input type="text"
+               x-model="searchQuery"
+               placeholder="Search workflows..."
+               class="w-full px-4 py-2 pl-10 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary">◉</span>
+    </div>
+
+    <!-- Workflows Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <template x-for="workflow in filteredWorkflows" :key="workflow.id">
+            <div class="workflow-card bg-bg-secondary border border-border-subtle rounded-lg overflow-hidden card-hover cursor-pointer"
+                 @click="openWorkflow(workflow)">
+
+                <!-- Thumbnail -->
+                <div class="workflow-thumbnail aspect-video bg-bg-tertiary relative">
+                    <img :src="workflow.thumbnail" class="w-full h-full object-cover">
+                    <div class="absolute top-2 right-2">
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold"
+                              :class="{
+                                  'bg-accent-success/15 text-accent-success': workflow.category === 'official',
+                                  'bg-accent-primary/15 text-accent-primary': workflow.category === 'community',
+                                  'bg-accent-info/15 text-accent-info': workflow.category === 'custom'
+                              }"
+                              x-text="workflow.category.charAt(0).toUpperCase() + workflow.category.slice(1)">
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-4">
+                    <h3 class="font-semibold text-sm mb-1" x-text="workflow.name"></h3>
+                    <p class="text-text-secondary text-xs mb-3 line-clamp-2" x-text="workflow.description"></p>
+
+                    <!-- Tags -->
+                    <div class="flex flex-wrap gap-1 mb-3">
+                        <template x-for="tag in workflow.tags.slice(0, 3)">
+                            <span class="px-2 py-0.5 bg-bg-tertiary rounded text-xs text-text-tertiary" x-text="tag"></span>
+                        </template>
+                    </div>
+
+                    <!-- Meta -->
+                    <div class="flex items-center justify-between text-xs text-text-tertiary">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center gap-1">
+                                ◉ <span x-text="workflow.type"></span>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                ◈ <span x-text="workflow.complexity"></span>
+                            </span>
+                        </div>
+                        <span x-text="workflow.runs + ' runs'"></span>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="filteredWorkflows.length === 0" class="text-center py-12" style="display: none;">
+        <div class="text-6xl mb-4">◈</div>
+        <h3 class="text-xl font-semibold mb-2">No workflows found</h3>
+        <p class="text-text-secondary mb-4">Try adjusting your search or create a new workflow</p>
+        <button class="btn btn-primary py-2 px-4 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all"
+                @click="createWorkflow">
+            + Create Workflow
+        </button>
+    </div>
+</div>
+
+<!-- Workflow Detail Modal -->
+<template x-if="selectedWorkflow">
+    <div class="modal-backdrop fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-500"
+         @click.self="selectedWorkflow = null">
+        <div class="modal bg-bg-secondary border border-border-subtle rounded-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-auto shadow-xl">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-4 border-b border-border-subtle">
+                <h2 class="text-lg font-semibold" x-text="selectedWorkflow?.name"></h2>
+                <button @click="selectedWorkflow = null"
+                        class="w-8 h-8 flex items-center justify-center rounded-md text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Content -->
+            <div class="p-4">
+                <img :src="selectedWorkflow?.thumbnail" class="w-full rounded-lg mb-4">
+
+                <p class="text-text-secondary text-sm mb-4" x-text="selectedWorkflow?.description"></p>
+
+                <!-- Required Models -->
+                <div class="mb-4">
+                    <h3 class="text-sm font-semibold mb-2">Required Models</h3>
+                    <div class="space-y-2">
+                        <template x-for="model in selectedWorkflow?.required_models || []">
+                            <div class="flex items-center justify-between p-2 bg-bg-tertiary rounded-md">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full"
+                                          :class="model.installed ? 'bg-accent-success' : 'bg-accent-warning'"></span>
+                                    <span class="text-sm" x-text="model.name"></span>
+                                </div>
+                                <button x-show="!model.installed"
+                                        class="text-xs text-accent-primary hover:text-accent-secondary transition-colors"
+                                        @click="installModel(model.id)">
+                                    Install
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Parameters -->
+                <div class="mb-4">
+                    <h3 class="text-sm font-semibold mb-2">Default Parameters</h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="p-2 bg-bg-tertiary rounded">
+                            <span class="text-text-tertiary">Width:</span>
+                            <span x-text="selectedWorkflow?.params?.width || '1024'"></span>
+                        </div>
+                        <div class="p-2 bg-bg-tertiary rounded">
+                            <span class="text-text-tertiary">Height:</span>
+                            <span x-text="selectedWorkflow?.params?.height || '1024'"></span>
+                        </div>
+                        <div class="p-2 bg-bg-tertiary rounded">
+                            <span class="text-text-tertiary">Steps:</span>
+                            <span x-text="selectedWorkflow?.params?.steps || '30'"></span>
+                        </div>
+                        <div class="p-2 bg-bg-tertiary rounded">
+                            <span class="text-text-tertiary">CFG:</span>
+                            <span x-text="selectedWorkflow?.params?.cfg || '7.5'"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center gap-2 p-4 border-t border-border-subtle">
+                <button class="btn btn-secondary flex-1 py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                        @click="editWorkflow(selectedWorkflow)">
+                    Edit
+                </button>
+                <button class="btn btn-primary flex-1 py-2 px-4 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all"
+                        @click="runWorkflow(selectedWorkflow)">
+                    ⚡ Run Workflow
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function workflowsPage() {
+    return {
+        workflows: [],
+        activeCategory: 'all',
+        searchQuery: '',
+        selectedWorkflow: null,
+
+        async initWorkflowsPage() {
+            await this.loadWorkflows();
+        },
+
+        async loadWorkflows() {
+            try {
+                const response = await fetch('/api/workflows');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.workflows = data.workflows || [];
+                }
+            } catch (error) {
+                console.error('Failed to load workflows:', error);
+                // Use mock data
+                this.workflows = this.getMockWorkflows();
+            }
+        },
+
+        getMockWorkflows() {
+            return [
+                {
+                    id: 'wan_t2v_basic',
+                    name: 'WAN T2V Basic',
+                    description: 'Basic text-to-video generation using WAN 2.1 model',
+                    category: 'official',
+                    type: 'video',
+                    complexity: 'Simple',
+                    thumbnail: 'https://placehold.co/400x300/1a1a24/f97316?text=WAN+T2V',
+                    tags: ['wan', 't2v', 'basic'],
+                    runs: 234,
+                    required_models: [
+                        { id: 'wan_21_14b', name: 'WAN 2.1 14B', installed: true }
+                    ],
+                    params: { width: 1024, height: 1024, steps: 30, cfg: 7.5 }
+                },
+                {
+                    id: 'ltx_video_fast',
+                    name: 'LTX Video Fast',
+                    description: 'Lightning-fast video generation with real-time preview',
+                    category: 'official',
+                    type: 'video',
+                    complexity: 'Simple',
+                    thumbnail: 'https://placehold.co/400x300/1a1a24/22c55e?text=LTX+Video',
+                    tags: ['ltx', 'fast', 'efficient'],
+                    runs: 189,
+                    required_models: [
+                        { id: 'ltx_video', name: 'LTX Video', installed: false }
+                    ],
+                    params: { width: 512, height: 512, steps: 20, cfg: 6.0 }
+                },
+                {
+                    id: 'flux_image_gen',
+                    name: 'FLUX Image Generation',
+                    description: 'High-quality image generation with FLUX Schnell',
+                    category: 'community',
+                    type: 'image',
+                    complexity: 'Medium',
+                    thumbnail: 'https://placehold.co/400x300/1a1a24/8b5cf6?text=FLUX+Image',
+                    tags: ['flux', 'sdxl', 'quality'],
+                    runs: 567,
+                    required_models: [
+                        { id: 'flux_schnell', name: 'FLUX Schnell', installed: true }
+                    ],
+                    params: { width: 1024, height: 1024, steps: 25, cfg: 7.0 }
+                },
+                {
+                    id: 'music_gen_basic',
+                    name: 'Music Generation',
+                    description: 'Create original music compositions with MusicGen',
+                    category: 'official',
+                    type: 'audio',
+                    complexity: 'Simple',
+                    thumbnail: 'https://placehold.co/400x300/1a1a24/f59e0b?text=MusicGen',
+                    tags: ['music', 'audio', 'generation'],
+                    runs: 89,
+                    required_models: [
+                        { id: 'musicgen', name: 'MusicGen Medium', installed: true }
+                    ],
+                    params: { duration: 30, temperature: 0.7 }
+                }
+            ];
+        },
+
+        get filteredWorkflows() {
+            return this.workflows.filter(workflow => {
+                if (this.activeCategory !== 'all' && workflow.type !== this.activeCategory) {
+                    return false;
+                }
+
+                if (this.searchQuery) {
+                    const query = this.searchQuery.toLowerCase();
+                    return workflow.name.toLowerCase().includes(query) ||
+                           workflow.description.toLowerCase().includes(query) ||
+                           workflow.tags.some(tag => tag.toLowerCase().includes(query));
+                }
+
+                return true;
+            });
+        },
+
+        openWorkflow(workflow) {
+            this.selectedWorkflow = workflow;
+        },
+
+        runWorkflow(workflow) {
+            // Navigate to generate page with workflow
+            window.location.href = `/generate?workflow=${workflow.id}`;
+        },
+
+        editWorkflow(workflow) {
+            // Navigate to workflow editor
+            window.location.href = `/workflows/${workflow.id}/edit`;
+        },
+
+        createWorkflow() {
+            window.location.href = '/workflows/new';
+        },
+
+        importWorkflow() {
+            // Trigger file input
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const text = await file.text();
+                    const workflow = JSON.parse(text);
+                    // Import workflow
+                    await fetch('/api/workflows/import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(workflow)
+                    });
+                    window.showToast('success', 'Workflow Imported', workflow.name);
+                    this.loadWorkflows();
+                }
+            };
+            input.click();
+        },
+
+        async installModel(modelId) {
+            await fetch(`/api/models/${modelId}/install`, { method: 'POST' });
+            window.showToast('info', 'Installing', 'Model download started');
+        }
+    }
+}
+</script>
+{% endblock %}

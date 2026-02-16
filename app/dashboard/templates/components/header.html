@@ -1,0 +1,80 @@
+<header class="sticky top-0 z-50 bg-bg-primary/80 backdrop-blur-lg border-b border-border-subtle">
+    <div class="flex items-center justify-between px-6 py-4">
+        <!-- Left: Mobile Menu Toggle & Breadcrumb -->
+        <div class="flex items-center gap-4">
+            <button @click="toggleSidebar()"
+                    class="md:hidden w-10 h-10 flex items-center justify-center rounded-md text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors">
+                ☰
+            </button>
+
+            <nav class="hidden sm:flex items-center gap-2 text-sm">
+                <span class="text-text-secondary">Dashboard</span>
+                <span class="text-text-tertiary">/</span>
+                {% block page_breadcrumb %}
+                <span class="text-text-primary font-medium">Home</span>
+                {% endblock %}
+            </nav>
+        </div>
+
+        <!-- Right: Actions -->
+        <div class="flex items-center gap-3">
+            <!-- Quick Search -->
+            <div class="hidden md:flex items-center relative">
+                <input type="text"
+                       placeholder="Search models, workflows..."
+                       class="w-64 px-4 py-2 pl-10 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all">
+                <span class="absolute left-3 text-text-tertiary">◉</span>
+            </div>
+
+            <!-- Notifications -->
+            <button class="relative w-10 h-10 flex items-center justify-center rounded-md text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
+                    @click="showNotifications = !showNotifications"
+                    @click.away="showNotifications = false">
+                <span>◌</span>
+                <span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent-primary"
+                      x-show="unreadCount > 0"></span>
+            </button>
+
+            <!-- User Menu -->
+            <div class="relative" x-data="{ open: false }">
+                <button @click="open = !open"
+                        @click.away="open = false"
+                        class="flex items-center gap-2 px-3 py-2 rounded-md text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors">
+                    <div class="w-8 h-8 rounded-md bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-sm font-bold">
+                        U
+                    </div>
+                    <span class="hidden lg:block text-sm font-medium">User</span>
+                    <span class="text-text-tertiary">▼</span>
+                </button>
+
+                <!-- Dropdown Menu -->
+                <div x-show="open"
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-75"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     class="absolute right-0 mt-2 w-48 bg-bg-secondary border border-border-subtle rounded-md shadow-lg py-1 z-100"
+                     style="display: none;">
+                    <a href="/profile" class="flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors text-sm">
+                        <span>◉</span> Profile
+                    </a>
+                    <a href="/settings" class="flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors text-sm">
+                        <span>⚙</span> Settings
+                    </a>
+                    <div class="border-t border-border-subtle my-1"></div>
+                    <a href="/docs" class="flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors text-sm">
+                        <span>◈</span> Documentation
+                    </a>
+                    <a href="/support" class="flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors text-sm">
+                        <span>◫</span> Support
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Header (optional, for additional page-specific info) -->
+    {% block page_header %}{% endblock %}
+</header>

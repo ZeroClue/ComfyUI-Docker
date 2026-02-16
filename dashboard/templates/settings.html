@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - ComfyUI Dashboard{% endblock %}
+
+{% block page_breadcrumb %}
+<span class="text-text-primary font-medium">Settings</span>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 lg:p-8" x-data="settingsPage()" x-init="initSettingsPage()">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold tracking-tight mb-1">Settings</h1>
+        <p class="text-text-secondary text-sm">Configure your ComfyUI workspace</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Settings Navigation -->
+        <div class="lg:col-span-1">
+            <nav class="bg-bg-secondary border border-border-subtle rounded-lg p-2 sticky top-20">
+                <button v-for="section in settingsSections"
+                        :key="section.id"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left transition-all"
+                        :class="activeSection === section.id ? 'bg-bg-active text-text-primary' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'"
+                        @click="activeSection = section.id">
+                    <span class="w-5 h-5 flex items-center justify-center" x-text="section.icon"></span>
+                    <span class="text-sm font-medium" x-text="section.name"></span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Settings Content -->
+        <div class="lg:col-span-3">
+            <!-- General Settings -->
+            <section x-show="activeSection === 'general'" class="bg-bg-secondary border border-border-subtle rounded-lg p-6">
+                <h2 class="text-lg font-semibold mb-4">General Settings</h2>
+
+                <div class="space-y-4">
+                    <!-- Theme -->
+                    <div class="flex items-center justify-between py-3 border-b border-border-subtle">
+                        <div>
+                            <div class="font-medium text-sm">Theme</div>
+                            <div class="text-xs text-text-tertiary">Customize the appearance</div>
+                        </div>
+                        <select x-model="settings.theme" class="px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                            <option value="dark">Dark</option>
+                            <option value="darker">Darker</option>
+                            <option value="high-contrast">High Contrast</option>
+                        </select>
+                    </div>
+
+                    <!-- Language -->
+                    <div class="flex items-center justify-between py-3 border-b border-border-subtle">
+                        <div>
+                            <div class="font-medium text-sm">Language</div>
+                            <div class="text-xs text-text-tertiary">Interface language</div>
+                        </div>
+                        <select x-model="settings.language" class="px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                            <option value="en">English</option>
+                            <option value="zh">中文</option>
+                            <option value="ja">日本語</option>
+                            <option value="ko">한국어</option>
+                        </select>
+                    </div>
+
+                    <!-- Auto-save -->
+                    <div class="flex items-center justify-between py-3 border-b border-border-subtle">
+                        <div>
+                            <div class="font-medium text-sm">Auto-save Workflows</div>
+                            <div class="text-xs text-text-tertiary">Automatically save workflow changes</div>
+                        </div>
+                        <button class="w-12 h-6 rounded-full relative transition-colors"
+                                :class="settings.autoSave ? 'bg-accent-primary' : 'bg-bg-tertiary'"
+                                @click="settings.autoSave = !settings.autoSave">
+                            <span class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform"
+                                  :class="settings.autoSave ? 'translate-x-6' : 'translate-x-0'"></span>
+                        </button>
+                    </div>
+
+                    <!-- Notifications -->
+                    <div class="flex items-center justify-between py-3">
+                        <div>
+                            <div class="font-medium text-sm">Desktop Notifications</div>
+                            <div class="text-xs text-text-tertiary">Show notifications for completed jobs</div>
+                        </div>
+                        <button class="w-12 h-6 rounded-full relative transition-colors"
+                                :class="settings.notifications ? 'bg-accent-primary' : 'bg-bg-tertiary'"
+                                @click="settings.notifications = !settings.notifications">
+                            <span class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform"
+                                  :class="settings.notifications ? 'translate-x-6' : 'translate-x-0'"></span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Generation Settings -->
+            <section x-show="activeSection === 'generation'" class="bg-bg-secondary border border-border-subtle rounded-lg p-6" style="display: none;">
+                <h2 class="text-lg font-semibold mb-4">Generation Settings</h2>
+
+                <div class="space-y-4">
+                    <!-- Default Model -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">Default Model</label>
+                        <select x-model="settings.defaultModel" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                            <option value="">Use last selected</option>
+                            <template x-for="model in installedModels">
+                                <option :value="model.id" x-text="model.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Default Dimensions -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">Default Resolution</label>
+                        <select x-model="settings.defaultResolution" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                            <option value="512x512">512 x 512</option>
+                            <option value="768x768">768 x 768</option>
+                            <option value="1024x1024">1024 x 1024</option>
+                            <option value="1024x768">1024 x 768 (Landscape)</option>
+                            <option value="768x1024">768 x 1024 (Portrait)</option>
+                            <option value="1920x1080">1920 x 1080 (HD)</option>
+                        </select>
+                    </div>
+
+                    <!-- Default Steps -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">Default Steps: <span x-text="settings.defaultSteps"></span></label>
+                        <input type="range" x-model="settings.defaultSteps" min="1" max="100" class="w-full">
+                        <div class="flex justify-between text-xs text-text-tertiary mt-1">
+                            <span>Fast (1)</span>
+                            <span>Quality (100)</span>
+                        </div>
+                    </div>
+
+                    <!-- Default CFG -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">Default CFG Scale: <span x-text="settings.defaultCfg"></span></label>
+                        <input type="range" x-model="settings.defaultCfg" min="1" max="20" step="0.5" class="w-full">
+                        <div class="flex justify-between text-xs text-text-tertiary mt-1">
+                            <span>1.0</span>
+                            <span>20.0</span>
+                        </div>
+                    </div>
+
+                    <!-- Batch Size -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">Default Batch Size</label>
+                        <input type="number" x-model="settings.defaultBatch" min="1" max="10" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Settings -->
+            <section x-show="activeSection === 'system'" class="bg-bg-secondary border border-border-subtle rounded-lg p-6" style="display: none;">
+                <h2 class="text-lg font-semibold mb-4">System Settings</h2>
+
+                <div class="space-y-4">
+                    <!-- GPU Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">GPU Device</label>
+                        <select x-model="settings.gpuDevice" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                            <option value="0">GPU 0 (Auto)</option>
+                            <option value="cuda:0">cuda:0</option>
+                            <option value="cuda:1">cuda:1</option>
+                            <option value="cpu">CPU (Not recommended)</option>
+                        </select>
+                    </div>
+
+                    <!-- VRAM Management -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">VRAM Management Mode</label>
+                        <select x-model="settings.vramMode" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                            <option value="auto">Auto (Recommended)</option>
+                            <option value="highvram">High VRAM</option>
+                            <option value="lowvram">Low VRAM</option>
+                            <option value="novram">No VRAM (CPU only)</option>
+                        </select>
+                    </div>
+
+                    <!-- Precision -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">Precision</label>
+                        <select x-model="settings.precision" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                            <option value="fp16">FP16 (Half Precision)</option>
+                            <option value="fp32">FP32 (Full Precision)</option>
+                            <option value="bf16">BF16 (Bfloat16)</option>
+                        </select>
+                    </div>
+
+                    <!-- Memory Management -->
+                    <div class="flex items-center justify-between py-3 border-b border-border-subtle">
+                        <div>
+                            <div class="font-medium text-sm">Aggressive Memory Management</div>
+                            <div class="text-xs text-text-tertiary">Free memory between generations</div>
+                        </div>
+                        <button class="w-12 h-6 rounded-full relative transition-colors"
+                                :class="settings.aggressiveMemory ? 'bg-accent-primary' : 'bg-bg-tertiary'"
+                                @click="settings.aggressiveMemory = !settings.aggressiveMemory">
+                            <span class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform"
+                                  :class="settings.aggressiveMemory ? 'translate-x-6' : 'translate-x-0'"></span>
+                        </button>
+                    </div>
+
+                    <!-- Max Workers -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">Max Concurrent Workers</label>
+                        <input type="number" x-model="settings.maxWorkers" min="1" max="4" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Paths & Storage -->
+            <section x-show="activeSection === 'paths'" class="bg-bg-secondary border border-border-subtle rounded-lg p-6" style="display: none;">
+                <h2 class="text-lg font-semibold mb-4">Paths & Storage</h2>
+
+                <div class="space-y-4">
+                    <!-- Models Path -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">Models Directory</label>
+                        <div class="flex gap-2">
+                            <input type="text" x-model="settings.modelsPath" readonly class="flex-1 px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-tertiary">
+                            <button class="px-4 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-secondary hover:bg-bg-hover transition-colors">
+                                Browse
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Output Path -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">Output Directory</label>
+                        <div class="flex gap-2">
+                            <input type="text" x-model="settings.outputPath" readonly class="flex-1 px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-tertiary">
+                            <button class="px-4 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-secondary hover:bg-bg-hover transition-colors">
+                                Browse
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Storage Info -->
+                    <div class="p-4 bg-bg-tertiary rounded-md">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-text-secondary">Storage Used</span>
+                            <span class="text-sm font-medium" x-text="storageInfo.used"></span>
+                        </div>
+                        <div class="h-2 bg-bg-hover rounded-full overflow-hidden mb-2">
+                            <div class="h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full transition-all"
+                                 :style="`width: ${storageInfo.percentage}%`"></div>
+                        </div>
+                        <div class="text-xs text-text-tertiary" x-text="`${storageInfo.available} available`"></div>
+                    </div>
+
+                    <!-- Cleanup Button -->
+                    <button class="w-full py-2 px-4 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-secondary hover:bg-bg-hover hover:border-border-medium transition-all"
+                            @click="cleanupCache">
+                        Clear Cache (Free up space)
+                    </button>
+                </div>
+            </section>
+
+            <!-- About -->
+            <section x-show="activeSection === 'about'" class="bg-bg-secondary border border-border-subtle rounded-lg p-6" style="display: none;">
+                <h2 class="text-lg font-semibold mb-4">About</h2>
+
+                <div class="space-y-4">
+                    <!-- Version Info -->
+                    <div class="p-4 bg-bg-tertiary rounded-md">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-16 h-16 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-lg flex items-center justify-center text-2xl font-bold shadow-glow">
+                                C
+                            </div>
+                            <div>
+                                <div class="font-semibold text-lg">ComfyUI Dashboard</div>
+                                <div class="text-sm text-text-secondary">Unified AI Generation Workspace</div>
+                            </div>
+                        </div>
+                        <div class="space-y-1 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-text-tertiary">Version</span>
+                                <span>1.0.0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-text-tertiary">Build</span>
+                                <span>2024.02.15</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-text-tertiary">Python</span>
+                                <span>3.10.14</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-text-tertiary">PyTorch</span>
+                                <span>2.1.0+cu121</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <a href="https://github.com/comfyanonymous/ComfyUI" target="_blank" class="p-3 bg-bg-tertiary rounded-md text-sm text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-all">
+                            ◈ ComfyUI Repository
+                        </a>
+                        <a href="/docs" class="p-3 bg-bg-tertiary rounded-md text-sm text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-all">
+                            ◉ Documentation
+                        </a>
+                        <a href="/support" class="p-3 bg-bg-tertiary rounded-md text-sm text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-all">
+                            ◫ Support
+                        </a>
+                        <a href="/changelog" class="p-3 bg-bg-tertiary rounded-md text-sm text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-all">
+                            ◌ Changelog
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Save Button -->
+            <div class="flex justify-end gap-3 mt-6">
+                <button class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                        @click="resetSettings">
+                    Reset to Defaults
+                </button>
+                <button class="btn btn-primary py-2 px-4 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all"
+                        @click="saveSettings"
+                        :disabled="isSaving">
+                    <span x-show="!isSaving">Save Changes</span>
+                    <span x-show="isSaving" class="flex items-center gap-2">
+                        <span class="spinner"></span>
+                        Saving...
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function settingsPage() {
+    return {
+        activeSection: 'general',
+        isSaving: false,
+        installedModels: [],
+
+        settingsSections: [
+            { id: 'general', name: 'General', icon: '⚙' },
+            { id: 'generation', name: 'Generation', icon: '⚡' },
+            { id: 'system', name: 'System', icon: '◉' },
+            { id: 'paths', name: 'Paths & Storage', icon: '◈' },
+            { id: 'about', name: 'About', icon: '◫' }
+        ],
+
+        settings: {
+            theme: 'dark',
+            language: 'en',
+            autoSave: true,
+            notifications: true,
+            defaultModel: '',
+            defaultResolution: '1024x1024',
+            defaultSteps: 30,
+            defaultCfg: 7.5,
+            defaultBatch: 1,
+            gpuDevice: '0',
+            vramMode: 'auto',
+            precision: 'fp16',
+            aggressiveMemory: false,
+            maxWorkers: 1,
+            modelsPath: '/workspace/ComfyUI/models/',
+            outputPath: '/workspace/ComfyUI/output/'
+        },
+
+        storageInfo: {
+            used: '24.5 GB',
+            available: '475.5 GB',
+            percentage: 5
+        },
+
+        async initSettingsPage() {
+            await this.loadSettings();
+            await this.loadInstalledModels();
+
+            // Check URL params for initial section
+            const urlParams = new URLSearchParams(window.location.search);
+            const sectionParam = urlParams.get('tab');
+            if (sectionParam) {
+                this.activeSection = sectionParam;
+            }
+        },
+
+        async loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.settings = { ...this.settings, ...data };
+                }
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        },
+
+        async loadInstalledModels() {
+            try {
+                const response = await fetch('/api/models?status=installed');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.installedModels = data.models || [];
+                }
+            } catch (error) {
+                console.error('Failed to load models:', error);
+            }
+        },
+
+        async saveSettings() {
+            this.isSaving = true;
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.settings)
+                });
+                window.showToast('success', 'Settings Saved', 'Your preferences have been updated');
+            } catch (error) {
+                console.error('Failed to save settings:', error);
+                window.showToast('error', 'Save Failed', 'Could not save settings');
+            } finally {
+                this.isSaving = false;
+            }
+        },
+
+        resetSettings() {
+            if (confirm('Reset all settings to defaults?')) {
+                this.settings = {
+                    theme: 'dark',
+                    language: 'en',
+                    autoSave: true,
+                    notifications: true,
+                    defaultModel: '',
+                    defaultResolution: '1024x1024',
+                    defaultSteps: 30,
+                    defaultCfg: 7.5,
+                    defaultBatch: 1,
+                    gpuDevice: '0',
+                    vramMode: 'auto',
+                    precision: 'fp16',
+                    aggressiveMemory: false,
+                    maxWorkers: 1,
+                    modelsPath: '/workspace/ComfyUI/models/',
+                    outputPath: '/workspace/ComfyUI/output/'
+                };
+                window.showToast('info', 'Settings Reset', 'All settings have been reset to defaults');
+            }
+        },
+
+        async cleanupCache() {
+            if (confirm('Clear all cached data? This will free up disk space but may slow down subsequent generations.')) {
+                try {
+                    await fetch('/api/system/cleanup', { method: 'POST' });
+                    window.showToast('success', 'Cache Cleared', 'Temporary files have been removed');
+                } catch (error) {
+                    console.error('Cleanup failed:', error);
+                    window.showToast('error', 'Cleanup Failed', 'Could not clear cache');
+                }
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

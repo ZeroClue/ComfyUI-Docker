@@ -1,0 +1,78 @@
+<aside class="sidebar w-72 h-screen sticky top-0 overflow-y-auto flex-shrink-0 transition-transform duration-200"
+       :class="{ '-translate-x-full md:translate-x-0': !sidebarOpen, 'translate-x-0': sidebarOpen }"
+       @click.away="!sidebarOpen">
+
+    <!-- Brand -->
+    <div class="flex items-center gap-3 p-4 border-b border-border-subtle">
+        <div class="w-10 h-10 rounded-md flex items-center justify-center text-lg font-bold bg-gradient-to-br from-accent-primary to-accent-secondary shadow-glow">
+            C
+        </div>
+        <div class="font-bold text-lg tracking-tight">ComfyUI</div>
+        <button @click="toggleSidebar()"
+                class="ml-auto md:hidden w-8 h-8 flex items-center justify-center rounded-md text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors">
+            ✕
+        </button>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="flex flex-col gap-1 p-3">
+        <a href="/"
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-text-secondary hover:bg-bg-hover hover:text-text-primary border border-transparent hover:border-border-subtle transition-all duration-200 cursor-pointer"
+           :class="{ 'bg-bg-active text-text-primary border-border-medium': currentPath === '/' }">
+            <div class="nav-item-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">⌂</div>
+            <span class="nav-item-label font-medium text-sm">Home</span>
+        </a>
+
+        <a href="/generate"
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-text-secondary hover:bg-bg-hover hover:text-text-primary border border-transparent hover:border-border-subtle transition-all duration-200 cursor-pointer"
+           :class="{ 'bg-bg-active text-text-primary border-border-medium': currentPath.startsWith('/generate') }">
+            <div class="nav-item-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">⚡</div>
+            <span class="nav-item-label font-medium text-sm">Generate</span>
+        </a>
+
+        <a href="/models"
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-text-secondary hover:bg-bg-hover hover:text-text-primary border border-transparent hover:border-border-subtle transition-all duration-200 cursor-pointer"
+           :class="{ 'bg-bg-active text-text-primary border-border-medium': currentPath.startsWith('/models') }">
+            <div class="nav-item-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">◉</div>
+            <span class="nav-item-label font-medium text-sm">Models</span>
+            <span class="nav-item-badge ml-auto bg-accent-primary text-text-inverse text-xs font-semibold px-2 py-0.5 rounded-full"
+                  x-show="modelCount > 0"
+                  x-text="modelCount"></span>
+        </a>
+
+        <a href="/workflows"
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-text-secondary hover:bg-bg-hover hover:text-text-primary border border-transparent hover:border-border-subtle transition-all duration-200 cursor-pointer"
+           :class="{ 'bg-bg-active text-text-primary border-border-medium': currentPath.startsWith('/workflows') }">
+            <div class="nav-item-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">◈</div>
+            <span class="nav-item-label font-medium text-sm">Workflows</span>
+        </a>
+
+        <a href="/settings"
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-text-secondary hover:bg-bg-hover hover:text-text-primary border border-transparent hover:border-border-subtle transition-all duration-200 cursor-pointer"
+           :class="{ 'bg-bg-active text-text-primary border-border-medium': currentPath.startsWith('/settings') }">
+            <div class="nav-item-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">⚙</div>
+            <span class="nav-item-label font-medium text-sm">Settings</span>
+        </a>
+
+        <a href="/pro"
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-text-secondary hover:bg-bg-hover hover:text-text-primary border border-transparent hover:border-border-subtle transition-all duration-200 cursor-pointer"
+           :class="{ 'bg-bg-active text-text-primary border-border-medium': currentPath.startsWith('/pro') }">
+            <div class="nav-item-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">⬡</div>
+            <span class="nav-item-label font-medium text-sm">Pro Mode</span>
+        </a>
+    </nav>
+
+    <!-- System Status Mini -->
+    <div class="absolute bottom-0 left-0 right-0 p-3 border-t border-border-subtle bg-bg-secondary">
+        <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-accent-success animate-pulse"></div>
+                <span class="text-text-secondary">System Online</span>
+            </div>
+            <div class="flex items-center gap-3 text-text-tertiary">
+                <span x-text="gpuUsage"></span>
+                <span x-text="memoryUsage"></span>
+            </div>
+        </div>
+    </div>
+</aside>

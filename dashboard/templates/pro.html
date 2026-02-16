@@ -1,0 +1,622 @@
+{% extends "base.html" %}
+
+{% block title %}Pro Mode - ComfyUI Dashboard{% endblock %}
+
+{% block page_breadcrumb %}
+<span class="text-text-primary font-medium">Pro Mode</span>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 lg:p-8" x-data="proModePage()" x-init="initProMode()">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight mb-1 flex items-center gap-2">
+                <span class="w-8 h-8 rounded-md bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-sm">⬡</span>
+                Pro Mode
+            </h1>
+            <p class="text-text-secondary text-sm">Advanced ComfyUI workflow editor</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                    @click="loadWorkflow">
+                Load Workflow
+            </button>
+            <button class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                    @click="saveWorkflow"
+                    :disabled="!hasUnsavedChanges">
+                Save Workflow
+            </button>
+            <button class="btn btn-primary py-2 px-4 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all"
+                    @click="queueWorkflow"
+                    :disabled="isProcessing">
+                <span x-show="!isProcessing">⚡ Queue Workflow</span>
+                <span x-show="isProcessing" class="flex items-center gap-2">
+                    <span class="spinner"></span>
+                    Processing...
+                </span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Warning Banner -->
+    <div x-show="!hasAcceptedWarning" class="mb-6 p-4 bg-accent-warning/10 border border-accent-warning/30 rounded-lg" style="display: none;">
+        <div class="flex items-start gap-3">
+            <span class="text-accent-warning text-xl">◫</span>
+            <div class="flex-1">
+                <h3 class="font-semibold text-accent-warning mb-1">Pro Mode Warning</h3>
+                <p class="text-sm text-text-secondary mb-3">
+                    Pro Mode provides direct access to the ComfyUI node editor. This interface is intended for advanced users who are familiar with ComfyUI workflows. Incorrect configurations can cause system instability or failed generations.
+                </p>
+                <div class="flex gap-2">
+                    <button class="btn btn-primary py-1.5 px-3 rounded-md text-sm font-medium bg-accent-warning text-text-inverse"
+                            @click="hasAcceptedWarning = true">
+                        I Understand, Enter Pro Mode
+                    </button>
+                    <button class="btn btn-secondary py-1.5 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover"
+                            @click="window.location.href='/'">
+                        Return to Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div x-show="hasAcceptedWarning">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Left Panel: Node Palette -->
+            <div class="lg:col-span-1">
+                <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4 sticky top-20">
+                    <h3 class="text-sm font-semibold text-text-secondary mb-3">Node Palette</h3>
+
+                    <!-- Search -->
+                    <div class="relative mb-3">
+                        <input type="text"
+                               x-model="nodeSearch"
+                               placeholder="Search nodes..."
+                               class="w-full px-3 py-2 pl-9 bg-bg-tertiary border border-border-subtle rounded-md text-xs focus:outline-none focus:border-accent-primary">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary text-xs">◉</span>
+                    </div>
+
+                    <!-- Node Categories -->
+                    <div class="space-y-1 max-h-96 overflow-y-auto">
+                        <template x-for="category in filteredNodeCategories" :key="category.name">
+                            <div>
+                                <button class="w-full flex items-center justify-between px-2 py-1.5 text-xs text-left text-text-secondary hover:bg-bg-hover rounded transition-colors"
+                                        @click="category.expanded = !category.expanded">
+                                    <span x-text="category.name"></span>
+                                    <span class="text-text-tertiary transition-transform"
+                                          :class="{ 'rotate-90': category.expanded }">▶</span>
+                                </button>
+                                <div x-show="category.expanded" class="ml-2 mt-1 space-y-0.5" style="display: none;">
+                                    <template x-for="node in category.nodes" :key="node.id">
+                                        <div class="flex items-center gap-2 px-2 py-1 text-xs text-text-tertiary hover:text-text-primary hover:bg-bg-hover rounded cursor-pointer transition-colors"
+                                             draggable="true"
+                                             @dragstart="startDragNode($event, node)">
+                                            <span x-text="node.icon"></span>
+                                            <span x-text="node.name"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center: Node Graph Editor -->
+            <div class="lg:col-span-2">
+                <div class="bg-bg-secondary border border-border-subtle rounded-lg overflow-hidden"
+                     @drop="handleDrop($event)"
+                     @dragover.prevent>
+
+                    <!-- Toolbar -->
+                    <div class="flex items-center justify-between px-4 py-2 border-b border-border-subtle bg-bg-tertiary">
+                        <div class="flex items-center gap-2">
+                            <button class="p-1.5 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
+                                    @click="zoomIn"
+                                    title="Zoom In">
+                                ◕
+                            </button>
+                            <button class="p-1.5 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
+                                    @click="zoomOut"
+                                    title="Zoom Out">
+                            ◔
+                            </button>
+                            <button class="p-1.5 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
+                                    @click="fitView"
+                                    title="Fit to View">
+                            ◉
+                            </button>
+                            <span class="text-xs text-text-tertiary ml-2" x-text="`${Math.round(zoom * 100)}%`"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="p-1.5 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
+                                    @click="undo"
+                                    title="Undo">
+                                ↶
+                            </button>
+                            <button class="p-1.5 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
+                                    @click="redo"
+                                    title="Redo">
+                                ↷
+                            </button>
+                            <button class="p-1.5 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
+                                    @click="deleteSelected"
+                                    title="Delete Selected">
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas -->
+                    <div class="relative bg-bg-primary" style="height: 600px;">
+                        <!-- Grid Background -->
+                        <svg class="absolute inset-0 w-full h-full opacity-10">
+                            <defs>
+                                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" stroke-width="0.5"/>
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill="url(#grid)"/>
+                        </svg>
+
+                        <!-- Nodes Container -->
+                        <div class="absolute inset-0 overflow-auto"
+                             :style="`transform: scale(${zoom})`">
+                            <template x-for="node in workflowNodes" :key="node.id">
+                                <div class="absolute bg-bg-secondary border border-border-subtle rounded-lg shadow-lg min-w-48"
+                                     :style="`left: ${node.x}px; top: ${node.y}px; ${selectedNodeId === node.id ? 'border-color: var(--accent-primary);' : ''}`"
+                                     @mousedown.stop="startDragNodeGraph($event, node)">
+
+                                    <!-- Node Header -->
+                                    <div class="flex items-center gap-2 px-3 py-2 border-b border-border-subtle bg-bg-tertiary rounded-t-lg">
+                                        <span class="text-sm" x-text="node.icon"></span>
+                                        <span class="text-sm font-medium" x-text="node.title"></span>
+                                        <button class="ml-auto w-5 h-5 flex items-center justify-center rounded text-text-tertiary hover:text-text-primary hover:bg-bg-hover"
+                                                @click="deleteNode(node.id)">
+                                            ✕
+                                        </button>
+                                    </div>
+
+                                    <!-- Node Body -->
+                                    <div class="p-3">
+                                        <!-- Inputs -->
+                                        <div class="space-y-2 mb-3">
+                                            <template x-for="input in node.inputs" :key="input.id">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="w-3 h-3 rounded-full bg-accent-primary cursor-pointer hover:bg-accent-secondary"
+                                                         :title="input.type"></div>
+                                                    <span class="text-xs text-text-secondary" x-text="input.name"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+
+                                        <!-- Widget (if applicable) -->
+                                        <div x-show="node.widget" class="mb-3" style="display: none;">
+                                            <input type="text"
+                                                   :value="node.widget.value"
+                                                   @change="updateWidgetValue(node.id, $event.target.value)"
+                                                   class="w-full px-2 py-1 bg-bg-tertiary border border-border-subtle rounded text-xs">
+                                        </div>
+
+                                        <!-- Outputs -->
+                                        <div class="space-y-2">
+                                            <template x-for="output in node.outputs" :key="output.id">
+                                                <div class="flex items-center justify-end gap-2">
+                                                    <span class="text-xs text-text-secondary" x-text="output.name"></span>
+                                                    <div class="w-3 h-3 rounded-full bg-accent-success cursor-pointer hover:bg-accent-primary"
+                                                         :title="output.type"></div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Connections (SVG overlay) -->
+                            <svg class="absolute inset-0 w-full h-full pointer-events-none">
+                                <defs>
+                                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                        <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+                                    </marker>
+                                </defs>
+                                <template x-for="connection in connections" :key="connection.id">
+                                    <path :d="getConnectionPath(connection)"
+                                          stroke="#f97316"
+                                          stroke-width="2"
+                                          fill="none"
+                                          marker-end="url(#arrowhead)"
+                                          class="opacity-60"/>
+                                </template>
+                            </svg>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div x-show="workflowNodes.length === 0" class="absolute inset-0 flex items-center justify-center pointer-events-none" style="display: none;">
+                            <div class="text-center">
+                                <div class="text-6xl mb-4 text-text-tertiary">◈</div>
+                                <h3 class="text-lg font-semibold text-text-secondary mb-2">Empty Workflow</h3>
+                                <p class="text-sm text-text-tertiary mb-4">Drag nodes from the palette or load a workflow</p>
+                                <button class="btn btn-primary py-2 px-4 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all pointer-events-auto"
+                                        @click="loadWorkflow">
+                                    Load Example Workflow
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Properties & Queue -->
+            <div class="lg:col-span-1 space-y-4">
+                <!-- Node Properties -->
+                <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                    <h3 class="text-sm font-semibold text-text-secondary mb-3">Properties</h3>
+
+                    <div x-show="selectedNodeId" class="space-y-3">
+                        <template x-if="selectedNode">
+                            <div>
+                                <div class="text-xs text-text-tertiary mb-1">Node</div>
+                                <div class="text-sm font-medium" x-text="selectedNode?.title"></div>
+
+                                <div class="text-xs text-text-tertiary mb-1 mt-3">Type</div>
+                                <div class="text-sm" x-text="selectedNode?.type"></div>
+
+                                <div class="text-xs text-text-tertiary mb-1 mt-3">Description</div>
+                                <div class="text-xs text-text-secondary leading-relaxed" x-text="selectedNode?.description"></div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div x-show="!selectedNodeId" class="text-center py-8 text-text-tertiary text-sm" style="display: none;">
+                        Select a node to view properties
+                    </div>
+                </div>
+
+                <!-- Queue -->
+                <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                    <h3 class="text-sm font-semibold text-text-secondary mb-3">Queue</h3>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs mb-2">
+                            <span class="text-text-tertiary">Pending</span>
+                            <span x-text="queue.length"></span>
+                        </div>
+
+                        <div class="max-h-48 overflow-y-auto space-y-1">
+                            <template x-for="item in queue" :key="item.id">
+                                <div class="p-2 bg-bg-tertiary rounded flex items-center justify-between">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-xs font-medium truncate" x-text="item.name"></div>
+                                        <div class="text-xs text-text-tertiary" x-text="item.status"></div>
+                                    </div>
+                                    <button class="w-6 h-6 flex items-center justify-center rounded text-text-tertiary hover:text-text-primary hover:bg-bg-hover"
+                                            @click="removeFromQueue(item.id)">
+                                        ✕
+                                    </button>
+                                </div>
+                            </template>
+
+                            <div x-show="queue.length === 0" class="text-center py-4 text-text-tertiary text-xs" style="display: none;">
+                                Queue is empty
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History -->
+                <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                    <h3 class="text-sm font-semibold text-text-secondary mb-3">History</h3>
+
+                    <div class="space-y-1 max-h-48 overflow-y-auto">
+                        <template x-for="item in history" :key="item.id">
+                            <div class="p-2 hover:bg-bg-hover rounded cursor-pointer transition-colors"
+                                    @click="loadHistoryItem(item)">
+                                <div class="text-xs font-medium" x-text="item.name"></div>
+                                <div class="text-xs text-text-tertiary" x-text="item.timestamp"></div>
+                            </div>
+                        </template>
+
+                        <div x-show="history.length === 0" class="text-center py-4 text-text-tertiary text-xs" style="display: none;">
+                            No history yet
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function proModePage() {
+    return {
+        hasAcceptedWarning: false,
+        hasUnsavedChanges: false,
+        isProcessing: false,
+        nodeSearch: '',
+        zoom: 1,
+        selectedNodeId: null,
+
+        workflowNodes: [],
+        connections: [],
+        queue: [],
+        history: [],
+
+        nodeCategories: [
+            {
+                name: 'Loaders',
+                expanded: true,
+                nodes: [
+                    { id: 'checkpoint', name: 'Checkpoint Loader', icon: '◉', type: 'loader' },
+                    { id: 'lora', name: 'LoRA Loader', icon: '◈', type: 'loader' },
+                    { id: 'embedding', name: 'Embedding', icon: '◫', type: 'loader' }
+                ]
+            },
+            {
+                name: 'Sampling',
+                expanded: true,
+                nodes: [
+                    { id: 'ksampler', name: 'KSampler', icon: '⚡', type: 'sampling' },
+                    { id: 'ksampler_adv', name: 'KSampler (Advanced)', icon: '⚡', type: 'sampling' }
+                ]
+            },
+            {
+                name: 'Conditioning',
+                expanded: false,
+                nodes: [
+                    { id: 'clip_text', name: 'CLIP Text Encode', icon: '◌', type: 'conditioning' },
+                    { id: 'cond_combine', name: 'Combine Conditioning', icon: '◐', type: 'conditioning' }
+                ]
+            },
+            {
+                name: 'Image',
+                expanded: false,
+                nodes: [
+                    { id: 'vae_decode', name: 'VAE Decode', icon: '◉', type: 'image' },
+                    { id: 'vae_encode', name: 'VAE Encode', icon: '◈', type: 'image' },
+                    { id: 'upscale', name: 'Image Upscale', icon: '◫', type: 'image' }
+                ]
+            },
+            {
+                name: 'Output',
+                expanded: false,
+                nodes: [
+                    { id: 'save_image', name: 'Save Image', icon: '↓', type: 'output' },
+                    { id: 'preview', name: 'Preview Image', icon: '◉', type: 'output' }
+                ]
+            }
+        ],
+
+        get filteredNodeCategories() {
+            if (!this.nodeSearch) return this.nodeCategories;
+
+            return this.nodeCategories.map(category => ({
+                ...category,
+                nodes: category.nodes.filter(node =>
+                    node.name.toLowerCase().includes(this.nodeSearch.toLowerCase())
+                )
+            })).filter(category => category.nodes.length > 0);
+        },
+
+        get selectedNode() {
+            return this.workflowNodes.find(n => n.id === this.selectedNodeId);
+        },
+
+        initProMode() {
+            // Load previously accepted warning state
+            const warningAccepted = localStorage.getItem('proModeWarningAccepted');
+            if (warningAccepted === 'true') {
+                this.hasAcceptedWarning = true;
+            }
+
+            // Load example workflow if empty
+            if (this.workflowNodes.length === 0) {
+                this.loadExampleWorkflow();
+            }
+        },
+
+        loadExampleWorkflow() {
+            this.workflowNodes = [
+                {
+                    id: '1',
+                    title: 'Checkpoint Loader',
+                    type: 'checkpoint',
+                    icon: '◉',
+                    x: 50,
+                    y: 50,
+                    inputs: [],
+                    outputs: [{ id: 'out1', name: 'MODEL', type: 'model' }, { id: 'out2', name: 'CLIP', type: 'clip' }, { id: 'out3', name: 'VAE', type: 'vae' }],
+                    widget: { value: 'v1-5-pruned.safetensors' },
+                    description: 'Load a diffusion model checkpoint'
+                },
+                {
+                    id: '2',
+                    title: 'CLIP Text Encode',
+                    type: 'clip_text',
+                    icon: '◌',
+                    x: 350,
+                    y: 50,
+                    inputs: [{ id: 'in1', name: 'CLIP', type: 'clip' }],
+                    outputs: [{ id: 'out1', name: 'CONDITIONING', type: 'conditioning' }],
+                    widget: { value: 'a beautiful landscape' },
+                    description: 'Encode text prompt using CLIP model'
+                },
+                {
+                    id: '3',
+                    title: 'KSampler',
+                    type: 'ksampler',
+                    icon: '⚡',
+                    x: 650,
+                    y: 50,
+                    inputs: [
+                        { id: 'in1', name: 'MODEL', type: 'model' },
+                        { id: 'in2', name: 'POSITIVE', type: 'conditioning' },
+                        { id: 'in3', name: 'NEGATIVE', type: 'conditioning' },
+                        { id: 'in4', name: 'LATENT', type: 'latent' }
+                    ],
+                    outputs: [{ id: 'out1', name: 'LATENT', type: 'latent' }],
+                    description: 'Sample latent vectors using the model'
+                },
+                {
+                    id: '4',
+                    title: 'VAE Decode',
+                    type: 'vae_decode',
+                    icon: '◉',
+                    x: 950,
+                    y: 50,
+                    inputs: [{ id: 'in1', name: 'SAMPLES', type: 'latent' }, { id: 'in2', name: 'VAE', type: 'vae' }],
+                    outputs: [{ id: 'out1', name: 'IMAGE', type: 'image' }],
+                    description: 'Decode latent vectors to image'
+                },
+                {
+                    id: '5',
+                    title: 'Save Image',
+                    type: 'save_image',
+                    icon: '↓',
+                    x: 1250,
+                    y: 50,
+                    inputs: [{ id: 'in1', name: 'IMAGE', type: 'image' }],
+                    outputs: [],
+                    description: 'Save image to disk'
+                }
+            ];
+
+            this.connections = [
+                { id: 'c1', fromNode: '1', fromOutput: 'out1', toNode: '3', toInput: 'in1' },
+                { id: 'c2', fromNode: '1', fromOutput: 'out2', toNode: '2', toInput: 'in1' },
+                { id: 'c3', fromNode: '2', fromOutput: 'out1', toNode: '3', toInput: 'in2' },
+                { id: 'c4', fromNode: '3', fromOutput: 'out1', toNode: '4', toInput: 'in1' },
+                { id: 'c5', fromNode: '4', fromOutput: 'out1', toNode: '5', toInput: 'in1' }
+            ];
+
+            this.hasUnsavedChanges = true;
+        },
+
+        getConnectionPath(connection) {
+            // Simplified path drawing (would need actual node positions in real implementation)
+            return 'M 100 100 L 200 100';
+        },
+
+        startDragNode(event, node) {
+            // Handle node drag from palette
+        },
+
+        startDragNodeGraph(event, node) {
+            // Handle node movement in graph
+        },
+
+        handleDrop(event) {
+            // Handle dropping nodes onto canvas
+        },
+
+        selectNode(nodeId) {
+            this.selectedNodeId = nodeId;
+        },
+
+        deleteNode(nodeId) {
+            this.workflowNodes = this.workflowNodes.filter(n => n.id !== nodeId);
+            this.connections = this.connections.filter(c => c.fromNode !== nodeId && c.toNode !== nodeId);
+            if (this.selectedNodeId === nodeId) {
+                this.selectedNodeId = null;
+            }
+            this.hasUnsavedChanges = true;
+        },
+
+        deleteSelected() {
+            if (this.selectedNodeId) {
+                this.deleteNode(this.selectedNodeId);
+            }
+        },
+
+        updateWidgetValue(nodeId, value) {
+            const node = this.workflowNodes.find(n => n.id === nodeId);
+            if (node && node.widget) {
+                node.widget.value = value;
+                this.hasUnsavedChanges = true;
+            }
+        },
+
+        zoomIn() {
+            this.zoom = Math.min(2, this.zoom + 0.1);
+        },
+
+        zoomOut() {
+            this.zoom = Math.max(0.5, this.zoom - 0.1);
+        },
+
+        fitView() {
+            this.zoom = 1;
+        },
+
+        undo() {
+            // Implement undo
+        },
+
+        redo() {
+            // Implement redo
+        },
+
+        loadWorkflow() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const text = await file.text();
+                    const workflow = JSON.parse(text);
+                    // Load workflow
+                    this.workflowNodes = workflow.nodes || [];
+                    this.connections = workflow.connections || [];
+                    this.hasUnsavedChanges = true;
+                    window.showToast('success', 'Workflow Loaded', workflow.name || 'Workflow loaded successfully');
+                }
+            };
+            input.click();
+        },
+
+        saveWorkflow() {
+            const workflow = {
+                nodes: this.workflowNodes,
+                connections: this.connections,
+                metadata: {
+                    version: '1.0',
+                    created: new Date().toISOString()
+                }
+            };
+
+            // Save to local storage or backend
+            localStorage.setItem('currentWorkflow', JSON.stringify(workflow));
+            this.hasUnsavedChanges = false;
+            window.showToast('success', 'Workflow Saved', 'Your workflow has been saved');
+        },
+
+        queueWorkflow() {
+            this.isProcessing = true;
+            // Queue the workflow for execution
+            setTimeout(() => {
+                this.isProcessing = false;
+                this.queue.push({
+                    id: Date.now(),
+                    name: 'Current Workflow',
+                    status: 'Pending'
+                });
+                window.showToast('success', 'Workflow Queued', 'Your workflow has been added to the queue');
+            }, 1000);
+        },
+
+        removeFromQueue(itemId) {
+            this.queue = this.queue.filter(item => item.id !== itemId);
+        },
+
+        loadHistoryItem(item) {
+            // Load item from history
+        }
+    }
+}
+</script>
+{% endblock %}

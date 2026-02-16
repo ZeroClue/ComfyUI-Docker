@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI Unified Dashboard - Design System</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            /* Core Colors */
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --bg-elevated: #222230;
+            --bg-hover: #2a2a3a;
+            --bg-active: #323248;
+
+            /* Accent Colors */
+            --accent-primary: #f97316;
+            --accent-secondary: #8b5cf6;
+            --accent-success: #22c55e;
+            --accent-warning: #f59e0b;
+            --accent-error: #ef4444;
+            --accent-info: #3b82f6;
+
+            /* Text Colors */
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --text-inverse: #0a0a0f;
+
+            /* Border & Dividers */
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-medium: rgba(255, 255, 255, 0.1);
+            --border-strong: rgba(255, 255, 255, 0.15);
+
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+
+            /* Typography */
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+            /* Border Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --radius-full: 9999px;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+            --shadow-glow: 0 0 20px rgba(249, 115, 22, 0.15);
+
+            /* Transitions */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+            /* Z-index */
+            --z-base: 0;
+            --z-dropdown: 100;
+            --z-sticky: 200;
+            --z-modal: 500;
+            --z-toast: 600;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-subtle);
+            padding: var(--space-lg);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md) 0;
+            margin-bottom: var(--space-lg);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .sidebar-brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .sidebar-brand-text {
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all var(--transition-base);
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--border-subtle);
+        }
+
+        .nav-item.active {
+            background: var(--bg-active);
+            color: var(--text-primary);
+            border-color: var(--border-medium);
+        }
+
+        .nav-item-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .nav-item-label {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .nav-item-badge {
+            margin-left: auto;
+            background: var(--accent-primary);
+            color: var(--text-inverse);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: var(--space-xl);
+            overflow-y: auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-xl);
+            padding-bottom: var(--space-lg);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: var(--space-xs);
+        }
+
+        .header-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: var(--space-md);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: var(--text-inverse);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .btn-primary:hover {
+            background: #ea580c;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md), var(--shadow-glow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--border-medium);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-strong);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-lg {
+            padding: 12px 20px;
+            font-size: 15px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            transition: all var(--transition-base);
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-medium);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-md);
+        }
+
+        .stat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .stat-icon-primary { background: rgba(249, 115, 22, 0.15); }
+        .stat-icon-success { background: rgba(34, 197, 94, 0.15); }
+        .stat-icon-warning { background: rgba(245, 158, 11, 0.15); }
+        .stat-icon-info { background: rgba(59, 130, 246, 0.15); }
+
+        .stat-trend {
+            font-size: 12px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+        }
+
+        .stat-trend-up { color: var(--accent-success); background: rgba(34, 197, 94, 0.1); }
+        .stat-trend-down { color: var(--accent-error); background: rgba(239, 68, 68, 0.1); }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: var(--space-xs);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: all var(--transition-base);
+        }
+
+        .card:hover {
+            border-color: var(--border-medium);
+            box-shadow: var(--shadow-md);
+        }
+
+        .card-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .card-subtitle {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .card-body {
+            padding: var(--space-lg);
+        }
+
+        .card-footer {
+            padding: var(--space-lg);
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        /* Preset Grid */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+        }
+
+        .preset-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            transition: all var(--transition-base);
+            position: relative;
+        }
+
+        .preset-card:hover {
+            border-color: var(--border-medium);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-4px);
+        }
+
+        .preset-badge {
+            position: absolute;
+            top: var(--space-md);
+            right: var(--space-md);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+        }
+
+        .preset-badge-installed {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--accent-success);
+        }
+
+        .preset-badge-available {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-info);
+        }
+
+        .preset-badge-partial {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-warning);
+        }
+
+        .preset-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+            padding-right: 60px;
+        }
+
+        .preset-description {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: var(--space-md);
+            min-height: 40px;
+        }
+
+        .preset-meta {
+            display: flex;
+            gap: var(--space-md);
+            margin-bottom: var(--space-md);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .preset-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .preset-actions {
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        /* Progress */
+        .progress {
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            margin-bottom: var(--space-sm);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: var(--radius-full);
+            transition: width var(--transition-slow);
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: var(--space-sm);
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: var(--space-lg);
+        }
+
+        .tab {
+            padding: var(--space-sm) var(--space-md);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            border-bottom: 2px solid transparent;
+            transition: all var(--transition-base);
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+
+        /* Section */
+        .section {
+            margin-bottom: var(--space-2xl);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-lg);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .section-actions {
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        /* Resource Monitor */
+        .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--space-md);
+        }
+
+        .resource-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-md);
+        }
+
+        .resource-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-md);
+        }
+
+        .resource-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .resource-value {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: var(--space-sm);
+        }
+
+        .resource-bar {
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            margin-bottom: var(--space-xs);
+        }
+
+        .resource-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-success), var(--accent-warning));
+            border-radius: var(--radius-full);
+            transition: width var(--transition-base);
+        }
+
+        .resource-fill.warning {
+            background: linear-gradient(90deg, var(--accent-warning), var(--accent-error));
+        }
+
+        .resource-fill.danger {
+            background: var(--accent-error);
+        }
+
+        .resource-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        /* Recent Activity */
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .activity-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .activity-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .activity-meta {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .activity-status {
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .activity-status-success {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--accent-success);
+        }
+
+        .activity-status-progress {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--accent-primary);
+        }
+
+        .activity-status-error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-error);
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+        }
+
+        .quick-action {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .quick-action:hover {
+            border-color: var(--accent-primary);
+            box-shadow: var(--shadow-md), var(--shadow-glow);
+            transform: translateY(-2px);
+        }
+
+        .quick-action-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all var(--transition-base);
+        }
+
+        .quick-action:hover .quick-action-icon {
+            background: var(--accent-primary);
+            color: var(--text-inverse);
+        }
+
+        .quick-action-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .quick-action-hint {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: var(--radius-full);
+        }
+
+        .badge-primary { background: rgba(249, 115, 22, 0.15); color: var(--accent-primary); }
+        .badge-success { background: rgba(34, 197, 94, 0.15); color: var(--accent-success); }
+        .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--accent-warning); }
+        .badge-error { background: rgba(239, 68, 68, 0.15); color: var(--accent-error); }
+        .badge-info { background: rgba(59, 130, 246, 0.15); color: var(--accent-info); }
+
+        /* Input */
+        .input {
+            width: 100%;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all var(--transition-base);
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        }
+
+        .input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Select */
+        .select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right var(--space-sm) center;
+            padding-right: var(--space-xl);
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            bottom: var(--space-lg);
+            right: var(--space-lg);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+            z-index: var(--z-toast);
+        }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: var(--shadow-xl);
+            animation: toastIn var(--transition-base) cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .toast-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-sm);
+        }
+
+        .toast-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: var(--radius-sm);
+        }
+
+        .toast-title {
+            flex: 1;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .toast-close {
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: transparent;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .toast-body {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .app-container {
+                grid-template-columns: 240px 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                top: 0;
+                z-index: var(--z-modal);
+                transition: left var(--transition-base);
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .main-content {
+                padding: var(--space-md);
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-md);
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Design System Documentation */
+        .design-doc {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: var(--space-xl);
+        }
+
+        .design-section {
+            margin-bottom: var(--space-2xl);
+        }
+
+        .design-section-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: var(--space-md);
+            padding-bottom: var(--space-sm);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: var(--space-md);
+        }
+
+        .color-swatch {
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .color-preview {
+            height: 80px;
+        }
+
+        .color-info {
+            padding: var(--space-md);
+            background: var(--bg-secondary);
+        }
+
+        .color-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: var(--space-xs);
+        }
+
+        .color-value {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .typography-scale {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .typography-item {
+            display: flex;
+            align-items: baseline;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .typography-label {
+            min-width: 100px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-family: var(--font-mono);
+        }
+
+        .typography-text {
+            flex: 1;
+        }
+
+        .spacing-demo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            overflow-x: auto;
+        }
+
+        .spacing-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .component-demo {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-md);
+        }
+
+        .component-demo-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Main App Preview -->
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon">C</div>
+                <div class="sidebar-brand-text">ComfyUI</div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#home" class="nav-item active">
+                    <div class="nav-item-icon">⌂</div>
+                    <span class="nav-item-label">Home</span>
+                </a>
+                <a href="#generate" class="nav-item">
+                    <div class="nav-item-icon">⚡</div>
+                    <span class="nav-item-label">Generate</span>
+                </a>
+                <a href="#models" class="nav-item">
+                    <div class="nav-item-icon">◉</div>
+                    <span class="nav-item-label">Models</span>
+                    <span class="nav-item-badge">12</span>
+                </a>
+                <a href="#workflows" class="nav-item">
+                    <div class="nav-item-icon">◈</div>
+                    <span class="nav-item-label">Workflows</span>
+                </a>
+                <a href="#settings" class="nav-item">
+                    <div class="nav-item-icon">⚙</div>
+                    <span class="nav-item-label">Settings</span>
+                </a>
+                <a href="#pro" class="nav-item">
+                    <div class="nav-item-icon">⬡</div>
+                    <span class="nav-item-label">Pro Mode</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div>
+                    <h1 class="header-title">Welcome back</h1>
+                    <p class="header-subtitle">Your AI workspace is ready</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary">↻ Refresh</button>
+                    <button class="btn btn-primary">+ New Generation</button>
+                </div>
+            </header>
+
+            <!-- Quick Actions -->
+            <section class="section">
+                <h2 class="section-title" style="margin-bottom: var(--space-md);">Quick Actions</h2>
+                <div class="quick-actions">
+                    <div class="quick-action">
+                        <div class="quick-action-icon">▶</div>
+                        <div class="quick-action-label">Run Workflow</div>
+                        <div class="quick-action-hint">Execute saved workflow</div>
+                    </div>
+                    <div class="quick-action">
+                        <div class="quick-action-icon">↓</div>
+                        <div class="quick-action-label">Install Model</div>
+                        <div class="quick-action-hint">Browse & install presets</div>
+                    </div>
+                    <div class="quick-action">
+                        <div class="quick-action-icon">⚡</div>
+                        <div class="quick-action-label">Quick Generate</div>
+                        <div class="quick-action-hint">Fast image generation</div>
+                    </div>
+                    <div class="quick-action">
+                        <div class="quick-action-icon">◉</div>
+                        <div class="quick-action-label">Check Status</div>
+                        <div class="quick-action-hint">View system status</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon stat-icon-primary">◉</div>
+                        <span class="stat-trend stat-trend-up">↑ 12%</span>
+                    </div>
+                    <div class="stat-value">1,284</div>
+                    <div class="stat-label">Total Generations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon stat-icon-success">◌</div>
+                        <span class="stat-trend stat-trend-up">↑ 3</span>
+                    </div>
+                    <div class="stat-value">12</div>
+                    <div class="stat-label">Models Installed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon stat-icon-warning">◫</div>
+                        <span class="stat-trend stat-trend-down">↓ 8%</span>
+                    </div>
+                    <div class="stat-value">24.5 GB</div>
+                    <div class="stat-label">Storage Used</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon stat-icon-info">◐</div>
+                        <span class="stat-trend stat-trend-up">↑ 2</span>
+                    </div>
+                    <div class="stat-value">8</div>
+                    <div class="stat-label">Active Workflows</div>
+                </div>
+            </section>
+
+            <!-- System Resources -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">System Resources</h2>
+                </div>
+                <div class="resource-grid">
+                    <div class="resource-card">
+                        <div class="resource-header">
+                            <span class="resource-title">GPU Memory</span>
+                            <span style="color: var(--accent-success);">● Optimal</span>
+                        </div>
+                        <div class="resource-value">14.2 / 24 GB</div>
+                        <div class="resource-bar">
+                            <div class="resource-fill" style="width: 59%;"></div>
+                        </div>
+                        <div class="resource-label">59% utilized</div>
+                    </div>
+                    <div class="resource-card">
+                        <div class="resource-header">
+                            <span class="resource-title">System Memory</span>
+                            <span style="color: var(--accent-warning);">● Moderate</span>
+                        </div>
+                        <div class="resource-value">42.8 / 64 GB</div>
+                        <div class="resource-bar">
+                            <div class="resource-fill warning" style="width: 67%;"></div>
+                        </div>
+                        <div class="resource-label">67% utilized</div>
+                    </div>
+                    <div class="resource-card">
+                        <div class="resource-header">
+                            <span class="resource-title">Disk Space</span>
+                            <span style="color: var(--accent-success);">● Available</span>
+                        </div>
+                        <div class="resource-value">24.5 / 500 GB</div>
+                        <div class="resource-bar">
+                            <div class="resource-fill" style="width: 5%;"></div>
+                        </div>
+                        <div class="resource-label">5% utilized</div>
+                    </div>
+                    <div class="resource-card">
+                        <div class="resource-header">
+                            <span class="resource-title">GPU Temperature</span>
+                            <span style="color: var(--accent-success);">● Normal</span>
+                        </div>
+                        <div class="resource-value">68°C</div>
+                        <div class="resource-bar">
+                            <div class="resource-fill" style="width: 68%;"></div>
+                        </div>
+                        <div class="resource-label">Well within limits</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Model Presets -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Video Models</h2>
+                    <button class="btn btn-secondary btn-sm">View All →</button>
+                </div>
+                <div class="preset-grid">
+                    <div class="preset-card">
+                        <div class="preset-badge preset-badge-installed">Installed</div>
+                        <div class="preset-title">WAN 2.1 14B</div>
+                        <div class="preset-description">State-of-the-art text-to-video generation with 14B parameter model</div>
+                        <div class="preset-meta">
+                            <div class="preset-meta-item">◉ 14.5 GB</div>
+                            <div class="preset-meta-item">◈ Video</div>
+                            <div class="preset-meta-item">⚡ T2V</div>
+                        </div>
+                        <div class="preset-actions">
+                            <button class="btn btn-secondary btn-sm" style="flex: 1;">Details</button>
+                            <button class="btn btn-primary btn-sm" style="flex: 1;">Generate</button>
+                        </div>
+                    </div>
+                    <div class="preset-card">
+                        <div class="preset-badge preset-badge-available">Available</div>
+                        <div class="preset-title">LTX Video</div>
+                        <div class="preset-description">Lightning-fast text-to-video with real-time preview capabilities</div>
+                        <div class="preset-meta">
+                            <div class="preset-meta-item">◉ 2.1 GB</div>
+                            <div class="preset-meta-item">◈ Video</div>
+                            <div class="preset-meta-item">⚡ Fast</div>
+                        </div>
+                        <div class="preset-actions">
+                            <button class="btn btn-secondary btn-sm" style="flex: 1;">Details</button>
+                            <button class="btn btn-primary btn-sm" style="flex: 1;">Install</button>
+                        </div>
+                    </div>
+                    <div class="preset-card">
+                        <div class="preset-badge preset-badge-partial">Partial</div>
+                        <div class="preset-title">Hunyuan Video</div>
+                        <div class="preset-description">High-quality video generation with advanced motion control</div>
+                        <div class="preset-meta">
+                            <div class="preset-meta-item">◉ 8.2 GB</div>
+                            <div class="preset-meta-item">◈ Video</div>
+                            <div class="preset-meta-item">⚡ HQ</div>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" style="width: 67%;"></div>
+                        </div>
+                        <div class="progress-text">
+                            <span>Downloading checkpoint...</span>
+                            <span>67%</span>
+                        </div>
+                        <div class="preset-actions">
+                            <button class="btn btn-secondary btn-sm" style="flex: 1;">Pause</button>
+                            <button class="btn btn-ghost btn-sm" style="flex: 1;">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Activity -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Recent Activity</h2>
+                </div>
+                <div class="activity-list">
+                    <div class="activity-item">
+                        <div class="activity-icon" style="background: rgba(34, 197, 94, 0.15);">✓</div>
+                        <div class="activity-content">
+                            <div class="activity-title">Image generation completed</div>
+                            <div class="activity-meta">Txt2Img SDXL • 2 minutes ago</div>
+                        </div>
+                        <div class="activity-status activity-status-success">Complete</div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon" style="background: rgba(249, 115, 22, 0.15);">◫</div>
+                        <div class="activity-content">
+                            <div class="activity-title">Model download in progress</div>
+                            <div class="activity-meta">Hunyuan Video • ETA: 3m 24s</div>
+                        </div>
+                        <div class="activity-status activity-status-progress">67%</div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon" style="background: rgba(239, 68, 68, 0.15);">✕</div>
+                        <div class="activity-content">
+                            <div class="activity-title">Generation failed</div>
+                            <div class="activity-meta">Video WAN • Out of memory</div>
+                        </div>
+                        <div class="activity-status activity-status-error">Failed</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast Demo -->
+    <div class="toast-container">
+        <div class="toast">
+            <div class="toast-header">
+                <div class="toast-icon" style="background: rgba(34, 197, 94, 0.15); color: var(--accent-success);">✓</div>
+                <div class="toast-title">Model Installed</div>
+                <button class="toast-close">✕</button>
+            </div>
+            <div class="toast-body">
+                WAN 2.1 14B has been successfully installed and is ready to use.
+            </div>
+        </div>
+    </div>
+
+    <!-- Design System Documentation -->
+    <div class="design-doc">
+        <div class="design-section">
+            <h1 class="design-section-title">ComfyUI Unified Dashboard - Design System</h1>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="design-section">
+            <h2 class="design-section-title">Color Palette</h2>
+            <div class="color-grid">
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--bg-primary);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Background Primary</div>
+                        <div class="color-value">#0a0a0f</div>
+                    </div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--bg-secondary);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Background Secondary</div>
+                        <div class="color-value">#12121a</div>
+                    </div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--accent-primary);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Accent Primary</div>
+                        <div class="color-value">#f97316</div>
+                    </div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--accent-secondary);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Accent Secondary</div>
+                        <div class="color-value">#8b5cf6</div>
+                    </div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--accent-success);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Accent Success</div>
+                        <div class="color-value">#22c55e</div>
+                    </div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--accent-warning);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Accent Warning</div>
+                        <div class="color-value">#f59e0b</div>
+                    </div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--accent-error);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Accent Error</div>
+                        <div class="color-value">#ef4444</div>
+                    </div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--text-primary);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Text Primary</div>
+                        <div class="color-value">#f1f5f9</div>
+                    </div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--text-secondary);"></div>
+                    <div class="color-info">
+                        <div class="color-name">Text Secondary</div>
+                        <div class="color-value">#94a3b8</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Typography -->
+        <div class="design-section">
+            <h2 class="design-section-title">Typography Scale</h2>
+            <div class="typography-scale">
+                <div class="typography-item">
+                    <div class="typography-label">HEADING XL</div>
+                    <div class="typography-text" style="font-size: 32px; font-weight: 700; letter-spacing: -0.03em;">Welcome back</div>
+                </div>
+                <div class="typography-item">
+                    <div class="typography-label">HEADING LG</div>
+                    <div class="typography-text" style="font-size: 24px; font-weight: 700; letter-spacing: -0.02em;">System Resources</div>
+                </div>
+                <div class="typography-item">
+                    <div class="typography-label">HEADING MD</div>
+                    <div class="typography-text" style="font-size: 20px; font-weight: 600; letter-spacing: -0.02em;">Video Models</div>
+                </div>
+                <div class="typography-item">
+                    <div class="typography-label">HEADING SM</div>
+                    <div class="typography-text" style="font-size: 16px; font-weight: 600;">WAN 2.1 14B</div>
+                </div>
+                <div class="typography-item">
+                    <div class="typography-label">BODY</div>
+                    <div class="typography-text" style="font-size: 14px; font-weight: 400;">State-of-the-art text-to-video generation</div>
+                </div>
+                <div class="typography-item">
+                    <div class="typography-label">CAPTION</div>
+                    <div class="typography-text" style="font-size: 12px; font-weight: 400; color: var(--text-secondary);">2 minutes ago</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Spacing -->
+        <div class="design-section">
+            <h2 class="design-section-title">Spacing System</h2>
+            <div class="spacing-demo">
+                <div class="spacing-box" style="width: var(--space-xs); height: 40px;">4</div>
+                <div class="spacing-box" style="width: var(--space-sm); height: 40px;">8</div>
+                <div class="spacing-box" style="width: var(--space-md); height: 40px;">16</div>
+                <div class="spacing-box" style="width: var(--space-lg); height: 40px;">24</div>
+                <div class="spacing-box" style="width: var(--space-xl); height: 40px;">32</div>
+                <div class="spacing-box" style="width: var(--space-2xl); height: 40px;">48</div>
+            </div>
+        </div>
+
+        <!-- Components -->
+        <div class="design-section">
+            <h2 class="design-section-title">UI Components</h2>
+
+            <div class="component-demo">
+                <div class="component-demo-title">Buttons</div>
+                <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
+                    <button class="btn btn-primary">Primary Action</button>
+                    <button class="btn btn-secondary">Secondary Action</button>
+                    <button class="btn btn-ghost">Ghost Button</button>
+                    <button class="btn btn-primary btn-sm">Small</button>
+                    <button class="btn btn-primary btn-lg">Large</button>
+                </div>
+            </div>
+
+            <div class="component-demo">
+                <div class="component-demo-title">Badges</div>
+                <div style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+                    <span class="badge badge-primary">Primary</span>
+                    <span class="badge badge-success">Success</span>
+                    <span class="badge badge-warning">Warning</span>
+                    <span class="badge badge-error">Error</span>
+                    <span class="badge badge-info">Info</span>
+                </div>
+            </div>
+
+            <div class="component-demo">
+                <div class="component-demo-title">Progress Bars</div>
+                <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                    <div>
+                        <div class="progress" style="width: 300px;">
+                            <div class="progress-bar" style="width: 75%;"></div>
+                        </div>
+                        <div class="progress-text">
+                            <span>Processing...</span>
+                            <span>75%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="progress" style="width: 300px;">
+                            <div class="progress-bar" style="width: 45%;"></div>
+                        </div>
+                        <div class="progress-text">
+                            <span>Downloading model...</span>
+                            <span>45%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="component-demo">
+                <div class="component-demo-title">Form Elements</div>
+                <div style="display: flex; flex-direction: column; gap: var(--space-md); max-width: 400px;">
+                    <div>
+                        <label style="display: block; font-size: 14px; margin-bottom: var(--space-sm); color: var(--text-secondary);">Text Input</label>
+                        <input type="text" class="input" placeholder="Enter text prompt...">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 14px; margin-bottom: var(--space-sm); color: var(--text-secondary);">Select Dropdown</label>
+                        <select class="input select">
+                            <option>Select model...</option>
+                            <option>WAN 2.1 14B</option>
+                            <option>LTX Video</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interaction Patterns -->
+        <div class="design-section">
+            <h2 class="design-section-title">Interaction Patterns</h2>
+            <div style="color: var(--text-secondary); line-height: 1.8;">
+                <p><strong style="color: var(--text-primary);">Navigation:</strong> Single sidebar with 6 main sections. Active state highlighted with background color and border. Badges show counts/status.</p>
+                <p><strong style="color: var(--text-primary);">Hover Effects:</strong> Cards lift 2px on hover with shadow increase. Buttons have 1px lift. Quick action icons change color.</p>
+                <p><strong style="color: var(--text-primary);">Progressive Disclosure:</strong> Complex actions hidden behind "View All" links. Details in modal panels.</p>
+                <p><strong style="color: var(--text-primary);">Real-time Updates:</strong> Progress bars animate with shimmer effect. Resource bars update smoothly. Toast notifications appear bottom-right.</p>
+                <p><strong style="color: var(--text-primary);">Feedback:</strong> All actions have visual feedback. Success states green. Errors red with context. Warnings yellow.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,291 @@
+#!/usr/bin/env python3
+"""
+Health check script for ComfyUI-Docker Revolutionary
+Checks all services and reports status
+
+This script is used by the container's HEALTHCHECK directive
+and can also be run manually to diagnose issues.
+"""
+
+import os
+import sys
+import json
+import urllib.request
+import urllib.error
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+
+# Configuration
+WORKSPACE_ROOT = Path(os.getenv("WORKSPACE_ROOT", "/workspace"))
+DASHBOARD_PORT = int(os.getenv("DASHBOARD_PORT", "8080"))
+COMFYUI_PORT = int(os.getenv("COMFYUI_PORT", "3000"))
+
+# Health check endpoints
+ENDPOINTS = {
+    "dashboard": f"http://localhost:{DASHBOARD_PORT}/health",
+    "comfyui": f"http://localhost:{COMFYUI_PORT}/system_stats",
+}
+
+# Timeout for HTTP requests (seconds)
+REQUEST_TIMEOUT = 5
+
+
+class HealthCheckResult:
+    """Container for health check results."""
+
+    def __init__(self):
+        self.passed = True
+        self.checks = []
+        self.errors = []
+
+    def add_check(self, name: str, passed: bool, message: str = ""):
+        """Add a check result."""
+        self.checks.append({
+            "name": name,
+            "passed": passed,
+            "message": message
+        })
+        if not passed:
+            self.passed = False
+            self.errors.append(f"{name}: {message}")
+
+    def print_results(self):
+        """Print formatted results."""
+        for check in self.checks:
+            status = "✓" if check["passed"] else "✗"
+            message = f" - {check['message']}" if check["message"] else ""
+            print(f"  [{status}] {check['name']}{message}")
+
+        if self.passed:
+            print("\n[SUCCESS] All health checks passed")
+        else:
+            print("\n[FAILED] Some health checks failed:")
+            for error in self.errors:
+                print(f"  - {error}")
+
+
+def check_http_endpoint(name: str, url: str) -> Tuple[bool, str]:
+    """Check if an HTTP endpoint is accessible."""
+    try:
+        request = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
+            if response.status == 200:
+                return True, f"OK (status {response.status})"
+            else:
+                return False, f"Unexpected status: {response.status}"
+    except urllib.error.HTTPError as e:
+        return False, f"HTTP error: {e.code}"
+    except urllib.error.URLError as e:
+        return False, f"Connection error: {e.reason}"
+    except Exception as e:
+        return False, f"Error: {str(e)}"
+
+
+def check_workspace_mount() -> Tuple[bool, str]:
+    """Check if workspace is properly mounted."""
+    if not WORKSPACE_ROOT.exists():
+        return False, f"Workspace directory not found: {WORKSPACE_ROOT}"
+
+    if not os.access(WORKSPACE_ROOT, os.W_OK):
+        return False, f"No write access to: {WORKSPACE_ROOT}"
+
+    # Test write
+    test_file = WORKSPACE_ROOT / ".health_check_test"
+    try:
+        test_file.touch()
+        test_file.unlink()
+        return True, f"Workspace mounted and writable: {WORKSPACE_ROOT}"
+    except Exception as e:
+        return False, f"Write test failed: {str(e)}"
+
+
+def check_model_paths() -> Tuple[bool, str]:
+    """Check if model paths are properly configured."""
+    config_file = WORKSPACE_ROOT / "ComfyUI" / "models" / "extra_model_paths.yaml"
+
+    if not config_file.exists():
+        return False, f"Configuration not found: {config_file}"
+
+    # Check if models directory exists
+    models_dir = WORKSPACE_ROOT / "models"
+    if not models_dir.exists():
+        return False, f"Models directory not found: {models_dir}"
+
+    # Check critical model subdirectories
+    required_subdirs = ["checkpoints", "text_encoders", "vae"]
+    missing = []
+    for subdir in required_subdirs:
+        if not (models_dir / subdir).exists():
+            missing.append(subdir)
+
+    if missing:
+        return False, f"Missing model subdirectories: {', '.join(missing)}"
+
+    return True, f"Model paths configured correctly"
+
+
+def check_disk_space() -> Tuple[bool, str]:
+    """Check available disk space."""
+    try:
+        stat = os.statvfs(WORKSPACE_ROOT)
+        free_gb = (stat.f_bavail * stat.f_frsize) / (1024 ** 3)
+        total_gb = (stat.f_blocks * stat.f_frsize) / (1024 ** 3)
+        usage_percent = ((stat.f_blocks - stat.f_bavail) / stat.f_blocks) * 100
+
+        if free_gb < 1:
+            return False, f"Low disk space: {free_gb:.1f}GB free ({usage_percent:.1f}% used)"
+        elif usage_percent > 90:
+            return False, f"High disk usage: {usage_percent:.1f}% used ({free_gb:.1f}GB free)"
+        else:
+            return True, f"Disk space OK: {free_gb:.1f}GB free / {total_gb:.1f}GB total"
+    except Exception as e:
+        return False, f"Could not check disk space: {str(e)}"
+
+
+def check_log_directory() -> Tuple[bool, str]:
+    """Check if log directory exists and is writable."""
+    log_dir = WORKSPACE_ROOT / "logs"
+
+    if not log_dir.exists():
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            return True, f"Log directory created: {log_dir}"
+        except Exception as e:
+            return False, f"Could not create log directory: {str(e)}"
+
+    if not os.access(log_dir, os.W_OK):
+        return False, f"No write access to log directory: {log_dir}"
+
+    return True, f"Log directory accessible: {log_dir}"
+
+
+def check_preset_config() -> Tuple[bool, str]:
+    """Check if preset configuration is valid."""
+    preset_file = WORKSPACE_ROOT / "config" / "presets.yaml"
+
+    if not preset_file.exists():
+        return True, "No preset configuration (optional)"
+
+    try:
+        import yaml
+        with open(preset_file, 'r') as f:
+            config = yaml.safe_load(f)
+
+        # Validate basic structure
+        if 'presets' not in config:
+            return False, "Invalid preset configuration: missing 'presets' key"
+
+        preset_count = len(config['presets'])
+        return True, f"Preset configuration valid ({preset_count} presets)"
+    except ImportError:
+        return True, "YAML module not available (skipping preset check)"
+    except Exception as e:
+        return False, f"Preset configuration error: {str(e)}"
+
+
+def run_health_checks(verbose: bool = False) -> HealthCheckResult:
+    """Run all health checks and return results."""
+    result = HealthCheckResult()
+
+    print("Running health checks...\n")
+
+    # Check workspace mount
+    if verbose:
+        print("Checking workspace mount...")
+    passed, message = check_workspace_mount()
+    result.add_check("Workspace Mount", passed, message)
+    if verbose:
+        print(f"  {message}\n")
+
+    # Check model paths
+    if verbose:
+        print("Checking model paths...")
+    passed, message = check_model_paths()
+    result.add_check("Model Paths", passed, message)
+    if verbose:
+        print(f"  {message}\n")
+
+    # Check disk space
+    if verbose:
+        print("Checking disk space...")
+    passed, message = check_disk_space()
+    result.add_check("Disk Space", passed, message)
+    if verbose:
+        print(f"  {message}\n")
+
+    # Check log directory
+    if verbose:
+        print("Checking log directory...")
+    passed, message = check_log_directory()
+    result.add_check("Log Directory", passed, message)
+    if verbose:
+        print(f"  {message}\n")
+
+    # Check preset configuration
+    if verbose:
+        print("Checking preset configuration...")
+    passed, message = check_preset_config()
+    result.add_check("Preset Config", passed, message)
+    if verbose:
+        print(f"  {message}\n")
+
+    # Check dashboard service
+    if verbose:
+        print("Checking dashboard service...")
+    passed, message = check_http_endpoint("Dashboard", ENDPOINTS["dashboard"])
+    result.add_check("Dashboard", passed, message)
+    if verbose:
+        print(f"  {message}\n")
+
+    # Check ComfyUI service
+    if verbose:
+        print("Checking ComfyUI service...")
+    passed, message = check_http_endpoint("ComfyUI", ENDPOINTS["comfyui"])
+    result.add_check("ComfyUI", passed, message)
+    if verbose:
+        print(f"  {message}\n")
+
+    return result
+
+
+def main():
+    """Main execution function."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Health check for ComfyUI-Docker")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                       help="Enable verbose output")
+    parser.add_argument("-j", "--json", action="store_true",
+                       help="Output results as JSON")
+    parser.add_argument("--exit-code", action="store_true",
+                       help="Exit with error code if checks fail")
+
+    args = parser.parse_args()
+
+    # Run health checks
+    result = run_health_checks(verbose=args.verbose)
+
+    # Print results
+    if not args.json:
+        print("\nHealth Check Results:")
+        print("-" * 40)
+        result.print_results()
+    else:
+        # Output as JSON
+        output = {
+            "passed": result.passed,
+            "checks": result.checks,
+            "errors": result.errors
+        }
+        print(json.dumps(output, indent=2))
+
+    # Exit with appropriate code
+    if args.exit_code:
+        sys.exit(0 if result.passed else 1)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

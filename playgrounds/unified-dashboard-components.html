@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI Dashboard - Component Library</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        /* Base Styles - Same as design system */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --bg-elevated: #222230;
+            --bg-hover: #2a2a3a;
+            --bg-active: #323248;
+
+            --accent-primary: #f97316;
+            --accent-secondary: #8b5cf6;
+            --accent-success: #22c55e;
+            --accent-warning: #f59e0b;
+            --accent-error: #ef4444;
+            --accent-info: #3b82f6;
+
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --text-inverse: #0a0a0f;
+
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-medium: rgba(255, 255, 255, 0.1);
+            --border-strong: rgba(255, 255, 255, 0.15);
+
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --radius-full: 9999px;
+
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            --shadow-glow: 0 0 20px rgba(249, 115, 22, 0.15);
+
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: var(--space-xl);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: var(--space-lg);
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: var(--space-xl) 0 var(--space-md);
+            padding-bottom: var(--space-sm);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+            color: var(--text-secondary);
+        }
+
+        /* Component Showcase */
+        .component-showcase {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-md);
+        }
+
+        .component-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-md);
+            align-items: center;
+            padding: var(--space-lg);
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-md);
+        }
+
+        .component-code {
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            overflow-x: auto;
+        }
+
+        .component-code pre {
+            margin: 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Button Component */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            border: 1px solid transparent;
+            text-decoration: none;
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: var(--text-inverse);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .btn-primary:hover {
+            background: #ea580c;
+            box-shadow: var(--shadow-md), var(--shadow-glow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--border-medium);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-strong);
+        }
+
+        .btn-ghost {
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-lg {
+            padding: 12px 20px;
+            font-size: 15px;
+        }
+
+        /* Badge Component */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: var(--radius-full);
+        }
+
+        .badge-primary { background: rgba(249, 115, 22, 0.15); color: var(--accent-primary); }
+        .badge-success { background: rgba(34, 197, 94, 0.15); color: var(--accent-success); }
+        .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--accent-warning); }
+        .badge-error { background: rgba(239, 68, 68, 0.15); color: var(--accent-error); }
+        .badge-info { background: rgba(59, 130, 246, 0.15); color: var(--accent-info); }
+
+        /* Progress Bar Component */
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: var(--radius-full);
+            transition: width 300ms ease;
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Card Component */
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: all var(--transition-base);
+        }
+
+        .card:hover {
+            border-color: var(--border-medium);
+            box-shadow: var(--shadow-md);
+        }
+
+        .card-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .card-body {
+            padding: var(--space-lg);
+        }
+
+        /* Input Component */
+        .input {
+            width: 100%;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all var(--transition-base);
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        }
+
+        .input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Select Component */
+        .select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right var(--space-sm) center;
+            padding-right: var(--space-xl);
+        }
+
+        /* Modal Component */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 500;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-xl);
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: var(--shadow-xl);
+        }
+
+        /* Toast Component */
+        .toast-container {
+            position: fixed;
+            bottom: var(--space-lg);
+            right: var(--space-lg);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+            z-index: 600;
+        }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: var(--shadow-xl);
+        }
+
+        /* Dropdown Component */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: var(--space-sm);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            min-width: 200px;
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all var(--transition-base);
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        /* Tabs Component */
+        .tabs {
+            display: flex;
+            gap: var(--space-sm);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .tab {
+            padding: var(--space-sm) var(--space-md);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            border-bottom: 2px solid transparent;
+            transition: all var(--transition-base);
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+
+        /* Stat Card Component */
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            transition: all var(--transition-base);
+            min-width: 200px;
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-medium);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: var(--space-xs);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        /* Code Syntax Highlighting */
+        .token-tag { color: #f97316; }
+        .token-attr { color: #8b5cf6; }
+        .token-string { color: #22c55e; }
+        .token-comment { color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ComfyUI Dashboard - Component Library</h1>
+        <p style="color: var(--text-secondary); margin-bottom: var(--space-xl);">
+            Reusable UI components built with htmx + Alpine.js + Tailwind CSS
+        </p>
+
+        <!-- Buttons -->
+        <div class="component-showcase" x-data="{ copied: false }">
+            <h3>Buttons</h3>
+            <div class="component-preview">
+                <button class="btn btn-primary">Primary Action</button>
+                <button class="btn btn-secondary">Secondary Action</button>
+                <button class="btn btn-ghost">Ghost Button</button>
+                <button class="btn btn-primary btn-sm">Small</button>
+                <button class="btn btn-primary btn-lg">Large</button>
+            </div>
+            <div class="component-code">
+                <pre>&lt;<span class="token-tag">button</span> <span class="token-attr">class</span>=<span class="token-string">"btn btn-primary"</span>&gt;Primary Action&lt;/<span class="token-tag">button</span>&gt;
+&lt;<span class="token-tag">button</span> <span class="token-attr">class</span>=<span class="token-string">"btn btn-secondary"</span>&gt;Secondary Action&lt;/<span class="token-tag">button</span>&gt;
+&lt;<span class="token-tag">button</span> <span class="token-attr">class</span>=<span class="token-string">"btn btn-ghost"</span>&gt;Ghost Button&lt;/<span class="token-tag">button</span>&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Badges -->
+        <div class="component-showcase">
+            <h3>Badges</h3>
+            <div class="component-preview">
+                <span class="badge badge-primary">Primary</span>
+                <span class="badge badge-success">Success</span>
+                <span class="badge badge-warning">Warning</span>
+                <span class="badge badge-error">Error</span>
+                <span class="badge badge-info">Info</span>
+            </div>
+            <div class="component-code">
+                <pre>&lt;<span class="token-tag">span</span> <span class="token-attr">class</span>=<span class="token-string">"badge badge-success"</span>&gt;Success&lt;/<span class="token-tag">span</span>&gt;
+&lt;<span class="token-tag">span</span> <span class="token-attr">class</span>=<span class="token-string">"badge badge-warning"</span>&gt;Warning&lt;/<span class="token-tag">span</span>&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Progress Bars -->
+        <div class="component-showcase" x-data="progressDemo()">
+            <h3>Progress Bars</h3>
+            <div class="component-preview" style="flex-direction: column; align-items: stretch;">
+                <div>
+                    <div class="progress">
+                        <div class="progress-bar" :style="`width: ${progress1}%`"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: var(--space-sm); font-size: 12px; color: var(--text-tertiary);">
+                        <span>Downloading model...</span>
+                        <span x-text="`${progress1}%`"></span>
+                    </div>
+                </div>
+                <div>
+                    <div class="progress">
+                        <div class="progress-bar" :style="`width: ${progress2}%`"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: var(--space-sm); font-size: 12px; color: var(--text-tertiary);">
+                        <span>Processing...</span>
+                        <span x-text="`${progress2}%`"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="component-code">
+                <pre>&lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"progress"</span>&gt;
+  &lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"progress-bar"</span> <span class="token-attr">:style</span>=<span class="token-string">"`width: ${progress}%`"</span>&gt;&lt;/<span class="token-tag">div</span>&gt;
+&lt;/<span class="token-tag">div</span>&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Cards -->
+        <div class="component-showcase">
+            <h3>Cards</h3>
+            <div class="component-preview" style="flex-direction: column; align-items: stretch;">
+                <div class="card" style="width: 100%; max-width: 400px;">
+                    <div class="card-header">
+                        <div style="font-size: 16px; font-weight: 600;">WAN 2.1 14B</div>
+                        <div style="color: var(--text-secondary); font-size: 13px;">State-of-the-art text-to-video</div>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: flex; gap: var(--space-md); margin-bottom: var(--space-md); font-size: 12px; color: var(--text-tertiary);">
+                            <span>◉ 14.5 GB</span>
+                            <span>◈ Video</span>
+                            <span>⚡ T2V</span>
+                        </div>
+                        <div style="display: flex; gap: var(--space-sm);">
+                            <button class="btn btn-secondary" style="flex: 1;">Details</button>
+                            <button class="btn btn-primary" style="flex: 1;">Generate</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="component-code">
+                <pre>&lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"card"</span>&gt;
+  &lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"card-header"</span>&gt;...&lt;/<span class="token-tag">div</span>&gt;
+  &lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"card-body"</span>&gt;...&lt;/<span class="token-tag">div</span>&gt;
+&lt;/<span class="token-tag">div</span>&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Inputs -->
+        <div class="component-showcase">
+            <h3>Form Inputs</h3>
+            <div class="component-preview" style="flex-direction: column; align-items: stretch; max-width: 400px;">
+                <div>
+                    <label style="display: block; font-size: 14px; margin-bottom: var(--space-sm); color: var(--text-secondary);">Text Input</label>
+                    <input type="text" class="input" placeholder="Enter text prompt...">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 14px; margin-bottom: var(--space-sm); color: var(--text-secondary);">Select Dropdown</label>
+                    <select class="input select">
+                        <option>Select model...</option>
+                        <option>WAN 2.1 14B</option>
+                        <option>LTX Video</option>
+                    </select>
+                </div>
+            </div>
+            <div class="component-code">
+                <pre>&lt;<span class="token-tag">input</span> <span class="token-attr">type</span>=<span class="token-string">"text"</span> <span class="token-attr">class</span>=<span class="token-string">"input"</span> <span class="token-attr">placeholder</span>=<span class="token-string">"Enter text..."</span>&gt;
+&lt;<span class="token-tag">select</span> <span class="token-attr">class</span>=<span class="token-string">"input select"</span>&gt;...&lt;/<span class="token-tag">select</span>&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="component-showcase" x-data="{ activeTab: 'all' }">
+            <h3>Tabs</h3>
+            <div class="component-preview">
+                <div class="tabs">
+                    <button class="tab" :class="{ 'active': activeTab === 'all' }" @click="activeTab = 'all'">All</button>
+                    <button class="tab" :class="{ 'active': activeTab === 'video' }" @click="activeTab = 'video'">Video</button>
+                    <button class="tab" :class="{ 'active': activeTab === 'image' }" @click="activeTab = 'image'">Image</button>
+                    <button class="tab" :class="{ 'active': activeTab === 'audio' }" @click="activeTab = 'audio'">Audio</button>
+                </div>
+            </div>
+            <div class="component-code">
+                <pre>&lt;<span class="token-tag">div</span> <span class="token-attr">x-data</span>=<span class="token-string">"{ activeTab: 'all' }"</span>&gt;
+  &lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"tabs"</span>&gt;
+    &lt;<span class="token-tag">button</span> <span class="token-attr">class</span>=<span class="token-string">"tab"</span> <span class="token-attr">:class</span>=<span class="token-string">"{ 'active': activeTab === 'all' }"</span>
+            <span class="token-attr">@click</span>=<span class="token-string">"activeTab = 'all'"</span>&gt;All&lt;/<span class="token-tag">button</span>&gt;
+    ...
+  &lt;/<span class="token-tag">div</span>&gt;
+&lt;/<span class="token-tag">div</span>&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Dropdown -->
+        <div class="component-showcase" x-data="{ open: false }">
+            <h3>Dropdown</h3>
+            <div class="component-preview">
+                <div class="dropdown" style="position: relative;">
+                    <button class="btn btn-secondary" @click="open = !open">
+                        Options ▼
+                    </button>
+                    <div class="dropdown-menu" x-show="open" @click.away="open = false" style="display: none;">
+                        <a href="#" class="dropdown-item">◉ View Details</a>
+                        <a href="#" class="dropdown-item">⚙ Edit Settings</a>
+                        <a href="#" class="dropdown-item">⬇ Download</a>
+                        <a href="#" class="dropdown-item">✕ Delete</a>
+                    </div>
+                </div>
+            </div>
+            <div class="component-code">
+                <pre>&lt;<span class="token-tag">div</span> <span class="token-attr">x-data</span>=<span class="token-string">"{ open: false }"</span>&gt;
+  &lt;<span class="token-tag">button</span> <span class="token-attr">@click</span>=<span class="token-string">"open = !open"</span>&gt;Options&lt;/<span class="token-tag">button</span>&gt;
+  &lt;<span class="token-tag">div</span> <span class="token-attr">x-show</span>=<span class="token-string">"open"</span> <span class="token-attr">@click.away</span>=<span class="token-string">"open = false"</span>&gt;
+    &lt;<span class="token-tag">a</span> <span class="token-attr">class</span>=<span class="token-string">"dropdown-item"</span>&gt;...&lt;/<span class="token-tag">a</span>&gt;
+  &lt;/<span class="token-tag">div</span>&gt;
+&lt;/<span class="token-tag">div</span>&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="component-showcase" x-data="{ showModal: false }">
+            <h3>Modal</h3>
+            <div class="component-preview">
+                <button class="btn btn-primary" @click="showModal = true">Open Modal</button>
+            </div>
+            <div class="component-code">
+                <pre>&lt;<span class="token-tag">div</span> <span class="token-attr">x-data</span>=<span class="token-string">"{ showModal: false }"</span>&gt;
+  &lt;<span class="token-tag">button</span> <span class="token-attr">@click</span>=<span class="token-string">"showModal = true"</span>&gt;Open Modal&lt;/<span class="token-tag">button</span>&gt;
+
+  &lt;<span class="token-tag">div</span> <span class="token-attr">x-show</span>=<span class="token-string">"showModal"</span> <span class="token-attr">class</span>=<span class="token-string">"modal-backdrop"</span>&gt;
+    &lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"modal"</span>&gt;
+      &lt;<span class="token-tag">h3</span>&gt;Modal Title&lt;/<span class="token-tag">h3</span>&gt;
+      &lt;<span class="token-tag">p</span>&gt;Modal content...&lt;/<span class="token-tag">p</span>&gt;
+      &lt;<span class="token-tag">button</span> <span class="token-attr">@click</span>=<span class="token-string">"showModal = false"</span>&gt;Close&lt;/<span class="token-tag">button</span>&gt;
+    &lt;/<span class="token-tag">div</span>&gt;
+  &lt;/<span class="token-tag">div</span>&gt;
+&lt;/<span class="token-tag">div</span>&gt;</pre>
+            </div>
+
+            <!-- Actual Modal -->
+            <div class="modal-backdrop" x-show="showModal" style="display: none;" @click="showModal = false">
+                <div class="modal" @click.stop>
+                    <div style="padding: var(--space-lg); border-bottom: 1px solid var(--border-subtle);">
+                        <div style="font-size: 18px; font-weight: 600;">Modal Title</div>
+                    </div>
+                    <div style="padding: var(--space-lg);">
+                        <p style="color: var(--text-secondary); margin-bottom: var(--space-md);">
+                            This is a modal dialog. Click outside or press Escape to close.
+                        </p>
+                        <div style="display: flex; gap: var(--space-sm); justify-content: flex-end;">
+                            <button class="btn btn-secondary" @click="showModal = false">Cancel</button>
+                            <button class="btn btn-primary" @click="showModal = false">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="component-showcase" x-data="toastDemo()">
+            <h3>Toast Notifications</h3>
+            <div class="component-preview">
+                <button class="btn btn-primary" @click="showToast('success')">Show Success</button>
+                <button class="btn btn-secondary" @click="showToast('error')">Show Error</button>
+                <button class="btn btn-ghost" @click="showToast('info')">Show Info</button>
+            </div>
+            <div class="component-code">
+                <pre><span class="token-comment">// Alpine.js component</span>
+&lt;<span class="token-tag">div</span> <span class="token-attr">x-data</span>=<span class="token-string">"toastDemo()"</span>&gt;
+  &lt;<span class="token-tag">button</span> <span class="token-attr">@click</span>=<span class="token-string">"showToast('success')"</span>&gt;Show Success&lt;/<span class="token-tag">button</span>&gt;
+&lt;/<span class="token-tag">div</span>&gt;
+
+<span class="token-comment">// Toast container</span>
+&lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"toast-container"</span>&gt;
+  &lt;<span class="token-tag">template</span> <span class="token-attr">x-for</span>=<span class="token-string">"toast in toasts"</span> <span class="token-attr">:key</span>=<span class="token-string">"toast.id"</span>&gt;
+    &lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"toast"</span>&gt;...&lt;/<span class="token-tag">div</span>&gt;
+  &lt;/<span class="token-tag">template</span>&gt;
+&lt;/<span class="token-tag">div</span>&gt;</pre>
+            </div>
+
+            <!-- Toast Container -->
+            <div class="toast-container">
+                <template x-for="toast in toasts" :key="toast.id">
+                    <div class="toast" x-show="toast.show" x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 translate-y-2"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 translate-y-2"
+                         style="display: none;">
+                        <div style="display: flex; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                            <div style="width: 20px; height: 20px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;"
+                                 :style="`background: ${toast.color}20; color: ${toast.color}`" x-text="toast.icon"></div>
+                            <div style="flex: 1; font-weight: 600; font-size: 14px;" x-text="toast.title"></div>
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 13px;" x-text="toast.message"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Stat Cards -->
+        <div class="component-showcase">
+            <h3>Stat Cards</h3>
+            <div class="component-preview">
+                <div class="stat-card">
+                    <div class="stat-value">1,284</div>
+                    <div class="stat-label">Total Generations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">12</div>
+                    <div class="stat-label">Models Installed</div>
+                </div>
+            </div>
+            <div class="component-code">
+                <pre>&lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"stat-card"</span>&gt;
+  &lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"stat-value"</span>&gt;1,284&lt;/<span class="token-tag">div</span>&gt;
+  &lt;<span class="token-tag">div</span> <span class="token-attr">class</span>=<span class="token-string">"stat-label"</span>&gt;Total Generations&lt;/<span class="token-tag">div</span>&gt;
+&lt;/<span class="token-tag">div</span>&gt;</pre>
+            </div>
+        </div>
+
+        <!-- htmx Examples -->
+        <div class="component-showcase">
+            <h3>htmx Integration Examples</h3>
+            <div class="component-code">
+                <pre><span class="token-comment">// Load content dynamically</span>
+&lt;<span class="token-tag">div</span> <span class="token-attr">hx-get</span>=<span class="token-string">"/models"</span> <span class="token-attr">hx-trigger</span>=<span class="token-string">"load, every 5s"</span>&gt;
+  Loading models...
+&lt;/<span class="token-tag">div</span>&gt;
+
+<span class="token-comment">// Update on server-sent events</span>
+&lt;<span class="token-tag">div</span> <span class="token-attr">hx-ext</span>=<span class="token-string">"sse"</span> <span class="token-attr">sse-connect</span>=<span class="token-string">"/events/download"</span> <span class="token-attr">sse-swap</span>=<span class="token-string">"progress"</span>&gt;
+  &lt;<span class="token-tag">div</span> <span class="token-attr">id</span>=<span class="token-string">"progress-container"</span>&gt;&lt;/<span class="token-tag">div</span>&gt;
+&lt;/<span class="token-tag">div</span>&gt;
+
+<span class="token-comment">// Form submission without page reload</span>
+&lt;<span class="token-tag">form</span> <span class="token-attr">hx-post</span>=<span class="token-string">"/generate"</span> <span class="token-attr">hx-swap</span>=<span class="token-string">"none"</span>&gt;
+  &lt;<span class="token-tag">input</span> <span class="token-attr">name</span>=<span class="token-string">"prompt"</span> <span class="token-attr">type</span>=<span class="token-string">"text"</span>&gt;
+  &lt;<span class="token-tag">button</span> <span class="token-attr">type</span>=<span class="token-string">"submit"</span>&gt;Generate&lt;/<span class="token-tag">button</span>&gt;
+&lt;/<span class="token-tag">form</span>&gt;</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Progress demo with auto-update
+        function progressDemo() {
+            return {
+                progress1: 75,
+                progress2: 45,
+                init() {
+                    setInterval(() => {
+                        this.progress1 = Math.min(100, this.progress1 + Math.random() * 5);
+                        this.progress2 = Math.min(100, this.progress2 + Math.random() * 3);
+                    }, 1000);
+                }
+            }
+        }
+
+        // Toast demo
+        function toastDemo() {
+            return {
+                toasts: [],
+                showToast(type) {
+                    const config = {
+                        success: { icon: '✓', title: 'Success', message: 'Operation completed successfully', color: '#22c55e' },
+                        error: { icon: '✕', title: 'Error', message: 'Something went wrong', color: '#ef4444' },
+                        info: { icon: '◉', title: 'Info', message: 'Here is some information', color: '#3b82f6' }
+                    };
+
+                    const toast = {
+                        id: Date.now(),
+                        show: true,
+                        ...config[type]
+                    };
+
+                    this.toasts.push(toast);
+
+                    setTimeout(() => {
+                        toast.show = false;
+                        setTimeout(() => {
+                            this.toasts = this.toasts.filter(t => t.id !== toast.id);
+                        }, 200);
+                    }, 3000);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

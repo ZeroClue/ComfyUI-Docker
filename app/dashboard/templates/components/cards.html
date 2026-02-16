@@ -1,0 +1,156 @@
+<!-- Preset Card Component -->
+{% macro preset_card(preset, status='available', progress=0) %}
+<div class="preset-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover relative"
+     x-data="presetCard('{{ preset.id }}', '{{ status }}', {{ progress }})"
+     @download-progress.window="updateProgress($event.detail)">
+
+    <!-- Status Badge -->
+    <div class="preset-badge absolute top-3 right-3 text-xs font-semibold px-2.5 py-1 rounded-full"
+         :class="{
+             'bg-accent-success/15 text-accent-success': status === 'installed',
+             'bg-accent-info/15 text-accent-info': status === 'available',
+             'bg-accent-warning/15 text-accent-warning': status === 'partial',
+             'bg-accent-primary/15 text-accent-primary': status === 'downloading'
+         }"
+         x-text="statusText">
+    </div>
+
+    <!-- Title -->
+    <div class="preset-title text-base font-semibold mb-2 pr-14">
+        {{ preset.name }}
+    </div>
+
+    <!-- Description -->
+    <div class="preset-description text-text-secondary text-sm leading-relaxed mb-3 min-h-10">
+        {{ preset.description }}
+    </div>
+
+    <!-- Meta Info -->
+    <div class="preset-meta flex gap-4 mb-3 text-xs text-text-tertiary">
+        <div class="preset-meta-item flex items-center gap-1">
+            <span>◉</span> {{ preset.download_size }}
+        </div>
+        <div class="preset-meta-item flex items-center gap-1">
+            <span>◈</span> {{ preset.category }}
+        </div>
+        {% for tag in preset.tags[:2] %}
+        <div class="preset-meta-item flex items-center gap-1">
+            <span>⚡</span> {{ tag }}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Progress Bar (when downloading) -->
+    <div x-show="status === 'downloading'" class="mb-3" style="display: none;">
+        <div class="progress h-2 bg-bg-tertiary rounded-full overflow-hidden mb-2">
+            <div class="progress-bar-animated h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full transition-all duration-300"
+                 :style="`width: ${progress}%`"></div>
+        </div>
+        <div class="flex justify-between text-xs text-text-tertiary">
+            <span x-text="progressText"></span>
+            <span x-text="`${progress}%`"></span>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="preset-actions flex gap-2">
+        <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                hx-get="/models/{{ preset.id }}"
+                hx-target="#modal-container"
+                hx-swap="innerHTML">
+            Details
+        </button>
+        <button class="btn flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all"
+                :class="{
+                    'btn-primary': status === 'available',
+                    'btn-secondary': status === 'installed',
+                    'bg-bg-tertiary text-text-secondary': status === 'downloading'
+                }"
+                :disabled="status === 'downloading'"
+                @click="handleAction">
+            <span x-text="actionText"></span>
+        </button>
+    </div>
+</div>
+{% endmacro %}
+
+<!-- Stat Card Component -->
+{% macro stat_card(title, value, trend=None, icon='◉', icon_type='primary') %}
+<div class="stat-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover">
+    <div class="stat-header flex items-center justify-between mb-3">
+        <div class="stat-icon w-9 h-9 rounded-md flex items-center justify-center text-base"
+             :class="{
+                 'bg-accent-primary/15 text-accent-primary': '{{ icon_type }}' === 'primary',
+                 'bg-accent-success/15 text-accent-success': '{{ icon_type }}' === 'success',
+                 'bg-accent-warning/15 text-accent-warning': '{{ icon_type }}' === 'warning',
+                 'bg-accent-info/15 text-accent-info': '{{ icon_type }}' === 'info'
+             }">
+            {{ icon }}
+        </div>
+        {% if trend %}
+        <span class="stat-trend text-xs font-semibold px-2 py-0.5 rounded-full"
+              :class="{
+                  'text-accent-success bg-accent-success/10': '{{ trend.direction }}' === 'up',
+                  'text-accent-error bg-accent-error/10': '{{ trend.direction }}' === 'down'
+              }">
+            {{ trend.value }}
+        </span>
+        {% endif %}
+    </div>
+    <div class="stat-value text-2xl font-bold tracking-tight mb-1">
+        {{ value }}
+    </div>
+    <div class="stat-label text-text-secondary text-xs">
+        {{ title }}
+    </div>
+</div>
+{% endmacro %}
+
+<!-- Quick Action Card Component -->
+{% macro quick_action(icon, label, hint, href='#') %}
+<div class="quick-action bg-bg-secondary border border-border-subtle rounded-lg p-4 text-center cursor-pointer card-hover flex flex-col items-center gap-2"
+     hx-get="{{ href }}"
+     hx-push-url="true">
+    <div class="quick-action-icon w-12 h-12 bg-bg-tertiary rounded-lg flex items-center justify-center text-xl transition-all">
+        {{ icon }}
+    </div>
+    <div class="quick-action-label text-sm font-medium">
+        {{ label }}
+    </div>
+    <div class="quick-action-hint text-xs text-text-tertiary">
+        {{ hint }}
+    </div>
+</div>
+{% endmacro %}
+
+<!-- Resource Monitor Component -->
+{% macro resource_monitor(title, value, percentage, status='optimal', label='') %}
+<div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
+    <div class="resource-header flex items-center justify-between mb-3">
+        <span class="resource-title text-sm font-medium text-text-secondary">{{ title }}</span>
+        <span class="text-xs"
+              :class="{
+                  'text-accent-success': '{{ status }}' === 'optimal',
+                  'text-accent-warning': '{{ status }}' === 'moderate',
+                  'text-accent-error': '{{ status }}' === 'critical'
+              }">
+            ● {{ status|title }}
+        </span>
+    </div>
+    <div class="resource-value text-lg font-bold mb-2">
+        {{ value }}
+    </div>
+    <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
+        <div class="resource-fill h-full bg-gradient-to-r from-accent-success to-accent-warning rounded-full transition-all duration-200"
+             :class="{
+                 'from-accent-warning to-accent-error': {{ percentage }} > 70,
+                 'bg-accent-error': {{ percentage }} > 90
+             }"
+             :style="`width: {{ percentage }}%`">
+        </div>
+    </div>
+    <div class="resource-label text-xs text-text-tertiary">
+        {{ percentage }}% utilized {{ label }}
+    </div>
+</div>
+{% endmacro %}

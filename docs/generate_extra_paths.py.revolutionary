@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+"""
+Generate ComfyUI extra_model_paths.yaml at startup
+Points all model paths to /workspace/models on network volume
+
+This script runs during container startup to configure ComfyUI to use
+the network volume for persistent model storage, eliminating the need
+for rsync and enabling instant startup.
+"""
+
+import os
+import sys
+import yaml
+from pathlib import Path
+from typing import Dict
+
+# Configuration
+WORKSPACE_ROOT = Path(os.getenv("WORKSPACE_ROOT", "/workspace"))
+COMFYUI_ROOT = Path(os.getenv("COMFYUI_ROOT", "/app/comfyui/ComfyUI"))
+MODELS_ROOT = WORKSPACE_ROOT / "models"
+
+# Model path mappings following ComfyUI conventions
+MODEL_PATHS = {
+    # Core model types
+    "checkpoints": MODELS_ROOT / "checkpoints",
+    "loras": MODELS_ROOT / "loras",
+    "text_encoders": MODELS_ROOT / "text_encoders",
+    "vae": MODELS_ROOT / "vae",
+    "clip_vision": MODELS_ROOT / "clip_vision",
+    "upscale_models": MODELS_ROOT / "upscale_models",
+
+    # Additional model types
+    "embeddings": MODELS_ROOT / "embeddings",
+    "diffusion_models": MODELS_ROOT / "checkpoints",
+    "controlnet": MODELS_ROOT / "controlnet",
+    "ipadapter": MODELS_ROOT / "ipadapter",
+    "audio_encoders": MODELS_ROOT / "audio_encoders",
+
+    # Specialized model types
+    "animated_models": MODELS_ROOT / "animated_models",
+    "diffusers_models": MODELS_ROOT / "diffusers",
+    "xl_thumbnails": MODELS_ROOT / "thumbnails",
+    "sams": MODELS_ROOT / "sams",
+    "inpaint": MODELS_ROOT / "inpaint",
+    "prompt_generator": MODELS_ROOT / "prompt_generator",
+    "sd3_models": MODELS_ROOT / "sd3_models",
+    "gligen": MODELS_ROOT / "gligen",
+    "llava": MODELS_ROOT / "llava",
+    "dit_models": MODELS_ROOT / "dit_models",
+    "ultralytics_models": MODELS_ROOT / "ultralytics",
+    "blip_models": MODELS_ROOT / "blip",
+    "foocr_models": MODELS_ROOT / "foocr",
+    "cogvideo_models": MODELS_ROOT / "cogvideox",
+}
+
+
+def ensure_directories_exist() -> None:
+    """Create all required model directories on network volume."""
+    print("[INFO] Creating model directory structure...")
+
+    for model_type, path in MODEL_PATHS.items():
+        path.mkdir(parents=True, exist_ok=True)
+        print(f"  [CREATE] {path}")
+
+    # Create ComfyUI models directory
+    (COMFYUI_ROOT / "models").mkdir(parents=True, exist_ok=True)
+
+    print(f"[INFO] Created {len(MODEL_PATHS)} model directories")
+
+
+def generate_yaml_config() -> Dict:
+    """Generate the extra_model_paths.yaml configuration structure."""
+    config = {
+        "ComfyUI": {
+            "base_path": str(COMFYUI_ROOT),
+            "model_paths": {},
+        }
+    }
+
+    # Add all model paths as strings
+    for model_type, path in MODEL_PATHS.items():
+        config["ComfyUI"]["model_paths"][model_type] = str(path)
+
+    return config
+
+
+def write_yaml_config(config: Dict, output_path: Path) -> None:
+    """Write configuration to YAML file."""
+    print(f"[INFO] Writing extra_model_paths.yaml to {output_path}")
+
+    with open(output_path, 'w') as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+    print(f"[SUCCESS] Configuration written successfully")
+
+
+def validate_configuration(output_path: Path) -> bool:
+    """Validate the generated configuration."""
+    print("[INFO] Validating configuration...")
+
+    if not output_path.exists():
+        print(f"[ERROR] Configuration file not found: {output_path}")
+        return False
+
+    # Try to load and parse the YAML
+    try:
+        with open(output_path, 'r') as f:
+            config = yaml.safe_load(f)
+
+        # Validate structure
+        if "ComfyUI" not in config:
+            print("[ERROR] Missing 'ComfyUI' key in configuration")
+            return False
+
+        if "model_paths" not in config["ComfyUI"]:
+            print("[ERROR] Missing 'model_paths' key in ComfyUI configuration")
+            return False
+
+        # Check that all model paths exist
+        model_paths = config["ComfyUI"]["model_paths"]
+        missing_paths = []
+
+        for model_type, path in model_paths.items():
+            if not Path(path).exists():
+                missing_paths.append(f"{model_type}: {path}")
+
+        if missing_paths:
+            print("[WARN] Some model paths don't exist yet (will be created on demand):")
+            for missing in missing_paths:
+                print(f"  - {missing}")
+
+        print("[SUCCESS] Configuration validation passed")
+        return True
+
+    except yaml.YAMLError as e:
+        print(f"[ERROR] YAML parsing error: {e}")
+        return False
+    except Exception as e:
+        print(f"[ERROR] Validation error: {e}")
+        return False
+
+
+def create_symlinks_for_legacy_support() -> None:
+    """
+    Create symlinks from ComfyUI's local models directory to network volume.
+    This provides backward compatibility for nodes that hardcode paths.
+    """
+    print("[INFO] Creating legacy compatibility symlinks...")
+
+    local_models_dir = COMFYUI_ROOT / "models"
+
+    for model_type, network_path in MODEL_PATHS.items():
+        local_path = local_models_dir / model_type
+
+        # Remove existing directory/file if it exists
+        if local_path.exists():
+            if local_path.is_symlink():
+                local_path.unlink()
+            elif local_path.is_dir():
+                # If it's a directory with content, move it to network volume first
+                import shutil
+                if any(local_path.iterdir()):
+                    print(f"[INFO] Migrating existing content from {local_path} to {network_path}")
+                    network_path.mkdir(parents=True, exist_ok=True)
+                    for item in local_path.iterdir():
+                        shutil.move(str(item), str(network_path / item.name))
+                shutil.rmtree(local_path)
+
+        # Create symlink
+        local_path.symlink_to(network_path)
+        print(f"  [SYMLINK] {local_path} -> {network_path}")
+
+    print("[SUCCESS] Legacy symlinks created")
+
+
+def generate_preset_directories() -> None:
+    """
+    Create preset-specific directories based on presets.yaml configuration.
+    This ensures all required directories exist before preset installation.
+    """
+    presets_config_path = WORKSPACE_ROOT / "config" / "presets.yaml"
+
+    if not presets_config_path.exists():
+        print("[INFO] No presets.yaml found, skipping preset directory creation")
+        return
+
+    print("[INFO] Creating preset-specific directories...")
+
+    try:
+        with open(presets_config_path, 'r') as f:
+            presets_config = yaml.safe_load(f)
+
+        presets = presets_config.get('presets', {})
+        created_dirs = set()
+
+        for preset_id, preset_data in presets.items():
+            for file_info in preset_data.get('files', []):
+                if isinstance(file_info, dict):
+                    file_path = file_info.get('path', '')
+                else:
+                    file_path = file_info
+
+                if file_path:
+                    full_path = MODELS_ROOT / file_path
+                    parent_dir = full_path.parent
+
+                    if parent_dir not in created_dirs:
+                        parent_dir.mkdir(parents=True, exist_ok=True)
+                        created_dirs.add(parent_dir)
+                        print(f"  [CREATE] {parent_dir}")
+
+        print(f"[SUCCESS] Created {len(created_dirs)} preset directories")
+
+    except Exception as e:
+        print(f"[WARN] Could not create preset directories: {e}")
+
+
+def main() -> int:
+    """Main execution function."""
+    print("=" * 60)
+    print("ComfyUI-Docker: extra_model_paths.yaml Generator")
+    print("=" * 60)
+
+    # Ensure directories exist
+    ensure_directories_exist()
+
+    # Generate YAML configuration
+    config = generate_yaml_config()
+
+    # Write configuration
+    output_path = COMFYUI_ROOT / "models" / "extra_model_paths.yaml"
+    write_yaml_config(config, output_path)
+
+    # Validate configuration
+    if not validate_configuration(output_path):
+        return 1
+
+    # Create legacy symlinks
+    create_symlinks_for_legacy_support()
+
+    # Create preset directories
+    generate_preset_directories()
+
+    print("=" * 60)
+    print("[SUCCESS] extra_model_paths.yaml generation complete")
+    print("=" * 60)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

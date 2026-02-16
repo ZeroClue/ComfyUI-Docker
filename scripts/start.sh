@@ -425,13 +425,15 @@ start_unified_dashboard() {
     cd /app/dashboard
     # Add /scripts to PYTHONPATH for generate_download_scripts import
     export PYTHONPATH="/scripts:/app:$PYTHONPATH"
-    nohup /venv/bin/python3 app.py &> /workspace/logs/unified_dashboard.log &
+    # Run as module to handle relative imports
+    cd /app/dashboard
+    nohup /venv/bin/python3 -m main &> /workspace/logs/unified_dashboard.log &
     local pid=$!
     echo "Unified Dashboard started with PID $pid on port ${DASHBOARD_PORT}"
 
     # Verify process started successfully
     sleep 2
-    if ! pgrep -f "python3 app.py" > /dev/null; then
+    if ! pgrep -f "python.*-m.*main" > /dev/null; then
         echo "WARNING: Unified Dashboard process not running after startup"
         echo "Check logs at /workspace/logs/unified_dashboard.log"
         return 1

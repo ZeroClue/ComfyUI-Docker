@@ -1,0 +1,523 @@
+{% extends "base.html" %}
+
+{% block title %}Generate - ComfyUI Dashboard{% endblock %}
+
+{% block page_breadcrumb %}
+<span class="text-text-primary font-medium">Generate</span>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 lg:p-8" x-data="generatePage()" x-init="initGeneratePage()">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Panel: Input -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Page Header -->
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight mb-1">Generate</h1>
+                    <p class="text-text-secondary text-sm">Create AI-generated content</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                            @click="resetForm">
+                        Reset
+                    </button>
+                    <button class="btn btn-primary py-2 px-4 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all"
+                            :disabled="isGenerating"
+                            @click="startGeneration">
+                        <span x-show="!isGenerating">⚡ Generate</span>
+                        <span x-show="isGenerating" class="flex items-center gap-2">
+                            <span class="spinner"></span>
+                            Generating...
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Model Selection -->
+            <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                <label class="block text-sm font-medium text-text-secondary mb-3">Model</label>
+                <select x-model="selectedModel"
+                        class="w-full px-4 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all appearance-none cursor-pointer">
+                    <option value="">Select a model...</option>
+                    <template x-for="model in installedModels" :key="model.id">
+                        <option :value="model.id" x-text="model.name"></option>
+                    </template>
+                </select>
+                <p class="text-xs text-text-tertiary mt-2" x-show="selectedModel">
+                    <span class="text-accent-primary">◉</span>
+                    <span x-text="getModelInfo(selectedModel)?.description"></span>
+                </p>
+            </div>
+
+            <!-- Mode Selection -->
+            <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                <label class="block text-sm font-medium text-text-secondary mb-3">Generation Mode</label>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button v-for="mode in generationModes"
+                            :key="mode.id"
+                            class="py-3 px-4 rounded-md text-sm font-medium border transition-all"
+                            :class="selectedMode === mode.id ? 'bg-accent-primary/15 border-accent-primary text-accent-primary' : 'bg-bg-tertiary border-border-subtle text-text-secondary hover:border-border-medium'"
+                            @click="selectedMode = mode.id">
+                        <div class="text-lg mb-1" x-text="mode.icon"></div>
+                        <div x-text="mode.name"></div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Prompt Input -->
+            <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                <label class="block text-sm font-medium text-text-secondary mb-3">
+                    Prompt
+                    <span class="text-text-tertiary font-normal">(required)</span>
+                </label>
+                <textarea x-model="prompt"
+                          rows="6"
+                          placeholder="Describe what you want to generate..."
+                          class="w-full px-4 py-3 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all resize-none"></textarea>
+                <div class="flex items-center justify-between mt-3">
+                    <div class="flex items-center gap-2">
+                        <button class="text-xs text-text-secondary hover:text-text-primary transition-colors"
+                                @click="enhancePrompt">
+                            ✨ Enhance Prompt
+                        </button>
+                        <button class="text-xs text-text-secondary hover:text-text-primary transition-colors"
+                                @click="loadTemplate">
+                            ◈ Load Template
+                        </button>
+                    </div>
+                    <div class="text-xs text-text-tertiary">
+                        <span x-text="prompt.length"></span> / 2000
+                    </div>
+                </div>
+            </div>
+
+            <!-- Negative Prompt -->
+            <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                <label class="block text-sm font-medium text-text-secondary mb-3">
+                    Negative Prompt
+                    <span class="text-text-tertiary font-normal">(optional)</span>
+                </label>
+                <textarea x-model="negativePrompt"
+                          rows="3"
+                          placeholder="Describe what to avoid in the generation..."
+                          class="w-full px-4 py-3 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all resize-none"></textarea>
+            </div>
+
+            <!-- Image Upload (for I2V mode) -->
+            <div x-show="selectedMode === 'i2v'" class="bg-bg-secondary border border-border-subtle rounded-lg p-4" style="display: none;">
+                <label class="block text-sm font-medium text-text-secondary mb-3">
+                    Input Image
+                    <span class="text-text-tertiary font-normal">(required for I2V)</span>
+                </label>
+                <div class="border-2 border-dashed border-border-subtle rounded-lg p-8 text-center hover:border-border-medium transition-colors cursor-pointer"
+                     @click="$refs.imageInput.click()">
+                    <input type="file" x-ref="imageInput" class="hidden" accept="image/*" @change="handleImageUpload">
+                    <div class="text-4xl mb-3">◉</div>
+                    <div class="text-sm font-medium text-text-secondary mb-1">Drop image here or click to upload</div>
+                    <div class="text-xs text-text-tertiary">PNG, JPG up to 10MB</div>
+                </div>
+                <div x-show="uploadedImage" class="mt-4 relative" style="display: none;">
+                    <img :src="uploadedImage" class="w-full rounded-lg">
+                    <button class="absolute top-2 right-2 w-8 h-8 bg-bg-tertiary rounded-md flex items-center justify-center hover:bg-bg-hover transition-colors"
+                            @click="uploadedImage = null">
+                        ✕
+                    </button>
+                </div>
+            </div>
+
+            <!-- Advanced Settings -->
+            <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                <button class="flex items-center justify-between w-full text-left"
+                        @click="showAdvanced = !showAdvanced">
+                    <span class="text-sm font-medium text-text-secondary">Advanced Settings</span>
+                    <span class="text-text-tertiary transition-transform" :class="{ 'rotate-180': showAdvanced }">▼</span>
+                </button>
+                <div x-show="showAdvanced" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4" style="display: none;">
+                    <!-- Width -->
+                    <div>
+                        <label class="block text-xs text-text-tertiary mb-1">Width</label>
+                        <input type="number" x-model="settings.width" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all">
+                    </div>
+                    <!-- Height -->
+                    <div>
+                        <label class="block text-xs text-text-tertiary mb-1">Height</label>
+                        <input type="number" x-model="settings.height" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all">
+                    </div>
+                    <!-- Steps -->
+                    <div>
+                        <label class="block text-xs text-text-tertiary mb-1">Inference Steps</label>
+                        <input type="range" x-model="settings.steps" min="1" max="100" class="w-full">
+                        <div class="flex justify-between text-xs text-text-tertiary">
+                            <span>1</span>
+                            <span x-text="settings.steps"></span>
+                            <span>100</span>
+                        </div>
+                    </div>
+                    <!-- CFG Scale -->
+                    <div>
+                        <label class="block text-xs text-text-tertiary mb-1">CFG Scale</label>
+                        <input type="range" x-model="settings.cfg" min="1" max="20" step="0.5" class="w-full">
+                        <div class="flex justify-between text-xs text-text-tertiary">
+                            <span>1</span>
+                            <span x-text="settings.cfg"></span>
+                            <span>20</span>
+                        </div>
+                    </div>
+                    <!-- Seed -->
+                    <div>
+                        <label class="block text-xs text-text-tertiary mb-1">Seed</label>
+                        <div class="flex gap-2">
+                            <input type="number" x-model="settings.seed" class="flex-1 px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all">
+                            <button class="px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-secondary hover:bg-bg-hover transition-colors"
+                                    @click="settings.seed = Math.floor(Math.random() * 2147483647)">
+                                🎲
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Batch Size -->
+                    <div>
+                        <label class="block text-xs text-text-tertiary mb-1">Batch Size</label>
+                        <input type="number" x-model="settings.batch" min="1" max="10" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Output & Queue -->
+        <div class="space-y-6">
+            <!-- Current Generation -->
+            <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                <h3 class="text-sm font-semibold text-text-secondary mb-4">Current Generation</h3>
+
+                <!-- Placeholder -->
+                <div x-show="!currentOutput" class="aspect-square bg-bg-tertiary rounded-lg flex items-center justify-center" style="display: none;">
+                    <div class="text-center">
+                        <div class="text-4xl mb-3 text-text-tertiary">◉</div>
+                        <div class="text-sm text-text-tertiary">Output will appear here</div>
+                    </div>
+                </div>
+
+                <!-- Output Display -->
+                <div x-show="currentOutput" class="aspect-square bg-bg-tertiary rounded-lg overflow-hidden" style="display: none;">
+                    <img :src="currentOutput" class="w-full h-full object-cover">
+                    <div x-show="isGenerating" class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="spinner mb-3" style="width: 40px; height: 40px;"></div>
+                            <div class="text-sm font-medium" x-text="generationStatus"></div>
+                            <div class="text-xs text-text-tertiary mt-1" x-text="`${generationProgress}%`"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div x-show="currentOutput && !isGenerating" class="flex gap-2 mt-3" style="display: none;">
+                    <button class="flex-1 btn btn-secondary py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                            @click="downloadOutput">
+                        ↓ Download
+                    </button>
+                    <button class="flex-1 btn btn-secondary py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                            @click="useAsInput">
+                        ↻ Use as Input
+                    </button>
+                </div>
+            </div>
+
+            <!-- Queue -->
+            <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-text-secondary">Queue</h3>
+                    <span class="text-xs text-text-tertiary" x-text="`${queue.length} items`"></span>
+                </div>
+
+                <div class="space-y-2 max-h-64 overflow-y-auto">
+                    <template x-for="item in queue" :key="item.id">
+                        <div class="flex items-center gap-3 p-2 bg-bg-tertiary rounded-md">
+                            <div class="w-12 h-12 bg-bg-hover rounded flex items-center justify-center flex-shrink-0">
+                                <span class="text-xs text-text-tertiary" x-text="item.model.substring(0, 4)"></span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium truncate" x-text="item.prompt.substring(0, 30) + '...'"></div>
+                                <div class="text-xs text-text-tertiary" x-text="item.model"></div>
+                            </div>
+                            <div class="text-xs text-text-tertiary" x-show="item.status === 'pending'">Pending</div>
+                            <div class="text-xs text-accent-primary" x-show="item.status === 'processing'">Processing</div>
+                        </div>
+                    </template>
+
+                    <div x-show="queue.length === 0" class="text-center py-8 text-text-tertiary text-sm" style="display: none;">
+                        Queue is empty
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Generations -->
+            <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-text-secondary">Recent</h3>
+                    <a href="/gallery" class="text-xs text-accent-primary hover:text-accent-secondary transition-colors">
+                        View All
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <template x-for="gen in recentGenerations.slice(0, 6)" :key="gen.id">
+                        <div class="aspect-square bg-bg-tertiary rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-accent-primary transition-all"
+                             @click="currentOutput = gen.output">
+                            <img :src="gen.thumbnail" class="w-full h-full object-cover">
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function generatePage() {
+    return {
+        // Form state
+        selectedModel: '',
+        selectedMode: 't2v',
+        prompt: '',
+        negativePrompt: '',
+        uploadedImage: null,
+
+        // Settings
+        showAdvanced: false,
+        settings: {
+            width: 1024,
+            height: 1024,
+            steps: 30,
+            cfg: 7.5,
+            seed: -1,
+            batch: 1
+        },
+
+        // State
+        isGenerating: false,
+        currentOutput: null,
+        generationProgress: 0,
+        generationStatus: '',
+
+        // Queue
+        queue: [],
+
+        // Data
+        installedModels: [],
+        recentGenerations: [],
+        generationModes: [
+            { id: 't2v', name: 'Text to Video', icon: '⚡' },
+            { id: 'i2v', name: 'Image to Video', icon: '◉' },
+            { id: 't2i', name: 'Text to Image', icon: '◈' },
+            { id: 'i2i', name: 'Image to Image', icon: '◫' }
+        ],
+
+        async initGeneratePage() {
+            await this.loadInstalledModels();
+            await this.loadRecentGenerations();
+
+            // Check URL params for pre-selected model
+            const urlParams = new URLSearchParams(window.location.search);
+            const modelParam = urlParams.get('model');
+            if (modelParam) {
+                this.selectedModel = modelParam;
+            }
+
+            // Listen for generation progress
+            window.addEventListener('generation-progress', (e) => {
+                this.generationProgress = e.detail.progress;
+                this.generationStatus = e.detail.status;
+            });
+
+            window.addEventListener('generation-complete', (e) => {
+                this.isGenerating = false;
+                this.currentOutput = e.detail.output;
+                this.addToRecent(e.detail);
+                window.showToast('success', 'Generation Complete', 'Your content is ready!');
+            });
+        },
+
+        async loadInstalledModels() {
+            try {
+                const response = await fetch('/api/models?status=installed');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.installedModels = data.models || [];
+                }
+            } catch (error) {
+                console.error('Failed to load models:', error);
+                // Use mock data
+                this.installedModels = [
+                    { id: 'wan_21_14b', name: 'WAN 2.1 14B', description: 'State-of-the-art text-to-video' },
+                    { id: 'ltx_video', name: 'LTX Video', description: 'Fast and efficient video generation' },
+                    { id: 'flux_schnell', name: 'FLUX Schnell', description: 'High-quality image generation' }
+                ];
+            }
+        },
+
+        async loadRecentGenerations() {
+            try {
+                const response = await fetch('/api/gallery/recent');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.recentGenerations = data.generations || [];
+                }
+            } catch (error) {
+                console.error('Failed to load recent:', error);
+            }
+        },
+
+        getModelInfo(modelId) {
+            return this.installedModels.find(m => m.id === modelId);
+        },
+
+        async startGeneration() {
+            if (!this.selectedModel) {
+                window.showToast('error', 'No Model Selected', 'Please select a model first');
+                return;
+            }
+
+            if (!this.prompt.trim()) {
+                window.showToast('error', 'Empty Prompt', 'Please enter a prompt');
+                return;
+            }
+
+            this.isGenerating = true;
+            this.generationProgress = 0;
+            this.generationStatus = 'Initializing...';
+
+            try {
+                const payload = {
+                    model: this.selectedModel,
+                    mode: this.selectedMode,
+                    prompt: this.prompt,
+                    negative_prompt: this.negativePrompt,
+                    settings: this.settings
+                };
+
+                if (this.uploadedImage) {
+                    payload.input_image = this.uploadedImage;
+                }
+
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Generation failed');
+                }
+
+                const result = await response.json();
+
+                // Add to queue if batch > 1
+                if (this.settings.batch > 1) {
+                    for (let i = 1; i < this.settings.batch; i++) {
+                        this.queue.push({
+                            id: Date.now() + i,
+                            model: this.getModelInfo(this.selectedModel)?.name,
+                            prompt: this.prompt,
+                            status: 'pending'
+                        });
+                    }
+                }
+
+            } catch (error) {
+                console.error('Generation error:', error);
+                this.isGenerating = false;
+                window.showToast('error', 'Generation Failed', error.message);
+            }
+        },
+
+        resetForm() {
+            this.prompt = '';
+            this.negativePrompt = '';
+            this.uploadedImage = null;
+            this.settings = {
+                width: 1024,
+                height: 1024,
+                steps: 30,
+                cfg: 7.5,
+                seed: -1,
+                batch: 1
+            };
+        },
+
+        enhancePrompt() {
+            // Simulate prompt enhancement
+            const enhancements = [
+                'highly detailed',
+                'professional quality',
+                'cinematic lighting',
+                'sharp focus',
+                'trending on artstation'
+            ];
+
+            const currentPrompt = this.prompt.trim();
+            if (currentPrompt) {
+                this.prompt = `${currentPrompt}, ${enhancements.slice(0, 3).join(', ')}`;
+                window.showToast('info', 'Prompt Enhanced', 'Added detail enhancements');
+            }
+        },
+
+        loadTemplate() {
+            const templates = {
+                't2v': 'A cinematic drone shot of a misty mountain landscape at sunrise, golden hour lighting, 4K quality',
+                'i2v': 'Transform the image with gentle motion and parallax effect',
+                't2i': 'A futuristic cityscape at night, neon lights, cyberpunk aesthetic, highly detailed',
+                'i2i': 'Apply artistic style transfer, impressionist painting style'
+            };
+
+            if (templates[this.selectedMode]) {
+                this.prompt = templates[this.selectedMode];
+            }
+        },
+
+        handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.uploadedImage = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        },
+
+        downloadOutput() {
+            if (this.currentOutput) {
+                const link = document.createElement('a');
+                link.href = this.currentOutput;
+                link.download = `comfyui-${Date.now()}.png`;
+                link.click();
+            }
+        },
+
+        useAsInput() {
+            if (this.currentOutput) {
+                this.uploadedImage = this.currentOutput;
+                this.selectedMode = 'i2i';
+                window.showToast('info', 'Image Loaded', 'Output loaded as input for I2I mode');
+            }
+        },
+
+        addToRecent(generation) {
+            this.recentGenerations.unshift({
+                id: generation.id,
+                thumbnail: generation.output,
+                output: generation.output
+            });
+
+            // Keep only last 20
+            if (this.recentGenerations.length > 20) {
+                this.recentGenerations = this.recentGenerations.slice(0, 20);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

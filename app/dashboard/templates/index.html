@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}Home - ComfyUI Dashboard{% endblock %}
+
+{% block page_breadcrumb %}
+<span class="text-text-primary font-medium">Dashboard</span>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 lg:p-8" x-data="homeDashboard()" x-init="initHomeDashboard()">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold tracking-tight mb-2">Welcome back</h1>
+        <p class="text-text-secondary text-sm">Your AI workspace is ready</p>
+    </div>
+
+    <!-- Quick Actions -->
+    <section class="mb-8">
+        <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {% from 'components/cards.html' import quick_action %}
+            {{ quick_action('▶', 'Run Workflow', 'Execute saved workflow', '/workflows') }}
+            {{ quick_action('↓', 'Install Model', 'Browse & install presets', '/models') }}
+            {{ quick_action('⚡', 'Quick Generate', 'Fast image generation', '/generate?mode=quick') }}
+            {{ quick_action('◉', 'Check Status', 'View system status', '/settings?tab=system') }}
+        </div>
+    </section>
+
+    <!-- Stats Grid -->
+    <section class="mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total Generations -->
+            <div class="stat-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover">
+                <div class="stat-header flex items-center justify-between mb-3">
+                    <div class="stat-icon w-9 h-9 rounded-md flex items-center justify-center text-base bg-accent-primary/15 text-accent-primary">◉</div>
+                    <span class="stat-trend text-xs font-semibold px-2 py-0.5 rounded-full text-accent-success bg-accent-success/10">↑ 12%</span>
+                </div>
+                <div class="stat-value text-2xl font-bold tracking-tight mb-1" x-text="stats.totalGenerations">1,284</div>
+                <div class="stat-label text-text-secondary text-xs">Total Generations</div>
+            </div>
+
+            <!-- Models Installed -->
+            <div class="stat-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover">
+                <div class="stat-header flex items-center justify-between mb-3">
+                    <div class="stat-icon w-9 h-9 rounded-md flex items-center justify-center text-base bg-accent-success/15 text-accent-success">◌</div>
+                    <span class="stat-trend text-xs font-semibold px-2 py-0.5 rounded-full text-accent-success bg-accent-success/10">↑ 3</span>
+                </div>
+                <div class="stat-value text-2xl font-bold tracking-tight mb-1" x-text="stats.modelsInstalled">12</div>
+                <div class="stat-label text-text-secondary text-xs">Models Installed</div>
+            </div>
+
+            <!-- Storage Used -->
+            <div class="stat-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover">
+                <div class="stat-header flex items-center justify-between mb-3">
+                    <div class="stat-icon w-9 h-9 rounded-md flex items-center justify-center text-base bg-accent-warning/15 text-accent-warning">◫</div>
+                    <span class="stat-trend text-xs font-semibold px-2 py-0.5 rounded-full text-accent-error bg-accent-error/10">↓ 8%</span>
+                </div>
+                <div class="stat-value text-2xl font-bold tracking-tight mb-1" x-text="stats.storageUsed">24.5 GB</div>
+                <div class="stat-label text-text-secondary text-xs">Storage Used</div>
+            </div>
+
+            <!-- Active Workflows -->
+            <div class="stat-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover">
+                <div class="stat-header flex items-center justify-between mb-3">
+                    <div class="stat-icon w-9 h-9 rounded-md flex items-center justify-center text-base bg-accent-info/15 text-accent-info">◐</div>
+                    <span class="stat-trend text-xs font-semibold px-2 py-0.5 rounded-full text-accent-success bg-accent-success/10">↑ 2</span>
+                </div>
+                <div class="stat-value text-2xl font-bold tracking-tight mb-1" x-text="stats.activeWorkflows">8</div>
+                <div class="stat-label text-text-secondary text-xs">Active Workflows</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- System Resources -->
+    <section class="mb-8" x-data="systemResources()">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">System Resources</h2>
+            <button class="btn btn-secondary btn-sm py-1.5 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                    hx-get="/api/system/resources"
+                    hx-target="#resources-grid"
+                    hx-swap="innerHTML">
+                ↻ Refresh
+            </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="resources-grid">
+            <!-- GPU Memory -->
+            <div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
+                <div class="resource-header flex items-center justify-between mb-3">
+                    <span class="resource-title text-sm font-medium text-text-secondary">GPU Memory</span>
+                    <span class="text-xs text-accent-success">● Optimal</span>
+                </div>
+                <div class="resource-value text-lg font-bold mb-2">14.2 / 24 GB</div>
+                <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
+                    <div class="resource-fill h-full bg-gradient-to-r from-accent-success to-accent-warning rounded-full transition-all duration-200" style="width: 59%;"></div>
+                </div>
+                <div class="resource-label text-xs text-text-tertiary">59% utilized</div>
+            </div>
+
+            <!-- System Memory -->
+            <div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
+                <div class="resource-header flex items-center justify-between mb-3">
+                    <span class="resource-title text-sm font-medium text-text-secondary">System Memory</span>
+                    <span class="text-xs text-accent-warning">● Moderate</span>
+                </div>
+                <div class="resource-value text-lg font-bold mb-2">42.8 / 64 GB</div>
+                <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
+                    <div class="resource-fill from-accent-warning to-accent-error h-full bg-gradient-to-r rounded-full transition-all duration-200" style="width: 67%;"></div>
+                </div>
+                <div class="resource-label text-xs text-text-tertiary">67% utilized</div>
+            </div>
+
+            <!-- Disk Space -->
+            <div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
+                <div class="resource-header flex items-center justify-between mb-3">
+                    <span class="resource-title text-sm font-medium text-text-secondary">Disk Space</span>
+                    <span class="text-xs text-accent-success">● Available</span>
+                </div>
+                <div class="resource-value text-lg font-bold mb-2">24.5 / 500 GB</div>
+                <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
+                    <div class="resource-fill h-full bg-gradient-to-r from-accent-success to-accent-warning rounded-full transition-all duration-200" style="width: 5%;"></div>
+                </div>
+                <div class="resource-label text-xs text-text-tertiary">5% utilized</div>
+            </div>
+
+            <!-- GPU Temperature -->
+            <div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
+                <div class="resource-header flex items-center justify-between mb-3">
+                    <span class="resource-title text-sm font-medium text-text-secondary">GPU Temperature</span>
+                    <span class="text-xs text-accent-success">● Normal</span>
+                </div>
+                <div class="resource-value text-lg font-bold mb-2">68°C</div>
+                <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
+                    <div class="resource-fill h-full bg-gradient-to-r from-accent-success to-accent-warning rounded-full transition-all duration-200" style="width: 68%;"></div>
+                </div>
+                <div class="resource-label text-xs text-text-tertiary">Well within limits</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Models -->
+    <section class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Featured Models</h2>
+            <a href="/models" class="text-accent-primary text-sm font-medium hover:text-accent-secondary transition-colors">
+                View All →
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Model Card 1 -->
+            <div class="preset-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover relative">
+                <div class="preset-badge absolute top-3 right-3 bg-accent-success/15 text-accent-success text-xs font-semibold px-2.5 py-1 rounded-full">
+                    Installed
+                </div>
+                <div class="preset-title text-base font-semibold mb-2 pr-14">WAN 2.1 14B</div>
+                <div class="preset-description text-text-secondary text-sm leading-relaxed mb-3 min-h-10">
+                    State-of-the-art text-to-video generation with 14B parameter model
+                </div>
+                <div class="preset-meta flex gap-4 mb-3 text-xs text-text-tertiary">
+                    <div class="preset-meta-item flex items-center gap-1">
+                        <span>◉</span> 14.5 GB
+                    </div>
+                    <div class="preset-meta-item flex items-center gap-1">
+                        <span>◈</span> Video
+                    </div>
+                    <div class="preset-meta-item flex items-center gap-1">
+                        <span>⚡</span> T2V
+                    </div>
+                </div>
+                <div class="preset-actions flex gap-2">
+                    <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all">
+                        Details
+                    </button>
+                    <button class="btn btn-primary flex-1 py-2 px-3 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all">
+                        Generate
+                    </button>
+                </div>
+            </div>
+
+            <!-- Model Card 2 -->
+            <div class="preset-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover relative">
+                <div class="preset-badge absolute top-3 right-3 bg-accent-info/15 text-accent-info text-xs font-semibold px-2.5 py-1 rounded-full">
+                    Available
+                </div>
+                <div class="preset-title text-base font-semibold mb-2 pr-14">LTX Video</div>
+                <div class="preset-description text-text-secondary text-sm leading-relaxed mb-3 min-h-10">
+                    Lightning-fast text-to-video with real-time preview capabilities
+                </div>
+                <div class="preset-meta flex gap-4 mb-3 text-xs text-text-tertiary">
+                    <div class="preset-meta-item flex items-center gap-1">
+                        <span>◉</span> 2.1 GB
+                    </div>
+                    <div class="preset-meta-item flex items-center gap-1">
+                        <span>◈</span> Video
+                    </div>
+                    <div class="preset-meta-item flex items-center gap-1">
+                        <span>⚡</span> Fast
+                    </div>
+                </div>
+                <div class="preset-actions flex gap-2">
+                    <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all">
+                        Details
+                    </button>
+                    <button class="btn btn-primary flex-1 py-2 px-3 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all">
+                        Install
+                    </button>
+                </div>
+            </div>
+
+            <!-- Model Card 3 -->
+            <div class="preset-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover relative">
+                <div class="preset-badge absolute top-3 right-3 bg-accent-warning/15 text-accent-warning text-xs font-semibold px-2.5 py-1 rounded-full">
+                    Partial
+                </div>
+                <div class="preset-title text-base font-semibold mb-2 pr-14">Hunyuan Video</div>
+                <div class="preset-description text-text-secondary text-sm leading-relaxed mb-3 min-h-10">
+                    High-quality video generation with advanced motion control
+                </div>
+                <div class="preset-meta flex gap-4 mb-3 text-xs text-text-tertiary">
+                    <div class="preset-meta-item flex items-center gap-1">
+                        <span>◉</span> 8.2 GB
+                    </div>
+                    <div class="preset-meta-item flex items-center gap-1">
+                        <span>◈</span> Video
+                    </div>
+                    <div class="preset-meta-item flex items-center gap-1">
+                        <span>⚡</span> HQ
+                    </div>
+                </div>
+                <div class="progress h-2 bg-bg-tertiary rounded-full overflow-hidden mb-2">
+                    <div class="progress-bar-animated h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full" style="width: 67%;"></div>
+                </div>
+                <div class="flex justify-between text-xs text-text-tertiary mb-3">
+                    <span>Downloading checkpoint...</span>
+                    <span>67%</span>
+                </div>
+                <div class="preset-actions flex gap-2">
+                    <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all">
+                        Pause
+                    </button>
+                    <button class="btn bg-bg-tertiary text-text-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium hover:bg-bg-hover transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Recent Activity -->
+    <section class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Recent Activity</h2>
+            <button class="text-accent-primary text-sm font-medium hover:text-accent-secondary transition-colors">
+                Clear All
+            </button>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <!-- Activity Item 1 -->
+            <div class="activity-item flex items-center gap-4 p-3 bg-bg-secondary border border-border-subtle rounded-md">
+                <div class="activity-icon w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-accent-success/15">
+                    ✓
+                </div>
+                <div class="activity-content flex-1 min-w-0">
+                    <div class="activity-title text-sm font-medium mb-0.5">Image generation completed</div>
+                    <div class="activity-meta text-xs text-text-tertiary">Txt2Img SDXL • 2 minutes ago</div>
+                </div>
+                <div class="activity-status px-2.5 py-1 rounded-full text-xs font-semibold bg-accent-success/15 text-accent-success flex-shrink-0">
+                    Complete
+                </div>
+            </div>
+
+            <!-- Activity Item 2 -->
+            <div class="activity-item flex items-center gap-4 p-3 bg-bg-secondary border border-border-subtle rounded-md">
+                <div class="activity-icon w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-accent-primary/15">
+                    ◫
+                </div>
+                <div class="activity-content flex-1 min-w-0">
+                    <div class="activity-title text-sm font-medium mb-0.5">Model download in progress</div>
+                    <div class="activity-meta text-xs text-text-tertiary">Hunyuan Video • ETA: 3m 24s</div>
+                </div>
+                <div class="activity-status px-2.5 py-1 rounded-full text-xs font-semibold bg-accent-primary/15 text-accent-primary flex-shrink-0">
+                    67%
+                </div>
+            </div>
+
+            <!-- Activity Item 3 -->
+            <div class="activity-item flex items-center gap-4 p-3 bg-bg-secondary border border-border-subtle rounded-md">
+                <div class="activity-icon w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-accent-error/15">
+                    ✕
+                </div>
+                <div class="activity-content flex-1 min-w-0">
+                    <div class="activity-title text-sm font-medium mb-0.5">Generation failed</div>
+                    <div class="activity-meta text-xs text-text-tertiary">Video WAN • Out of memory</div>
+                </div>
+                <div class="activity-status px-2.5 py-1 rounded-full text-xs font-semibold bg-accent-error/15 text-accent-error flex-shrink-0">
+                    Failed
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function homeDashboard() {
+    return {
+        stats: {
+            totalGenerations: 1284,
+            modelsInstalled: 12,
+            storageUsed: '24.5 GB',
+            activeWorkflows: 8
+        },
+
+        initHomeDashboard() {
+            // Load stats from API
+            this.loadStats();
+
+            // Listen for system status updates
+            window.addEventListener('system-status', (e) => {
+                this.updateResources(e.detail);
+            });
+        },
+
+        async loadStats() {
+            try {
+                const response = await fetch('/api/dashboard/stats');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.stats = { ...this.stats, ...data };
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        },
+
+        updateResources(data) {
+            // Update resource displays
+            console.log('Resources updated:', data);
+        }
+    }
+}
+
+function systemResources() {
+    return {
+        resources: {
+            gpu: { used: 14.2, total: 24, percentage: 59, status: 'optimal' },
+            memory: { used: 42.8, total: 64, percentage: 67, status: 'moderate' },
+            disk: { used: 24.5, total: 500, percentage: 5, status: 'optimal' },
+            temperature: { value: 68, percentage: 68, status: 'normal' }
+        }
+    }
+}
+
+function presetCard(id, status, progress) {
+    return {
+        id,
+        status,
+        progress,
+        statusText: '',
+        actionText: '',
+        progressText: '',
+
+        init() {
+            this.updateText();
+        },
+
+        updateText() {
+            const statusMap = {
+                'installed': { statusText: 'Installed', actionText: 'Generate', progressText: '' },
+                'available': { statusText: 'Available', actionText: 'Install', progressText: '' },
+                'partial': { statusText: 'Partial', actionText: 'Resume', progressText: 'Downloading...' },
+                'downloading': { statusText: 'Downloading', actionText: 'Pause', progressText: 'Downloading...' }
+            };
+
+            const config = statusMap[this.status] || statusMap['available'];
+            this.statusText = config.statusText;
+            this.actionText = config.actionText;
+            this.progressText = config.progressText;
+        },
+
+        updateProgress(detail) {
+            if (detail.presetId === this.id) {
+                this.progress = detail.progress;
+                this.status = 'downloading';
+                this.updateText();
+            }
+        },
+
+        async handleAction() {
+            if (this.status === 'available') {
+                // Install the preset
+                try {
+                    const response = await fetch(`/api/models/${this.id}/install`, { method: 'POST' });
+                    if (response.ok) {
+                        this.status = 'downloading';
+                        this.updateText();
+                    }
+                } catch (error) {
+                    console.error('Failed to install preset:', error);
+                }
+            } else if (this.status === 'installed') {
+                // Navigate to generate page
+                window.location.href = `/generate?model=${this.id}`;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

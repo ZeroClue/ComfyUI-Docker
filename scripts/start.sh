@@ -503,6 +503,58 @@ start_jupyter() {
     return 0
 }
 
+# Start unified dashboard
+start_unified_dashboard() {
+    if [[ "${ENABLE_UNIFIED_DASHBOARD,,}" == "false" ]]; then
+        log_info "Unified Dashboard disabled (ENABLE_UNIFIED_DASHBOARD=false)"
+        return 0
+    fi
+
+    if ! command -v python3 &> /dev/null; then
+        log_warning "Python3 not found, skipping dashboard startup"
+        return 1
+    fi
+
+    log_info "Starting Unified Dashboard..."
+
+    # Check if dashboard app exists
+    if [[ ! -f /app/dashboard/app.py ]]; then
+        log_warning "/app/dashboard/app.py not found, skipping startup"
+        log_info "Your Docker image may not include the unified dashboard. Please rebuild."
+        return 1
+    fi
+
+    mkdir -p "${LOGS_DIR}"
+
+    # Set environment variables for dashboard
+    export DASHBOARD_PORT="${DASHBOARD_PORT:-8000}"
+    export DASHBOARD_HOST="0.0.0.0"
+    export DASHBOARD_SECRET_KEY="${DASHBOARD_SECRET_KEY:-$(python3 -c 'import secrets; print(secrets.token_hex(32))')}"
+
+    # Use ACCESS_PASSWORD for dashboard if set, otherwise no auth
+    if [[ -n "${ACCESS_PASSWORD}" ]]; then
+        export ACCESS_PASSWORD="${ACCESS_PASSWORD}"
+    fi
+
+    # Start the dashboard FastAPI application
+    cd /app/dashboard
+    nohup /venv/bin/python3 app.py &> "${LOGS_DIR}/unified_dashboard.log" &
+    local pid=$!
+    echo $pid > "${LOGS_DIR}/unified_dashboard.pid"
+
+    log_success "Unified Dashboard started with PID ${pid} on port ${DASHBOARD_PORT}"
+
+    # Verify process started successfully
+    sleep 2
+    if ! pgrep -f "python3 app.py" > /dev/null; then
+        log_warning "Unified Dashboard process not running after startup"
+        log_info "Check logs at ${LOGS_DIR}/unified_dashboard.log"
+        return 1
+    fi
+
+    return 0
+}
+
 phase3_dashboard_startup() {
     local start_time=$(get_time_ms)
 
@@ -520,6 +572,9 @@ phase3_dashboard_startup() {
 
     # Start Jupyter
     start_jupyter
+
+    # Start unified dashboard
+    start_unified_dashboard
 
     local end_time=$(get_time_ms)
     local duration=$((end_time - start_time))

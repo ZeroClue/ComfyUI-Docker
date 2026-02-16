@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e  # Exit the script if any statement returns a non-true return value
 
-# Ensure venv Python is first in PATH (UV may have added /root/.local/bin first)
-export PATH="/workspace/venv/bin:$PATH"
+# Revolutionary Architecture: Python venv is in container at /venv
+# No rsync needed - instant startup
+export PATH="/venv/bin:$PATH"
 
 # ---------------------------------------------------------------------------- #
 #                          Function Definitions                                #
@@ -208,7 +209,7 @@ start_preset_manager() {
 
     # DEBUG: Validate Python imports before starting
     echo "[DEBUG] Testing Python import..."
-    if ! /workspace/venv/bin/python3 -c "from preset_manager.core import ModelManager; print('[DEBUG] Import successful')" 2>&1; then
+    if ! /venv/bin/python3 -c "from preset_manager.core import ModelManager; print('[DEBUG] Import successful')" 2>&1; then
         echo "WARNING: Cannot import ModelManager. Python dependencies may be missing."
         echo "Preset Manager will not start. Please check your Docker image."
         return 1
@@ -235,7 +236,7 @@ start_preset_manager() {
     echo "[DEBUG] Starting Flask app..."
     cd /app
 
-    nohup /workspace/venv/bin/python3 preset_manager.py &> /workspace/logs/preset_manager.log &
+    nohup /venv/bin/python3 preset_manager.py &> /workspace/logs/preset_manager.log &
     local pid=$!
     echo "[DEBUG] Flask app started with PID $pid"
 
@@ -274,6 +275,48 @@ start_preset_manager() {
     fi
 
     echo "Preset Manager started on port 8000 (accessible via Nginx on port 9000)"
+}
+
+# Start preset downloads in background
+start_preset_downloads() {
+    echo "Checking for preset downloads..."
+
+    # Check if any preset downloads are requested
+    local has_presets=false
+    if [[ -n "${PRESET_DOWNLOAD}" ]]; then
+        has_presets=true
+    fi
+    if [[ -n "${IMAGE_PRESET_DOWNLOAD}" ]]; then
+        has_presets=true
+    fi
+    if [[ -n "${AUDIO_PRESET_DOWNLOAD}" ]]; then
+        has_presets=true
+    fi
+
+    if [[ "$has_presets" == "false" ]]; then
+        echo "No preset downloads requested (set PRESET_DOWNLOAD, IMAGE_PRESET_DOWNLOAD, or AUDIO_PRESET_DOWNLOAD)"
+        return
+    fi
+
+    # Check if unified downloader exists
+    if [[ ! -f "/scripts/unified_preset_downloader.py" ]]; then
+        echo "WARNING: unified_preset_downloader.py not found, skipping preset downloads"
+        return 1
+    fi
+
+    echo "Starting preset downloads in background..."
+    mkdir -p /workspace/logs
+
+    # Start preset downloader in background with logging
+    nohup python3 /scripts/unified_preset_downloader.py download &> /workspace/logs/preset_downloads.log &
+    local pid=$!
+    echo "Preset downloader started with PID $pid"
+
+    # Save PID for monitoring
+    echo $pid > /tmp/preset_downloader.pid
+
+    echo "Preset downloads running in background"
+    echo "Check progress: tail -f /workspace/logs/preset_downloads.log"
 }
 
 # Check preset manager health
@@ -334,7 +377,7 @@ start_comfyui_studio() {
 
     # Start the studio Flask application
     cd /scripts
-    nohup /workspace/venv/bin/python3 comfyui_studio.py &> /workspace/logs/comfyui_studio.log &
+    nohup /venv/bin/python3 comfyui_studio.py &> /workspace/logs/comfyui_studio.log &
     local pid=$!
     echo "ComfyUI Studio started with PID $pid on port ${STUDIO_PORT}"
 
@@ -408,12 +451,8 @@ install_extra_nodes() {
 
 start_nginx
 
-# Start sync monitor in background for real-time progress tracking
-if [ -f "/scripts/sync_monitor.sh" ]; then
-    echo "Starting sync progress monitor..."
-    nohup /scripts/sync_monitor.sh > /dev/null 2>&1 &
-    echo "Sync monitor started - check /workspace/logs/sync_monitor.log for detailed progress"
-fi
+# Revolutionary Architecture: No sync monitor needed (no rsync)
+# Background preset downloads handled separately
 
 execute_script "/pre_start.sh" "Running pre-start script..."
 
@@ -433,6 +472,9 @@ if ! start_preset_manager; then
     cat /workspace/logs/preset_manager.log 2>/dev/null || echo "[DEBUG] Log file not found"
     echo "[DEBUG] === end of log ==="
 fi
+
+# Start preset downloads in background (don't exit on failure)
+start_preset_downloads
 
 # Run health check if preset manager was started
 if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then

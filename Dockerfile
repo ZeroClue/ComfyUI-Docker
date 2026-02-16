@@ -108,6 +108,12 @@ RUN if [ "$ENABLE_EXTRA_NODES" = "true" ] && [ -z "$SKIP_CUSTOM_NODES" ]; then \
         find /ComfyUI/custom_nodes -maxdepth 2 -name "install.py" -exec python {} \; ; \
     fi
 
+# Install SageAttention or ComfyUI-Attention-Optimizer based on CUDA version
+# SageAttention: CUDA 12.0-12.9 (2-4x video generation speedup)
+# ComfyUI-Attention-Optimizer: CUDA 13.0+ (1.5-2x speedup, works with all CUDA versions)
+COPY --chmod=755 scripts/install_sageattention.sh /tmp/install_sageattention.sh
+RUN bash /tmp/install_sageattention.sh && rm /tmp/install_sageattention.sh
+
 # Install Runpod CLI
 #RUN wget -qO- cli.runpod.net | sudo bash
 

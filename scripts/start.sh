@@ -1,472 +1,702 @@
 #!/bin/bash
-set -e  # Exit the script if any statement returns a non-true return value
+set -e
 
-# Ensure venv Python is first in PATH (UV may have added /root/.local/bin first)
-export PATH="/workspace/venv/bin:$PATH"
+# =============================================================================
+# Revolutionary ComfyUI-Docker Startup Orchestration
+# =============================================================================
+#
+# This script implements a 4-phase startup flow designed for speed and reliability:
+#
+# Phase 1: Volume & Config Setup (<8 seconds)
+#   - Generate extra_model_paths.yaml
+#   - Create /workspace directory structure
+#   - Verify workspace mount accessibility
+#
+# Phase 2: Service Startup (<15 seconds)
+#   - Start Nginx (if configured)
+#   - Start SSH (if PUBLIC_KEY provided)
+#   - Start ComfyUI in background with proper logging
+#   - Wait for ComfyUI to be ready (health check)
+#
+# Phase 3: Dashboard Startup (<5 seconds)
+#   - Start Dashboard (FastAPI) in background
+#   - Start preset downloads in background if PRESET_DOWNLOAD set
+#
+# Phase 4: Health Verification (<2 seconds)
+#   - Run health checks
+#   - Report ready state
+#
+# Target: <30 seconds total startup time
+#
+# Architecture:
+#   - App code at /app/ (pre-built in image, immutable)
+#   - Models on /workspace (network volume)
+#   - No rsync - eliminated for performance
+#
+# =============================================================================
 
-# ---------------------------------------------------------------------------- #
-#                          Function Definitions                                #
-# ---------------------------------------------------------------------------- #
+# -----------------------------------------------------------------------------
+# Configuration
+# -----------------------------------------------------------------------------
 
-# Start nginx service
-start_nginx() {
-    echo "Starting Nginx service..."
-    service nginx start
+# Phase timing targets (seconds)
+PHASE_1_TARGET=8
+PHASE_2_TARGET=15
+PHASE_3_TARGET=5
+PHASE_4_TARGET=2
+TOTAL_TARGET=30
+
+# Paths
+APP_DIR="/app"
+COMFYUI_DIR="${APP_DIR}/comfyui"
+VENV_DIR="${APP_DIR}/venv"
+WORKSPACE_ROOT="/workspace"
+COMFYUI_WORKSPACE="${WORKSPACE_ROOT}/ComfyUI"
+MODELS_BASE="${WORKSPACE_ROOT}/models"
+LOGS_DIR="${WORKSPACE_ROOT}/logs"
+CONFIG_DIR="${WORKSPACE_ROOT}/config"
+
+# Service ports
+COMFYUI_PORT=3000
+DASHBOARD_PORT=8080
+PRESET_MANAGER_PORT=9000
+JUPYTER_PORT=8888
+CODE_SERVER_PORT=8080
+
+# Health check endpoints
+COMFYUI_HEALTH_URL="http://localhost:${COMFYUI_PORT}/system_stats"
+
+# -----------------------------------------------------------------------------
+# Utility Functions
+# -----------------------------------------------------------------------------
+
+# Get current timestamp in milliseconds
+get_time_ms() {
+    date +%s%3N
 }
 
-# Execute script if exists
-execute_script() {
-    local script_path=$1
-    local script_msg=$2
-    if [[ -f ${script_path} ]]; then
-        echo "${script_msg}"
-        bash ${script_path}
+# Format duration in seconds
+format_duration() {
+    local ms=$1
+    local seconds=$((ms / 1000))
+    local milliseconds=$((ms % 1000))
+    printf "${seconds}.${milliseconds}s"
+}
+
+# Color output
+color_info() {
+    echo -e "\033[0;34m[INFO]\033[0m $1"
+}
+
+color_success() {
+    echo -e "\033[0;32m[SUCCESS]\033[0m $1"
+}
+
+color_warning() {
+    echo -e "\033[0;33m[WARNING]\033[0m $1"
+}
+
+color_error() {
+    echo -e "\033[0;31m[ERROR]\033[0m $1"
+}
+
+color_phase() {
+    echo -e "\033[1;36m[PHASE]\033[0m $1"
+}
+
+# Logging with timestamps
+log_info() {
+    color_info "$1"
+}
+
+log_success() {
+    color_success "$1"
+}
+
+log_warning() {
+    color_warning "$1"
+}
+
+log_error() {
+    color_error "$1"
+}
+
+# -----------------------------------------------------------------------------
+# Phase 1: Volume & Config Setup (Target: <8 seconds)
+# -----------------------------------------------------------------------------
+
+phase1_volume_setup() {
+    local start_time=$(get_time_ms)
+
+    color_phase "Phase 1: Volume & Config Setup"
+    log_info "Starting volume and configuration setup..."
+
+    # Create log directory
+    mkdir -p "${LOGS_DIR}"
+
+    # Verify workspace mount is accessible
+    if [[ ! -d "${WORKSPACE_ROOT}" ]]; then
+        log_error "Workspace root not found: ${WORKSPACE_ROOT}"
+        return 1
+    fi
+
+    if [[ ! -w "${WORKSPACE_ROOT}" ]]; then
+        log_error "Workspace not writable: ${WORKSPACE_ROOT}"
+        return 1
+    fi
+
+    log_success "Workspace mount verified: ${WORKSPACE_ROOT}"
+
+    # Generate extra_model_paths.yaml
+    log_info "Generating extra_model_paths.yaml..."
+
+    if [[ -f "${APP_DIR}/scripts/generate_extra_paths.py" ]]; then
+        python3 "${APP_DIR}/scripts/generate_extra_paths.py" \
+            --output "${COMFYUI_DIR}/extra_model_paths.yaml" \
+            --base-path "${MODELS_BASE}" \
+            --create-dirs \
+            >> "${LOGS_DIR}/setup.log" 2>&1
+
+        if [[ $? -eq 0 ]]; then
+            log_success "extra_model_paths.yaml generated successfully"
+        else
+            log_error "Failed to generate extra_model_paths.yaml"
+            return 1
+        fi
+    else
+        log_warning "generate_extra_paths.py not found, skipping config generation"
+    fi
+
+    # Create directory structure
+    log_info "Creating workspace directory structure..."
+
+    mkdir -p "${COMFYUI_WORKSPACE}"
+    mkdir -p "${MODELS_BASE}/checkpoints"
+    mkdir -p "${MODELS_BASE}/text_encoders"
+    mkdir -p "${MODELS_BASE}/vae"
+    mkdir -p "${MODELS_BASE}/clip_vision"
+    mkdir -p "${MODELS_BASE}/loras"
+    mkdir -p "${MODELS_BASE}/audio_encoders"
+    mkdir -p "${MODELS_BASE}/upscale_models"
+    mkdir -p "${MODELS_BASE}/controlnet"
+    mkdir -p "${MODELS_BASE}/embeddings"
+    mkdir -p "${COMFYUI_WORKSPACE}/output"
+    mkdir -p "${COMFYUI_WORKSPACE}/input"
+    mkdir -p "${COMFYUI_WORKSPACE}/temp"
+    mkdir -p "${CONFIG_DIR}"
+
+    log_success "Directory structure created"
+
+    # Create symlinks for ComfyUI models to workspace
+    if [[ -d "${COMFYUI_DIR}/models" && ! -L "${COMFYUI_DIR}/models" ]]; then
+        log_info "Setting up model symlinks..."
+        rm -rf "${COMFYUI_DIR}/models"
+        ln -sf "${MODELS_BASE}" "${COMFYUI_DIR}/models"
+        log_success "Model symlink created"
+    fi
+
+    # Link output directories
+    mkdir -p "${COMFYUI_WORKSPACE}/output"
+    if [[ ! -L "${COMFYUI_DIR}/output" ]]; then
+        ln -sf "${COMFYUI_WORKSPACE}/output" "${COMFYUI_DIR}/output"
+    fi
+
+    if [[ ! -L "${COMFYUI_DIR}/input" ]]; then
+        ln -sf "${COMFYUI_WORKSPACE}/input" "${COMFYUI_DIR}/input"
+    fi
+
+    local end_time=$(get_time_ms)
+    local duration=$((end_time - start_time))
+
+    if [[ $duration -le $((PHASE_1_TARGET * 1000)) ]]; then
+        log_success "Phase 1 completed in $(format_duration ${duration}) (target: ${PHASE_1_TARGET}s)"
+    else
+        log_warning "Phase 1 completed in $(format_duration ${duration}) (exceeded target of ${PHASE_1_TARGET}s)"
+    fi
+
+    return 0
+}
+
+# -----------------------------------------------------------------------------
+# Phase 2: Service Startup (Target: <15 seconds)
+# -----------------------------------------------------------------------------
+
+start_nginx() {
+    log_info "Starting Nginx service..."
+
+    if command -v nginx &> /dev/null; then
+        nginx -t >> "${LOGS_DIR}/nginx.log" 2>&1
+        if [[ $? -eq 0 ]]; then
+            service nginx start >> "${LOGS_DIR}/nginx.log" 2>&1
+            log_success "Nginx started"
+        else
+            log_warning "Nginx configuration test failed, skipping startup"
+        fi
+    else
+        log_warning "Nginx not found, skipping startup"
     fi
 }
 
-# Setup ssh
-setup_ssh() {
-    if [[ $PUBLIC_KEY ]]; then
-        echo "Setting up SSH..."
+start_ssh() {
+    if [[ -n "${PUBLIC_KEY}" ]]; then
+        log_info "Setting up SSH..."
+
         mkdir -p ~/.ssh
-        echo "$PUBLIC_KEY" >> ~/.ssh/authorized_keys
+        echo "${PUBLIC_KEY}" >> ~/.ssh/authorized_keys
         chmod 700 -R ~/.ssh
 
-        if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
-            ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -q -N ''
-            echo "RSA key fingerprint:"
-            ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub
+        # Generate host keys if they don't exist
+        if [[ ! -f /etc/ssh/ssh_host_rsa_key ]]; then
+            ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -q -N '' 2>/dev/null
+        fi
+        if [[ ! -f /etc/ssh/ssh_host_ed25519_key ]]; then
+            ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -q -N '' 2>/dev/null
         fi
 
-        if [ ! -f /etc/ssh/ssh_host_dsa_key ]; then
-            ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -q -N ''
-            echo "DSA key fingerprint:"
-            ssh-keygen -lf /etc/ssh/ssh_host_dsa_key.pub
-        fi
-
-        if [ ! -f /etc/ssh/ssh_host_ecdsa_key ]; then
-            ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -q -N ''
-            echo "ECDSA key fingerprint:"
-            ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub
-        fi
-
-        if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
-            ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -q -N ''
-            echo "ED25519 key fingerprint:"
-            ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
-        fi
-
-        service ssh start
-
-        echo "SSH host keys:"
-        for key in /etc/ssh/*.pub; do
-            echo "Key: $key"
-            ssh-keygen -lf $key
-        done
+        service ssh start >> "${LOGS_DIR}/ssh.log" 2>&1
+        log_success "SSH started"
     fi
 }
 
-# Export env vars
-export_env_vars() {
-    echo "Exporting environment variables..."
-    printenv | grep -E '^RUNPOD_|^PATH=|^_=' | awk -F = '{ print "export " $1 "=\"" $2 "\"" }' >> /etc/rp_environment
-    echo 'source /etc/rp_environment' >> ~/.bashrc
+wait_for_comfyui() {
+    local max_wait=30
+    local waited=0
+    local check_interval=1
+
+    log_info "Waiting for ComfyUI to be ready..."
+
+    while [[ $waited -lt $max_wait ]]; do
+        if curl -s -f "${COMFYUI_HEALTH_URL}" > /dev/null 2>&1; then
+            log_success "ComfyUI is ready after ${waited}s"
+            return 0
+        fi
+
+        # Check if process is running
+        if pgrep -f "python.*main.py" > /dev/null; then
+            # Process is running, wait a bit more
+            sleep $check_interval
+            ((waited += check_interval))
+        else
+            log_error "ComfyUI process not running"
+            return 1
+        fi
+    done
+
+    log_warning "ComfyUI health check timeout after ${waited}s"
+    return 1
 }
 
-# Start jupyter
-start_jupyter() {
-    # Check if JupyterLab is disabled
-    if [[ "${ENABLE_JUPYTERLAB,,}" == "false" ]]; then
-        echo "JupyterLab is disabled (ENABLE_JUPYTERLAB=false). Skipping startup."
-        return
+start_comfyui() {
+    log_info "Starting ComfyUI..."
+
+    cd "${COMFYUI_DIR}"
+
+    # Set Python path
+    export PYTHONPATH="${APP_DIR}:${PYTHONPATH}"
+
+    # Start ComfyUI in background
+    nohup python3 main.py \
+        --listen 0.0.0.0 \
+        --port ${COMFYUI_PORT} \
+        --output-directory "${COMFYUI_WORKSPACE}/output" \
+        --input-directory "${COMFYUI_WORKSPACE}/input" \
+        --temp-directory "${COMFYUI_WORKSPACE}/temp" \
+        --verbose \
+        >> "${LOGS_DIR}/comfyui.log" 2>&1 &
+
+    local pid=$!
+    echo $pid > "${LOGS_DIR}/comfyui.pid"
+
+    log_success "ComfyUI started with PID ${pid}"
+
+    # Wait for ComfyUI to be ready
+    wait_for_comfyui
+    return $?
+}
+
+phase2_service_startup() {
+    local start_time=$(get_time_ms)
+
+    color_phase "Phase 2: Service Startup"
+    log_info "Starting core services..."
+
+    # Start Nginx
+    start_nginx
+
+    # Start SSH
+    start_ssh
+
+    # Start ComfyUI
+    start_comfyui
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to start ComfyUI"
+        return 1
     fi
 
-    # Check if jupyter is installed
-    if ! command -v jupyter &> /dev/null; then
-        echo "JupyterLab not installed, skipping startup."
-        return
-    fi
+    local end_time=$(get_time_ms)
+    local duration=$((end_time - start_time))
 
-    # Default to not using a password
-    JUPYTER_PASSWORD=""
-
-    # Allow a password to be set by providing the ACCESS_PASSWORD environment variable
-    if [[ ${ACCESS_PASSWORD} ]]; then
-        echo "Starting JupyterLab with the provided password..."
-        JUPYTER_PASSWORD=${ACCESS_PASSWORD}
+    if [[ $duration -le $((PHASE_2_TARGET * 1000)) ]]; then
+        log_success "Phase 2 completed in $(format_duration ${duration}) (target: ${PHASE_2_TARGET}s)"
     else
-        echo "Starting JupyterLab without a password... (ACCESS_PASSWORD environment variable is not set.)"
+        log_warning "Phase 2 completed in $(format_duration ${duration}) (exceeded target of ${PHASE_2_TARGET}s)"
     fi
-    
-    mkdir -p /workspace/logs
-    cd / && \
+
+    return 0
+}
+
+# -----------------------------------------------------------------------------
+# Phase 3: Dashboard Startup (Target: <5 seconds)
+# -----------------------------------------------------------------------------
+
+start_preset_manager() {
+    if [[ "${ENABLE_PRESET_MANAGER,,}" == "false" ]]; then
+        log_info "Preset Manager disabled (ENABLE_PRESET_MANAGER=false)"
+        return 0
+    fi
+
+    log_info "Starting Preset Manager..."
+
+    # Set Python path
+    export PYTHONPATH="${APP_DIR}:${PYTHONPATH}"
+
+    cd "${APP_DIR}"
+
+    # Start preset manager in background
+    nohup python3 preset_manager.py \
+        >> "${LOGS_DIR}/preset_manager.log" 2>&1 &
+
+    local pid=$!
+    echo $pid > "${LOGS_DIR}/preset_manager.pid"
+
+    log_success "Preset Manager started with PID ${pid}"
+
+    return 0
+}
+
+start_background_preset_downloads() {
+    if [[ -z "${PRESET_DOWNLOAD}" && -z "${IMAGE_PRESET_DOWNLOAD}" && -z "${AUDIO_PRESET_DOWNLOAD}" ]]; then
+        log_info "No preset downloads configured"
+        return 0
+    fi
+
+    log_info "Starting background preset downloads..."
+
+    # Set Python path
+    export PYTHONPATH="${APP_DIR}:${PYTHONPATH}"
+
+    cd "${APP_DIR}/scripts"
+
+    # Create status file directory
+    mkdir -p "$(dirname "${LOGS_DIR}/preset_download_status.json")"
+
+    # Start unified preset downloader in background with status tracking
+    nohup python3 unified_preset_downloader.py download \
+        --background \
+        --status-file "${LOGS_DIR}/preset_download_status.json" \
+        --env-only \
+        >> "${LOGS_DIR}/preset_downloads.log" 2>&1 &
+
+    local pid=$!
+    echo $pid > "${LOGS_DIR}/preset_downloads.pid"
+
+    log_success "Background preset downloads started with PID ${pid}"
+    log_info "Download logs: ${LOGS_DIR}/preset_downloads.log"
+    log_info "Status file: ${LOGS_DIR}/preset_download_status.json"
+
+    # Display which presets will be downloaded
+    log_info "Configured presets:"
+    if [[ -n "${PRESET_DOWNLOAD}" ]]; then
+        log_info "  Video (PRESET_DOWNLOAD): ${PRESET_DOWNLOAD}"
+    fi
+    if [[ -n "${IMAGE_PRESET_DOWNLOAD}" ]]; then
+        log_info "  Image (IMAGE_PRESET_DOWNLOAD): ${IMAGE_PRESET_DOWNLOAD}"
+    fi
+    if [[ -n "${AUDIO_PRESET_DOWNLOAD}" ]]; then
+        log_info "  Audio (AUDIO_PRESET_DOWNLOAD): ${AUDIO_PRESET_DOWNLOAD}"
+    fi
+
+    return 0
+}
+
+start_code_server() {
+    if [[ "${ENABLE_CODE_SERVER,,}" == "false" ]]; then
+        log_info "Code-server disabled (ENABLE_CODE_SERVER=false)"
+        return 0
+    fi
+
+    if ! command -v code-server &> /dev/null; then
+        log_info "Code-server not installed, skipping"
+        return 0
+    fi
+
+    log_info "Starting code-server..."
+
+    mkdir -p "${LOGS_DIR}"
+
+    cd "${WORKSPACE_ROOT}"
+
+    if [[ -n "${ACCESS_PASSWORD}" ]]; then
+        export PASSWORD="${ACCESS_PASSWORD}"
+        nohup code-server "${WORKSPACE_ROOT}" \
+            --bind-addr 0.0.0.0:${CODE_SERVER_PORT} \
+            --auth password \
+            --ignore-last-opened \
+            --disable-workspace-trust \
+            >> "${LOGS_DIR}/code-server.log" 2>&1 &
+    else
+        nohup code-server "${WORKSPACE_ROOT}" \
+            --bind-addr 0.0.0.0:${CODE_SERVER_PORT} \
+            --auth none \
+            --ignore-last-opened \
+            --disable-workspace-trust \
+            >> "${LOGS_DIR}/code-server.log" 2>&1 &
+    fi
+
+    local pid=$!
+    echo $pid > "${LOGS_DIR}/code-server.pid"
+
+    log_success "Code-server started with PID ${pid}"
+
+    return 0
+}
+
+start_jupyter() {
+    if [[ "${ENABLE_JUPYTERLAB,,}" == "false" ]]; then
+        log_info "JupyterLab disabled (ENABLE_JUPYTERLAB=false)"
+        return 0
+    fi
+
+    if ! command -v jupyter &> /dev/null; then
+        log_info "JupyterLab not installed, skipping"
+        return 0
+    fi
+
+    log_info "Starting JupyterLab..."
+
+    mkdir -p "${LOGS_DIR}"
+
+    cd /
+
+    local jupyter_password=""
+    if [[ -n "${ACCESS_PASSWORD}" ]]; then
+        jupyter_password="${ACCESS_PASSWORD}"
+    fi
+
     nohup jupyter lab --allow-root \
         --no-browser \
-        --port=8888 \
+        --port=${JUPYTER_PORT} \
         --ip=* \
         --FileContentsManager.delete_to_trash=False \
         --ContentsManager.allow_hidden=True \
         --ServerApp.terminado_settings='{"shell_command":["/bin/bash"]}' \
-        --ServerApp.token="${JUPYTER_PASSWORD}" \
+        --ServerApp.token="${jupyter_password}" \
         --ServerApp.allow_origin=* \
-        --ServerApp.preferred_dir=/workspace &> /workspace/logs/jupyterlab.log &
-    echo "JupyterLab started"
-}
+        --ServerApp.preferred_dir="${WORKSPACE_ROOT}" \
+        >> "${LOGS_DIR}/jupyterlab.log" 2>&1 &
 
-# Start code-server
-start_code_server() {
-    # Check if code-server should be started (default: true)
-    if [[ "${ENABLE_CODE_SERVER,,}" == "false" ]]; then
-        echo "code-server is disabled (ENABLE_CODE_SERVER=false). Skipping startup."
-        return
-    fi
-
-    # Check if code-server is installed
-    if ! command -v code-server &> /dev/null; then
-        echo "code-server not installed, skipping startup."
-        return
-    fi
-
-    echo "Starting code-server..."
-    mkdir -p /workspace/logs
-
-    # Allow a password to be set by providing the ACCESS_PASSWORD environment variable
-    if [[ -n "${ACCESS_PASSWORD}" ]]; then
-        echo "Starting code-server with the provided password..."
-        export PASSWORD="${ACCESS_PASSWORD}"
-        nohup code-server /workspace --bind-addr 0.0.0.0:8080 \
-            --auth password \
-            --ignore-last-opened \
-            --disable-workspace-trust \
-            &> /workspace/logs/code-server.log &
-    else
-        echo "Starting code-server without a password... (ACCESS_PASSWORD environment variable is not set.)"
-        nohup code-server /workspace --bind-addr 0.0.0.0:8080 \
-            --auth none \
-            --ignore-last-opened \
-            --disable-workspace-trust \
-            &> /workspace/logs/code-server.log &
-    fi
-
-    echo "code-server started"
-}
-
-# Start preset manager
-start_preset_manager() {
-    # Check if preset manager should be started (default: true)
-    if [[ "${ENABLE_PRESET_MANAGER,,}" == "false" ]]; then
-        echo "Preset Manager is disabled (ENABLE_PRESET_MANAGER=false). Skipping startup."
-        return
-    fi
-
-    echo "Starting Preset Manager..."
-
-    # DEBUG: Set PYTHONPATH first so imports work
-    echo "[DEBUG] Setting PYTHONPATH=/app"
-    export PYTHONPATH="/app:$PYTHONPATH"
-    echo "[DEBUG] PYTHONPATH=$PYTHONPATH"
-
-    # DEBUG: Validate required files exist before starting
-    echo "[DEBUG] Checking required files..."
-    local missing_components=()
-
-    if [[ ! -f /app/preset_manager.py ]]; then
-        missing_components+=("preset_manager.py")
-        echo "[DEBUG] MISSING: /app/preset_manager.py"
-    else
-        echo "[DEBUG] FOUND: /app/preset_manager.py"
-    fi
-
-    if [[ ! -d /app/preset_manager ]]; then
-        missing_components+=("preset_manager directory")
-        echo "[DEBUG] MISSING: /app/preset_manager/"
-    else
-        echo "[DEBUG] FOUND: /app/preset_manager/"
-    fi
-
-    if [[ ! -f /app/preset_manager/core.py ]]; then
-        missing_components+=("preset_manager/core.py")
-        echo "[DEBUG] MISSING: /app/preset_manager/core.py"
-    else
-        echo "[DEBUG] FOUND: /app/preset_manager/core.py"
-    fi
-
-    if [[ ! -f /app/preset_manager/web_interface.py ]]; then
-        missing_components+=("preset_manager/web_interface.py")
-        echo "[DEBUG] MISSING: /app/preset_manager/web_interface.py"
-    else
-        echo "[DEBUG] FOUND: /app/preset_manager/web_interface.py"
-    fi
-
-    if [[ ${#missing_components[@]} -gt 0 ]]; then
-        echo "WARNING: Preset Manager cannot start - missing components:"
-        printf '  - %s\n' "${missing_components[@]}"
-        echo "Your Docker image may be outdated. Please rebuild or pull the latest version."
-        echo "Visit https://github.com/zeroclue/comfyui-docker for instructions."
-        return 1
-    fi
-
-    # DEBUG: Validate Python imports before starting
-    echo "[DEBUG] Testing Python import..."
-    if ! /workspace/venv/bin/python3 -c "from preset_manager.core import ModelManager; print('[DEBUG] Import successful')" 2>&1; then
-        echo "WARNING: Cannot import ModelManager. Python dependencies may be missing."
-        echo "Preset Manager will not start. Please check your Docker image."
-        return 1
-    fi
-
-    echo "[DEBUG] Creating directories..."
-    mkdir -p /workspace/logs
-    mkdir -p /workspace/docs/presets
-
-    # Copy templates to the expected location
-    echo "[DEBUG] Copying templates..."
-    if [[ -d /scripts/templates ]]; then
-        mkdir -p /app/templates
-        cp -r /scripts/templates/* /app/templates/
-        echo "[DEBUG] Templates copied from /scripts/templates"
-    else
-        echo "[DEBUG] /scripts/templates not found, skipping"
-    fi
-
-    # Create static directory
-    mkdir -p /app/static
-
-    # Start the preset manager Flask application
-    echo "[DEBUG] Starting Flask app..."
-    cd /app
-
-    nohup /workspace/venv/bin/python3 preset_manager.py &> /workspace/logs/preset_manager.log &
     local pid=$!
-    echo "[DEBUG] Flask app started with PID $pid"
+    echo $pid > "${LOGS_DIR}/jupyterlab.pid"
 
-    # Verify process started successfully
-    echo "[DEBUG] Waiting for process to start..."
-    local max_wait=10
-    local waited=0
-    while [[ $waited -lt $max_wait ]]; do
-        if [[ -S /tmp/flask_sessions/* ]] || pgrep -f "python3 preset_manager.py" > /dev/null; then
-            echo "[DEBUG] Process found after ${waited}s"
-            break
-        fi
-        sleep 1
-        ((waited++))
-    done
+    log_success "JupyterLab started with PID ${pid}"
 
-    # Verify port 8000 is listening (Flask app port)
-    echo "[DEBUG] Waiting for port 8000..."
-    local max_wait=15
-    local waited=0
-    while [[ $waited -lt $max_wait ]]; do
-        if netstat -tuln 2>/dev/null | grep -q ':8000' || ss -tuln 2>/dev/null | grep -q ':8000'; then
-            echo "[DEBUG] Port 8000 is listening"
-            break
-        fi
-        sleep 1
-        ((waited++))
-    done
-
-    if [[ $waited -ge $max_wait ]]; then
-        echo "WARNING: Preset Manager process started but port 8000 is not listening after ${max_wait}s."
-        echo "Check logs at /workspace/logs/preset_manager.log for errors."
-        echo "[DEBUG] Last 10 lines of preset_manager.log:"
-        tail -10 /workspace/logs/preset_manager.log 2>/dev/null || echo "[DEBUG] Log file not found"
-        return 1
-    fi
-
-    echo "Preset Manager started on port 8000 (accessible via Nginx on port 9000)"
+    return 0
 }
 
-# Check preset manager health
-check_preset_manager_health() {
-    echo "Checking Preset Manager health..."
+phase3_dashboard_startup() {
+    local start_time=$(get_time_ms)
 
-    local health_issues=()
+    color_phase "Phase 3: Dashboard Startup"
+    log_info "Starting dashboard services..."
 
-    # Check if preset manager process is running
-    if ! pgrep -f "python3 preset_manager.py" > /dev/null; then
-        health_issues+=("Preset Manager process is not running")
-    fi
+    # Start preset manager
+    start_preset_manager
 
-    # Check if port 8000 is listening (Flask app port)
-    if ! netstat -tuln 2>/dev/null | grep -q ':8000' && ! ss -tuln 2>/dev/null | grep -q ':8000'; then
-        health_issues+=("Port 8000 is not listening (Preset Manager Flask app)")
-    fi
+    # Start background preset downloads
+    start_background_preset_downloads
 
-    # Check if Nginx proxy (port 9000) is accessible
-    if ! curl -s -f http://localhost:9000 > /dev/null 2>&1; then
-        health_issues+=("Nginx proxy on port 9000 is not accessible")
-    fi
+    # Start code-server
+    start_code_server
 
-    if [[ ${#health_issues[@]} -gt 0 ]]; then
-        echo "WARNING: Preset Manager health check failed:"
-        printf '  - %s\n' "${health_issues[@]}"
-        echo "You can still use the container, but the Preset Manager web interface may not work."
-        echo "Check logs at /workspace/logs/preset_manager.log for details."
-        return 1
+    # Start Jupyter
+    start_jupyter
+
+    local end_time=$(get_time_ms)
+    local duration=$((end_time - start_time))
+
+    if [[ $duration -le $((PHASE_3_TARGET * 1000)) ]]; then
+        log_success "Phase 3 completed in $(format_duration ${duration}) (target: ${PHASE_3_TARGET}s)"
     else
-        echo "Preset Manager health check passed."
-        return 0
+        log_warning "Phase 3 completed in $(format_duration ${duration}) (exceeded target of ${PHASE_3_TARGET}s)"
     fi
+
+    return 0
 }
 
-# Start ComfyUI Studio
-start_comfyui_studio() {
-    # Check if studio should be started (default: true)
-    if [[ "${ENABLE_STUDIO,,}" == "false" ]]; then
-        echo "ComfyUI Studio is disabled (ENABLE_STUDIO=false). Skipping startup."
-        return
+# -----------------------------------------------------------------------------
+# Phase 4: Health Verification (Target: <2 seconds)
+# -----------------------------------------------------------------------------
+
+run_health_checks() {
+    log_info "Running health checks..."
+
+    local health_passed=true
+
+    # Check workspace
+    if [[ ! -d "${WORKSPACE_ROOT}" ]]; then
+        log_error "Workspace health check failed: directory not found"
+        health_passed=false
     fi
 
-    echo "Starting ComfyUI Studio..."
-
-    # Check if studio script exists
-    if [[ ! -f /scripts/comfyui_studio.py ]]; then
-        echo "WARNING: /scripts/comfyui_studio.py not found, skipping startup"
-        return 1
+    # Check ComfyUI
+    if ! curl -s -f "${COMFYUI_HEALTH_URL}" > /dev/null 2>&1; then
+        log_warning "ComfyUI health check: not responding"
+        health_passed=false
+    else
+        log_success "ComfyUI health check: passed"
     fi
 
-    mkdir -p /workspace/logs
-    mkdir -p /workspace/config/workflows
-
-    # Set environment variables for studio
-    export WORKSPACE_ROOT="/workspace"
-    export STUDIO_PORT="${STUDIO_PORT:-5000}"
-
-    # Start the studio Flask application
-    cd /scripts
-    nohup /workspace/venv/bin/python3 comfyui_studio.py &> /workspace/logs/comfyui_studio.log &
-    local pid=$!
-    echo "ComfyUI Studio started with PID $pid on port ${STUDIO_PORT}"
-
-    # Wait briefly and verify
-    sleep 2
-    if ! pgrep -f "python3 comfyui_studio.py" > /dev/null; then
-        echo "WARNING: ComfyUI Studio process not running after startup"
-        echo "Check logs at /workspace/logs/comfyui_studio.log"
-        return 1
+    # Check Nginx
+    if pgrep nginx > /dev/null; then
+        log_success "Nginx health check: passed"
+    else
+        log_warning "Nginx health check: not running"
     fi
 
-    echo "ComfyUI Studio started successfully"
-}
-
-# Install extra custom nodes at runtime if requested
-install_extra_nodes() {
-    # Check if extra nodes should be installed (default: false)
-    if [[ "${INSTALL_EXTRA_NODES,,}" != "true" ]]; then
-        return
-    fi
-
-    echo "==== Installing Extra Custom Nodes ===="
-
-    if [[ ! -f /custom_nodes_extra.txt ]]; then
-        echo "WARNING: /custom_nodes_extra.txt not found, skipping extra nodes installation"
-        return 1
-    fi
-
-    local custom_nodes_dir="/workspace/ComfyUI/custom_nodes"
-
-    if [[ ! -d "$custom_nodes_dir" ]]; then
-        echo "WARNING: Custom nodes directory not found at $custom_nodes_dir"
-        return 1
-    fi
-
-    cd "$custom_nodes_dir"
-
-    while IFS= read -r url; do
-        # Skip empty lines and comments
-        [[ -z "$url" || "$url" =~ ^[[:space:]]*# ]] && continue
-
-        local node_name=$(basename "$url" .git)
-
-        if [[ -d "$node_name" ]]; then
-            echo "  $node_name already installed, skipping..."
-            continue
-        fi
-
-        echo "  Cloning $node_name..."
-        if git clone --recursive "$url" "$node_name" 2>&1; then
-            echo "  ✅ $node_name cloned successfully"
+    # Check preset manager
+    if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then
+        if pgrep -f "preset_manager.py" > /dev/null; then
+            log_success "Preset Manager health check: passed"
         else
-            echo "  ❌ Failed to clone $node_name"
+            log_warning "Preset Manager health check: not running"
         fi
-    done < /custom_nodes_extra.txt
+    fi
 
-    # Install requirements for extra nodes
-    echo "  Installing requirements for extra nodes..."
-    find "$custom_nodes_dir" -maxdepth 2 -name "requirements.txt" -exec pip install --no-cache-dir -r {} \; 2>/dev/null || true
-
-    # Run install scripts
-    echo "  Running install scripts for extra nodes..."
-    find "$custom_nodes_dir" -maxdepth 2 -name "install.py" -exec python {} \; 2>/dev/null || true
-
-    echo "✅ Extra custom nodes installation complete"
+    return $([[ "$health_passed" == "true" ]] && echo 0 || echo 1)
 }
 
-# ---------------------------------------------------------------------------- #
-#                               Main Program                                   #
-# ---------------------------------------------------------------------------- #
+phase4_health_verification() {
+    local start_time=$(get_time_ms)
 
-start_nginx
+    color_phase "Phase 4: Health Verification"
 
-# Start sync monitor in background for real-time progress tracking
-if [ -f "/scripts/sync_monitor.sh" ]; then
-    echo "Starting sync progress monitor..."
-    nohup /scripts/sync_monitor.sh > /dev/null 2>&1 &
-    echo "Sync monitor started - check /workspace/logs/sync_monitor.log for detailed progress"
-fi
+    run_health_checks
 
-execute_script "/pre_start.sh" "Running pre-start script..."
+    local end_time=$(get_time_ms)
+    local duration=$((end_time - start_time))
 
-# Install extra custom nodes if requested
-install_extra_nodes
+    if [[ $duration -le $((PHASE_4_TARGET * 1000)) ]]; then
+        log_success "Phase 4 completed in $(format_duration ${duration}) (target: ${PHASE_4_TARGET}s)"
+    else
+        log_warning "Phase 4 completed in $(format_duration ${duration}) (exceeded target of ${PHASE_4_TARGET}s)"
+    fi
 
-echo "Pod Started - Optimizations applied"
+    return 0
+}
 
-setup_ssh
-start_jupyter
-start_code_server
+# -----------------------------------------------------------------------------
+# Graceful Shutdown
+# -----------------------------------------------------------------------------
 
-# Start preset manager (don't exit on failure)
-if ! start_preset_manager; then
-    echo "[DEBUG] Preset Manager failed - dumping logs..."
-    echo "[DEBUG] === preset_manager.log ==="
-    cat /workspace/logs/preset_manager.log 2>/dev/null || echo "[DEBUG] Log file not found"
-    echo "[DEBUG] === end of log ==="
-fi
+cleanup() {
+    log_info "Received shutdown signal, cleaning up..."
 
-# Run health check if preset manager was started
-if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then
-    # Wait for preset manager to fully initialize with retries
-    max_retries=5
-    retry_delay=3
-    retry_count=0
-
-    while [[ $retry_count -lt $max_retries ]]; do
-        if check_preset_manager_health; then
-            break
-        fi
-        ((retry_count++))
-        if [[ $retry_count -lt $max_retries ]]; then
-            echo "Retrying health check in ${retry_delay}s... ($retry_count/$max_retries)"
-            sleep $retry_delay
+    # Stop all tracked services
+    for pid_file in "${LOGS_DIR}"/*.pid; do
+        if [[ -f "$pid_file" ]]; then
+            local pid=$(cat "$pid_file")
+            if kill -0 "$pid" 2>/dev/null; then
+                log_info "Stopping service with PID ${pid}..."
+                kill -TERM "$pid" 2>/dev/null || true
+                # Wait up to 10 seconds for graceful shutdown
+                local count=0
+                while kill -0 "$pid" 2>/dev/null && [[ $count -lt 10 ]]; do
+                    sleep 1
+                    ((count++))
+                done
+                # Force kill if still running
+                if kill -0 "$pid" 2>/dev/null; then
+                    kill -KILL "$pid" 2>/dev/null || true
+                fi
+            fi
+            rm -f "$pid_file"
         fi
     done
 
-    if [[ $retry_count -ge $max_retries ]]; then
-        echo "NOTE: Preset Manager health check failed after $max_retries attempts, but continuing startup."
-        echo "Preset Manager may not be fully functional. Check logs at /workspace/logs/preset_manager.log"
+    log_info "Shutdown complete"
+    exit 0
+}
+
+# Set up signal handlers
+trap cleanup SIGTERM SIGINT
+
+# -----------------------------------------------------------------------------
+# Main Execution
+# -----------------------------------------------------------------------------
+
+main() {
+    local total_start_time=$(get_time_ms)
+
+    echo "=========================================="
+    echo "ComfyUI-Docker Startup Orchestration"
+    echo "=========================================="
+    echo "Target: ${TOTAL_TARGET}s total startup time"
+    echo ""
+
+    # Run startup phases
+    phase1_volume_setup || exit 1
+    phase2_service_startup || exit 1
+    phase3_dashboard_startup || exit 1
+    phase4_health_verification
+
+    local total_end_time=$(get_time_ms)
+    local total_duration=$((total_end_time - total_start_time))
+
+    echo ""
+    echo "=========================================="
+    color_success "Startup Complete!"
+    echo "=========================================="
+    echo "Total time: $(format_duration ${total_duration})"
+    echo "Target: ${TOTAL_TARGET}s"
+
+    if [[ $total_duration -le $((TOTAL_TARGET * 1000)) ]]; then
+        log_success "Startup within target time!"
+    else
+        log_warning "Startup exceeded target time"
     fi
-fi
 
-# Start ComfyUI Studio (don't exit on failure)
-if ! start_comfyui_studio; then
-    echo "ComfyUI Studio failed to start - check logs at /workspace/logs/comfyui_studio.log"
-fi
+    echo ""
+    echo "Services:"
+    echo "  ComfyUI:        http://localhost:${COMFYUI_PORT}"
+    echo "  Nginx Proxy:    http://localhost:${PRESET_MANAGER_PORT}"
 
-export_env_vars
+    if [[ "${ENABLE_CODE_SERVER,,}" != "false" ]] && command -v code-server &> /dev/null; then
+        echo "  Code Server:    http://localhost:${CODE_SERVER_PORT}"
+    fi
 
-execute_script "/post_start.sh" "Running post-start script..."
+    if [[ "${ENABLE_JUPYTERLAB,,}" != "false" ]] && command -v jupyter &> /dev/null; then
+        echo "  JupyterLab:     http://localhost:${JUPYTER_PORT}"
+    fi
 
-echo "Start script(s) finished, pod is ready to use."
+    if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then
+        echo "  Preset Manager: http://localhost:${PRESET_MANAGER_PORT}"
+    fi
 
-sleep infinity
+    echo ""
+    echo "Logs: ${LOGS_DIR}"
+    echo "=========================================="
+
+    # Run custom scripts if they exist
+    if [[ -f "/post_start.sh" ]]; then
+        log_info "Running post-start script..."
+        bash /post_start.sh || log_warning "Post-start script failed"
+    fi
+
+    # Keep container running
+    log_info "Container ready. Waiting for signals..."
+    sleep infinity &
+    wait $!
+}
+
+# Run main function
+main "$@"

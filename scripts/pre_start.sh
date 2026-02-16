@@ -27,8 +27,8 @@ sudo dpkg-reconfigure -f noninteractive tzdata
 # Generate extra_model_paths.yaml for ComfyUI
 # This tells ComfyUI to find models on /workspace (network volume)
 echo "**** Generating ComfyUI model path configuration... ****"
-if [ -f "/scripts/generate_extra_paths.py" ]; then
-    python3 /scripts/generate_extra_paths.py --create-dirs
+if [ -f "/generate_extra_paths.py" ]; then
+    python3 /generate_extra_paths.py --create-dirs
     echo "✓ Model paths configured"
 else
     echo "⚠ generate_extra_paths.py not found, using default paths"
@@ -46,7 +46,7 @@ echo "✓ Workspace directories created"
 
 # Verify ComfyUI installation
 echo "**** Verifying ComfyUI installation... ****"
-COMFYUI_PATH="${COMFYUI_PATH:-/app/comfyui}"
+COMFYUI_PATH="${COMFYUI_PATH:-/ComfyUI}"
 if [ -d "$COMFYUI_PATH" ]; then
     echo "✓ ComfyUI found at $COMFYUI_PATH"
 else

@@ -2,8 +2,8 @@
 
 export PYTHONUNBUFFERED=1
 
-source /workspace/venv/bin/activate
-cd /workspace/ComfyUI
+export PATH="/venv/bin:$PATH"
+cd /ComfyUI
 
 echo "**** Displays the available arguments for running ComfyUI. ****" 
 python main.py --help

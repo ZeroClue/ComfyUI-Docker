@@ -139,6 +139,7 @@ COPY README.md /usr/share/nginx/html/README.md
 COPY --chmod=755 scripts/start.sh /
 COPY --chmod=755 scripts/pre_start.sh /
 COPY --chmod=755 scripts/post_start.sh /
+COPY --chmod=755 scripts/generate_extra_paths.py /
 
 COPY --chmod=755 scripts/download_presets.sh /
 COPY --chmod=755 scripts/download_image_presets.sh /

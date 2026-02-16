@@ -412,7 +412,7 @@ start_unified_dashboard() {
     mkdir -p /workspace/logs
 
     # Set environment variables for dashboard
-    export DASHBOARD_PORT="${DASHBOARD_PORT:-8081}"
+    export DASHBOARD_PORT="${DASHBOARD_PORT:-8000}"
     export DASHBOARD_HOST="0.0.0.0"
     export DASHBOARD_SECRET_KEY="${DASHBOARD_SECRET_KEY:-$(python3 -c 'import secrets; print(secrets.token_hex(32))')}"
 
@@ -543,7 +543,7 @@ echo "  ComfyUI-Docker is ready!"
 echo "=================================================="
 echo ""
 echo "  Services:"
-echo "    - Unified Dashboard: http://localhost:8081 (NEW!)"
+echo "    - Unified Dashboard: http://localhost:8082 (NEW!)"
 echo "    - ComfyUI:          http://localhost:3000"
 echo "    - Code Server:      http://localhost:8080"
 echo "    - JupyterLab:       http://localhost:8888"

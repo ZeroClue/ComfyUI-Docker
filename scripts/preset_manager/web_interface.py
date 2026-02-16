@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from typing import Dict
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Try to import optional dependencies
 try:
@@ -75,6 +76,17 @@ class PresetManagerWeb:
     def _setup_flask_config(self):
         """Configure Flask application"""
         self.app.config['SECRET_KEY'] = SECRET_KEY
+
+        # Apply ProxyFix to handle X-Forwarded-* headers from Nginx
+        # This allows Flask to generate correct URLs behind a reverse proxy
+        self.app.wsgi_app = ProxyFix(
+            self.app.wsgi_app,
+            x_for=1,          # X-Forwarded-For
+            x_proto=1,        # X-Forwarded-Proto
+            x_host=1,         # X-Forwarded-Host
+            x_prefix=1,       # X-Forwarded-Prefix
+            x_port=1          # X-Forwarded-Port
+        )
 
         # Initialize session if available
         if HAS_SESSION:

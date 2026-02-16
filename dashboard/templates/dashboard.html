@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div x-data="{ sidebarOpen: false }" class="min-h-screen">
+    <!-- Mobile sidebar backdrop -->
+    <div x-show="sidebarOpen" @click="sidebarOpen = false" x-cloak
+         class="fixed inset-0 bg-black/50 z-40 lg:hidden"></div>
+
+    <!-- Sidebar -->
+    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+           class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-200 lg:translate-x-0">
+        <div class="flex flex-col h-full">
+            <!-- Logo -->
+            <div class="p-6 border-b border-slate-800">
+                <h1 class="text-xl font-bold bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent">
+                    ComfyUI-Docker
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">Unified Dashboard</p>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <a href="#" hx-get="/partials/services-panel"
+                   hx-target="#main-content"
+                   class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+                    <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                    </svg>
+                    <span>Services</span>
+                </a>
+
+                <a href="#" hx-get="/partials/presets-panel"
+                   hx-target="#main-content"
+                   class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+                    <svg class="w-5 h-5 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                    </svg>
+                    <span>Presets</span>
+                </a>
+
+                <a href="#" hx-get="/partials/downloads-panel"
+                   hx-target="#main-content"
+                   class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                    </svg>
+                    <span>Downloads</span>
+                </a>
+            </nav>
+
+            <!-- User section -->
+            <div class="p-4 border-t border-slate-800">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                            <span class="font-bold">{{ user[0]|upper }}</span>
+                        </div>
+                        <div>
+                            <p class="font-medium">{{ user|capitalize }}</p>
+                            <p class="text-sm text-slate-400">Logged in</p>
+                        </div>
+                    </div>
+                </div>
+
+                <form hx-post="/api/auth/logout" hx-swap="outerHTML">
+                    <button type="submit"
+                            class="w-full flex items-center justify-center gap-2 px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 lg:ml-0">
+        <!-- Top bar -->
+        <header class="bg-slate-900/50 border-b border-slate-800 backdrop-blur-sm sticky top-0 z-30">
+            <div class="flex items-center justify-between px-4 lg:px-8 py-4">
+                <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 hover:bg-slate-800 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+
+                <div class="flex items-center gap-4">
+                    <!-- Status indicator -->
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="relative flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                        </span>
+                        <span class="text-slate-400">System Online</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content area -->
+        <div id="main-content" class="p-4 lg:p-8">
+            <!-- Default: services panel -->
+            {% include 'partials/services_panel.html' %}
+        </div>
+    </main>
+</div>
+{% endblock %}

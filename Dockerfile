@@ -108,6 +108,12 @@ RUN if [ "$ENABLE_EXTRA_NODES" = "true" ] && [ -z "$SKIP_CUSTOM_NODES" ]; then \
         find /ComfyUI/custom_nodes -maxdepth 2 -name "install.py" -exec python {} \; ; \
     fi
 
+# Install SageAttention or ComfyUI-Attention-Optimizer based on CUDA version
+# SageAttention: CUDA 12.0-12.9 (2-4x video generation speedup)
+# ComfyUI-Attention-Optimizer: CUDA 13.0+ (1.5-2x speedup, works with all CUDA versions)
+COPY --chmod=755 scripts/install_sageattention.sh /tmp/install_sageattention.sh
+RUN bash /tmp/install_sageattention.sh && rm /tmp/install_sageattention.sh
+
 # Install Runpod CLI
 #RUN wget -qO- cli.runpod.net | sudo bash
 
@@ -133,6 +139,7 @@ COPY README.md /usr/share/nginx/html/README.md
 COPY --chmod=755 scripts/start.sh /
 COPY --chmod=755 scripts/pre_start.sh /
 COPY --chmod=755 scripts/post_start.sh /
+COPY --chmod=755 scripts/generate_extra_paths.py /
 
 COPY --chmod=755 scripts/download_presets.sh /
 COPY --chmod=755 scripts/download_image_presets.sh /
@@ -184,6 +191,30 @@ RUN echo "Build timestamp: $(date)" > /build-info.txt && \
     echo "CUDA version: ${CUDA_VERSION}" >> /build-info.txt && \
     echo "PyTorch version: ${TORCH_VERSION}" >> /build-info.txt && \
     echo "Variant flags: CODE_SERVER=${INSTALL_CODE_SERVER}, DEV_TOOLS=${INSTALL_DEV_TOOLS}, SCIENCE_PKGS=${INSTALL_SCIENCE_PACKAGES}" >> /build-info.txt
+
+# ============================================================================
+# FINAL CLEANUP - Remove unnecessary build tools to reclaim space
+# ============================================================================
+# Keep CUDA development tools (nvcc) for custom node compatibility
+# Remove general build tools that are no longer needed after installation
+RUN apt-get remove -y \
+        build-essential \
+        cmake \
+        ninja-build \
+        clang \
+        libomp-dev \
+    && apt-get autoremove -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/* /root/.cache/*
+
+# Clear pip and UV caches
+RUN pip cache purge \
+    && rm -rf /root/.cache/uv \
+    && rm -rf /root/.cache/pip
+
+# Clear Python __pycache__ directories
+RUN find /venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+RUN find /ComfyUI -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # Set entrypoint to the start script
 CMD ["/start.sh"]

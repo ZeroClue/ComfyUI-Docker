@@ -2,18 +2,33 @@ variable "DOCKERHUB_REPO_NAME" {
     default = "zeroclue/comfyui"
 }
 
+# Python 3.13 for forward-looking builds
 variable "PYTHON_VERSION" {
     default = "3.13"
 }
+
+# PyTorch 2.8.0+ for latest features
 variable "TORCH_VERSION" {
     default = "2.8.0"
+}
+
+# CUDA 12.8 is the default (modern, stable, excellent GPU support)
+variable "DEFAULT_CUDA" {
+    default = "cu128"
 }
 
 variable "EXTRA_TAG" {
     default = ""
 }
 
+# Primary tag function: latest-py313-cu128
 function "tag" {
+    params = [tag, cuda]
+    result = ["${DOCKERHUB_REPO_NAME}:${tag}-py${PYTHON_VERSION}-${cuda}${EXTRA_TAG}"]
+}
+
+# Legacy tag function for backward compatibility: base-torch2.8.0-cu128
+function "legacy_tag" {
     params = [tag, cuda]
     result = ["${DOCKERHUB_REPO_NAME}:${tag}-torch${TORCH_VERSION}-${cuda}${EXTRA_TAG}"]
 }
@@ -144,7 +159,82 @@ target "_slim_base" {
     }
 }
 
-# Minimal variant - ComfyUI + Manager + Preset Manager
+# ============================================================================
+# PRIMARY BUILDS (February 2026 - CUDA 12.8 as default)
+# Tag format: <variant>-py<python>-<cuda>
+# Example: latest-py313-cu128
+# ============================================================================
+
+# Latest builds - forward-looking with Python 3.13
+target "latest-py313-cu128" {
+    inherits = ["_cu128"]
+    tags = tag("latest", "cu128")
+    description = "★ DEFAULT - Python 3.13, CUDA 12.8, SageAttention included"
+}
+
+target "latest-py313-cu129" {
+    inherits = ["_cu129"]
+    tags = tag("latest", "cu129")
+    description = "Future-proof - Python 3.13, CUDA 12.9, SageAttention included"
+}
+
+target "latest-py313-cu130" {
+    inherits = ["_cu130"]
+    tags = tag("latest", "cu130")
+    description = "Future-proof - Python 3.13, CUDA 13.0, ComfyUI-Attention-Optimizer"
+}
+
+# Standard builds - full feature set
+target "standard-py313-cu128" {
+    inherits = ["_cu128"]
+    tags = tag("standard", "cu128")
+    description = "Full features - Python 3.13, CUDA 12.8, SageAttention included"
+}
+
+target "standard-py313-cu129" {
+    inherits = ["_cu129"]
+    tags = tag("standard", "cu129")
+    description = "Full features - Python 3.13, CUDA 12.9, SageAttention included"
+}
+
+target "standard-py313-cu130" {
+    inherits = ["_cu130"]
+    tags = tag("standard", "cu130")
+    description = "Full features - Python 3.13, CUDA 13.0, ComfyUI-Attention-Optimizer"
+}
+
+# Development builds
+target "dev-py313-cu128" {
+    inherits = ["_cu128"]
+    tags = tag("dev", "cu128")
+    description = "Development tools - Python 3.13, CUDA 12.8"
+}
+
+# ============================================================================
+# LEGACY BUILDS (for backward compatibility)
+# ============================================================================
+
+# Legacy Python 3.13 + CUDA 12.6 (Sage Attention compatibility)
+target "stable-py313-cu126" {
+    inherits = ["_cu126"]
+    tags = tag("stable", "cu126")
+    description = "Legacy - Python 3.13, CUDA 12.6 for SageAttention compatibility"
+}
+
+# Legacy Python 3.11 + CUDA 12.6 (maximum custom node compatibility)
+target "stable-py311-cu126" {
+    inherits = ["_cu126"]
+    args = {
+        PYTHON_VERSION = "3.11"
+    }
+    tags = tag("stable", "cu126")
+    description = "Legacy - Python 3.11, CUDA 12.6 for max custom node compatibility"
+}
+
+# ============================================================================
+# LEGACY TAG FORMATS (backward compatible with existing tags)
+# Tag format: <variant>-torch<torch>-<cuda>
+# ============================================================================
 # Optimized for RunPod with custom nodes but without dev tools
 target "_minimal_base" {
     args = {

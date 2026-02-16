@@ -1,0 +1,59 @@
+<!-- Services Panel -->
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold">Services</h2>
+        <button hx-get="/api/services" hx-trigger="load, every 5s" hx-target="#services-grid"
+                class="px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+            Refresh
+        </button>
+    </div>
+
+    <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% if services is not defined %}
+        <!-- Loading state -->
+        {% for i in range(5) %}
+        <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6 animate-pulse">
+            <div class="h-4 bg-slate-800 rounded w-1/2 mb-4"></div>
+            <div class="h-8 bg-slate-800 rounded w-3/4"></div>
+        </div>
+        {% endfor %}
+        {% else %}
+        {% for service_name, service_info in services.items() %}
+        <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-slate-700 transition-colors">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg {{ 'bg-green-500/20 text-green-400' if service_info.running else 'bg-red-500/20 text-red-400' }} flex items-center justify-center">
+                        {% if service_info.running %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        {% else %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <h3 class="font-semibold">{{ service_name }}</h3>
+                        <p class="text-sm text-slate-400">Port {{ service_info.port }}</p>
+                    </div>
+                </div>
+                <span class="px-2 py-1 text-xs rounded-full {{ 'bg-green-500/20 text-green-400' if service_info.running else 'bg-red-500/20 text-red-400' }}">
+                    {{ 'Running' if service_info.running else 'Stopped' }}
+                </span>
+            </div>
+
+            {% if service_info.running %}
+            <a href="http://localhost:{{ service_info.port }}" target="_blank"
+               class="flex items-center gap-2 text-primary-400 hover:text-primary-300 text-sm">
+                <span>Open Service</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>

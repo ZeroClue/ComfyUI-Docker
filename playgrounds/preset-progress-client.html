@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preset Download Progress</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; color: #eaeaea; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 30px; font-size: 2rem; background: linear-gradient(90deg, #00d9ff, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .connection-status { text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; }
+        .connection-status.connected { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.3); color: #00ff88; }
+        .connection-status.disconnected { background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); color: #ff4d4d; }
+        .summary { background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+        .summary-item { text-align: center; }
+        .summary-value { font-size: 2rem; font-weight: bold; background: linear-gradient(90deg, #00d9ff, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .summary-label { font-size: 0.85rem; color: #888; margin-top: 5px; }
+        .preset-list { display: grid; gap: 15px; }
+        .preset-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; }
+        .preset-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .preset-name { font-size: 1.1rem; font-weight: 600; }
+        .preset-status { padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
+        .preset-status.downloading { background: rgba(0, 217, 255, 0.2); color: #00d9ff; }
+        .preset-status.completed { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .progress-bar { height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; margin-bottom: 15px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d9ff, #00ff88); border-radius: 4px; transition: width 0.3s ease; }
+        .preset-details { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 0.9rem; color: #aaa; }
+        .detail-item { display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Preset Download Progress</h1>
+        <div id="connectionStatus" class="connection-status disconnected">Connecting...</div>
+        <div id="summary" class="summary" style="display: none;">
+            <div class="summary-item"><div class="summary-value" id="totalPresets">0</div><div class="summary-label">Total</div></div>
+            <div class="summary-item"><div class="summary-value" id="completedPresets">0</div><div class="summary-label">Completed</div></div>
+            <div class="summary-item"><div class="summary-value" id="downloadingPresets">0</div><div class="summary-label">Downloading</div></div>
+            <div class="summary-item"><div class="summary-value" id="progressPercent">0%</div><div class="summary-label">Progress</div></div>
+        </div>
+        <div id="presetList" class="preset-list"><p style="text-align:center;color:#666;">Waiting for downloads...</p></div>
+    </div>
+    <script>
+        class PresetProgressClient {
+            constructor(wsUrl) {
+                this.wsUrl = wsUrl || 'ws://' + window.location.hostname + ':9001';
+                this.ws = null;
+                this.presets = {};
+                this.connect();
+            }
+            connect() {
+                this.updateConnectionStatus('connecting');
+                try {
+                    this.ws = new WebSocket(this.wsUrl);
+                    this.ws.onopen = () => this.updateConnectionStatus('connected');
+                    this.ws.onmessage = (e) => { const m = JSON.parse(e.data); if(m.type === 'progress_update') { this.presets = m.data || {}; this.render(); } };
+                    this.ws.onclose = () => { this.updateConnectionStatus('disconnected'); setTimeout(() => this.connect(), 2000); };
+                } catch(e) { console.error(e); this.updateConnectionStatus('error'); }
+            }
+            render() {
+                const presetEntries = Object.entries(this.presets);
+                const total = presetEntries.length;
+                const completed = presetEntries.filter(([,p]) => p.status === 'completed').length;
+                const downloading = presetEntries.filter(([,p]) => p.status === 'downloading').length;
+                const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+                document.getElementById('summary').style.display = total > 0 ? 'grid' : 'none';
+                document.getElementById('totalPresets').textContent = total;
+                document.getElementById('completedPresets').textContent = completed;
+                document.getElementById('downloadingPresets').textContent = downloading;
+                document.getElementById('progressPercent').textContent = percentage + '%';
+
+                const list = document.getElementById('presetList');
+                if(presetEntries.length === 0) { list.innerHTML = '<p style="text-align:center;color:#666;">Waiting for downloads...</p>'; return; }
+
+                list.innerHTML = presetEntries.map(([id, p]) => {
+                    const progress = p.total_files > 0 ? Math.round((p.completed_files / p.total_files) * 100) : 0;
+                    const statusClass = p.status || 'downloading';
+                    return '<div class="preset-card"><div class="preset-header"><div class="preset-name">'+(p.preset_name||id)+'</div><div class="preset-status '+statusClass+'">'+(p.status||'downloading').charAt(0).toUpperCase()+(p.status||'downloading').slice(1)+'</div></div><div class="progress-bar"><div class="progress-fill" style="width:'+progress+'%"></div></div><div class="preset-details"><div class="detail-item"><span>Files</span><span>'+(p.completed_files||0)+' / '+(p.total_files||0)+'</span></div><div class="detail-item"><span>Size</span><span>'+(p.downloaded_size||'0B')+' / '+(p.total_size||'Unknown')+'</span></div></div></div>';
+                }).join('');
+            }
+            updateConnectionStatus(s) {
+                const el = document.getElementById('connectionStatus');
+                el.className = 'connection-status ' + s;
+                el.textContent = {connecting:'Connecting...',connected:'Connected',disconnected:'Disconnected - Reconnecting...',error:'Connection Error'}[s] || 'Unknown';
+            }
+        }
+        new PresetProgressClient();
+    </script>
+</body>
+</html>

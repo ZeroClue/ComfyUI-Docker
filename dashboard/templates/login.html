@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent">
+                ComfyUI-Docker
+            </h1>
+            <p class="text-slate-400 mt-2">Unified Dashboard</p>
+        </div>
+
+        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 backdrop-blur-sm">
+            <h2 class="text-2xl font-semibold mb-6 text-center">Login</h2>
+
+            <form hx-post="/api/auth/login" hx-swap="outerHTML" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-slate-300 mb-2">
+                        Username
+                    </label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        value="user"
+                        class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-slate-300 mb-2">
+                        Password
+                    </label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Enter access password"
+                        class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                        required
+                    >
+                </div>
+
+                <button
+                    type="submit"
+                    class="w-full py-3 px-4 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 rounded-lg font-medium transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    Sign In
+                </button>
+            </form>
+
+            <div class="mt-6 text-center text-sm text-slate-400">
+                <p>Use your <span class="text-primary-400">ACCESS_PASSWORD</span> environment variable</p>
+                <p class="mt-1">or <span class="text-accent-400">admin</span> credentials for admin access</p>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center text-sm text-slate-500">
+            <p>ComfyUI-Docker v2.0 - Revolutionary Architecture</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

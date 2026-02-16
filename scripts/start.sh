@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e  # Exit the script if any statement returns a non-true return value
 
-# Ensure venv Python is first in PATH (UV may have added /root/.local/bin first)
-export PATH="/workspace/venv/bin:$PATH"
+# Revolutionary Architecture: Python venv is in container at /venv
+# No rsync needed - instant startup
+export PATH="/venv/bin:$PATH"
 
 # ---------------------------------------------------------------------------- #
 #                          Function Definitions                                #
@@ -208,7 +209,7 @@ start_preset_manager() {
 
     # DEBUG: Validate Python imports before starting
     echo "[DEBUG] Testing Python import..."
-    if ! /workspace/venv/bin/python3 -c "from preset_manager.core import ModelManager; print('[DEBUG] Import successful')" 2>&1; then
+    if ! /venv/bin/python3 -c "from preset_manager.core import ModelManager; print('[DEBUG] Import successful')" 2>&1; then
         echo "WARNING: Cannot import ModelManager. Python dependencies may be missing."
         echo "Preset Manager will not start. Please check your Docker image."
         return 1
@@ -235,7 +236,7 @@ start_preset_manager() {
     echo "[DEBUG] Starting Flask app..."
     cd /app
 
-    nohup /workspace/venv/bin/python3 preset_manager.py &> /workspace/logs/preset_manager.log &
+    nohup /venv/bin/python3 preset_manager.py &> /workspace/logs/preset_manager.log &
     local pid=$!
     echo "[DEBUG] Flask app started with PID $pid"
 
@@ -274,6 +275,48 @@ start_preset_manager() {
     fi
 
     echo "Preset Manager started on port 8000 (accessible via Nginx on port 9000)"
+}
+
+# Start preset downloads in background
+start_preset_downloads() {
+    echo "Checking for preset downloads..."
+
+    # Check if any preset downloads are requested
+    local has_presets=false
+    if [[ -n "${PRESET_DOWNLOAD}" ]] || [[ -n "${IMAGE_PRESET_DOWNLOAD}" ]] || [[ -n "${AUDIO_PRESET_DOWNLOAD}" ]] || [[ -n "${UNIFIED_PRESET_DOWNLOAD}" ]]; then
+        has_presets=true
+    fi
+
+    if [[ "$has_presets" == "false" ]]; then
+        echo "No preset downloads requested (set PRESET_DOWNLOAD, IMAGE_PRESET_DOWNLOAD, AUDIO_PRESET_DOWNLOAD, or UNIFIED_PRESET_DOWNLOAD)"
+        return
+    fi
+
+    # Check if unified downloader exists
+    if [[ ! -f "/scripts/unified_preset_downloader.py" ]]; then
+        echo "WARNING: unified_preset_downloader.py not found, skipping preset downloads"
+        return 1
+    fi
+
+    echo "Starting preset downloads in background..."
+    mkdir -p /workspace/logs
+
+    # Show what will be downloaded
+    python3 /scripts/unified_preset_downloader.py status
+
+    # Start preset downloader in background mode with progress tracking
+    nohup python3 /scripts/unified_preset_downloader.py download --background --quiet &> /workspace/logs/preset_downloads.log &
+    local pid=$!
+    echo "Preset downloader started with PID $pid"
+
+    # Save PID for monitoring
+    echo $pid > /tmp/preset_downloader.pid
+
+    echo "Preset downloads running in background"
+    echo "Check progress:"
+    echo "  - Tail logs:    tail -f /workspace/logs/preset_downloads.log"
+    echo "  - Watch mode:   python3 /scripts/unified_preset_downloader.py progress --watch"
+    echo "  - JSON status:  cat /tmp/preset_download_progress.json"
 }
 
 # Check preset manager health
@@ -334,7 +377,7 @@ start_comfyui_studio() {
 
     # Start the studio Flask application
     cd /scripts
-    nohup /workspace/venv/bin/python3 comfyui_studio.py &> /workspace/logs/comfyui_studio.log &
+    nohup /venv/bin/python3 comfyui_studio.py &> /workspace/logs/comfyui_studio.log &
     local pid=$!
     echo "ComfyUI Studio started with PID $pid on port ${STUDIO_PORT}"
 
@@ -408,65 +451,59 @@ install_extra_nodes() {
 
 start_nginx
 
-# Start sync monitor in background for real-time progress tracking
-if [ -f "/scripts/sync_monitor.sh" ]; then
-    echo "Starting sync progress monitor..."
-    nohup /scripts/sync_monitor.sh > /dev/null 2>&1 &
-    echo "Sync monitor started - check /workspace/logs/sync_monitor.log for detailed progress"
-fi
+# Revolutionary Architecture: No sync monitor needed (no rsync!)
+# Background preset downloads for instant startup
 
 execute_script "/pre_start.sh" "Running pre-start script..."
 
 # Install extra custom nodes if requested
 install_extra_nodes
 
-echo "Pod Started - Optimizations applied"
+echo "=================================================="
+echo "  ComfyUI-Docker Revolutionary Architecture"
+echo "  No rsync - instant startup!"
+echo "=================================================="
 
 setup_ssh
+
+# Start preset downloads in background (non-blocking)
+start_preset_downloads
+
 start_jupyter
 start_code_server
 
 # Start preset manager (don't exit on failure)
 if ! start_preset_manager; then
-    echo "[DEBUG] Preset Manager failed - dumping logs..."
-    echo "[DEBUG] === preset_manager.log ==="
-    cat /workspace/logs/preset_manager.log 2>/dev/null || echo "[DEBUG] Log file not found"
-    echo "[DEBUG] === end of log ==="
-fi
-
-# Run health check if preset manager was started
-if [[ "${ENABLE_PRESET_MANAGER,,}" != "false" ]]; then
-    # Wait for preset manager to fully initialize with retries
-    max_retries=5
-    retry_delay=3
-    retry_count=0
-
-    while [[ $retry_count -lt $max_retries ]]; do
-        if check_preset_manager_health; then
-            break
-        fi
-        ((retry_count++))
-        if [[ $retry_count -lt $max_retries ]]; then
-            echo "Retrying health check in ${retry_delay}s... ($retry_count/$max_retries)"
-            sleep $retry_delay
-        fi
-    done
-
-    if [[ $retry_count -ge $max_retries ]]; then
-        echo "NOTE: Preset Manager health check failed after $max_retries attempts, but continuing startup."
-        echo "Preset Manager may not be fully functional. Check logs at /workspace/logs/preset_manager.log"
-    fi
+    echo "[WARN] Preset Manager failed to start - check logs"
 fi
 
 # Start ComfyUI Studio (don't exit on failure)
 if ! start_comfyui_studio; then
-    echo "ComfyUI Studio failed to start - check logs at /workspace/logs/comfyui_studio.log"
+    echo "[WARN] ComfyUI Studio failed to start - check logs"
 fi
 
 export_env_vars
 
 execute_script "/post_start.sh" "Running post-start script..."
 
-echo "Start script(s) finished, pod is ready to use."
+echo ""
+echo "=================================================="
+echo "  ComfyUI-Docker is ready!"
+echo "=================================================="
+echo ""
+echo "  Services:"
+echo "    - Preset Manager: http://localhost:9000"
+echo "    - Code Server:    http://localhost:8080"
+echo "    - JupyterLab:     http://localhost:8888"
+echo "    - Studio:         http://localhost:5000"
+echo ""
+echo "  Architecture:"
+echo "    - App code:   /app (container volume)"
+echo "    - Models:     /workspace/models (network volume)"
+echo "    - No rsync needed!"
+echo ""
+echo "  Preset downloads running in background."
+echo "  Check: tail -f /workspace/logs/preset_downloads.log"
+echo "=================================================="
 
 sleep infinity

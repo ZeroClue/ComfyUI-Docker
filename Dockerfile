@@ -78,6 +78,7 @@ RUN pip install --no-cache-dir -U pip setuptools wheel && \
         pip install --no-cache-dir numpy scipy matplotlib pandas scikit-learn seaborn; \
     fi && \
     pip install --no-cache-dir requests tqdm pillow pyyaml flask python-markdown pygments Flask Flask-Session markdown triton && \
+    pip install --no-cache-dir fastapi uvicorn[standard] python-multipart starlette jinja2 && \
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION}
 
 # Install ComfyUI and ComfyUI Manager

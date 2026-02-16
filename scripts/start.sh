@@ -518,19 +518,23 @@ start_preset_downloads
 start_jupyter
 start_code_server
 
-# Start preset manager (don't exit on failure)
-if ! start_preset_manager; then
-    echo "[WARN] Preset Manager failed to start - check logs"
-fi
+# Start Unified Dashboard (replaces Preset Manager and Studio)
+# If Unified Dashboard is enabled, skip Preset Manager and Studio
+if [[ "${ENABLE_UNIFIED_DASHBOARD,,}" != "false" ]]; then
+    # Start Unified Dashboard (don't exit on failure)
+    if ! start_unified_dashboard; then
+        echo "[WARN] Unified Dashboard failed to start - check logs"
+    fi
+else
+    # Start preset manager (don't exit on failure)
+    if ! start_preset_manager; then
+        echo "[WARN] Preset Manager failed to start - check logs"
+    fi
 
-# Start ComfyUI Studio (don't exit on failure)
-if ! start_comfyui_studio; then
-    echo "[WARN] ComfyUI Studio failed to start - check logs"
-fi
-
-# Start Unified Dashboard (don't exit on failure)
-if ! start_unified_dashboard; then
-    echo "[WARN] Unified Dashboard failed to start - check logs"
+    # Start ComfyUI Studio (don't exit on failure)
+    if ! start_comfyui_studio; then
+        echo "[WARN] ComfyUI Studio failed to start - check logs"
+    fi
 fi
 
 export_env_vars

@@ -312,7 +312,8 @@ RUN apt-get update --yes && \
         git wget curl bash nginx-light rsync sudo \
         binutils ffmpeg lshw tzdata file \
         libgl1 libglib2.0-0 \
-        openssh-server ca-certificates && \
+        openssh-server ca-certificates \
+        locales && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*

@@ -196,7 +196,7 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "comfyui-dashboard",
-    "imageName": "zeroclue/comfyui:minimal-py3.13-cu128",
+    "imageName": "zeroclue/comfyui:base-py3.13-cu128",
     "computeType": "GPU",
     "gpuTypeIds": ["NVIDIA RTX 2000 Ada Generation"],
     "dataCenterIds": ["EU-RO-1"],
@@ -209,8 +209,8 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
 
 ### Image Tag Format
 **CRITICAL:** Image tags use DOTS in Python version: `py3.13` NOT `py313`
-- ✅ Correct: `zeroclue/comfyui:minimal-py3.13-cu128`
-- ❌ Wrong: `zeroclue/comfyui:minimal-py313-cu128`
+- ✅ Correct: `zeroclue/comfyui:base-py3.13-cu128`
+- ❌ Wrong: `zeroclue/comfyui:base-py313-cu128`
 
 ## Container Ports
 - **8082**: Unified Dashboard (PRIMARY INTERFACE - FastAPI + htmx + Alpine.js)
@@ -218,7 +218,7 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
 - **3000**: ComfyUI main interface
 - **8080**: VS Code server (if enabled)
 - **8888**: JupyterLab notebook interface
-- **9000**: Preset Manager web UI (being replaced by dashboard)
+- **9000**: Preset Manager web UI (auto-disabled when Unified Dashboard enabled)
 - **22**: SSH access
 
 ## Service Port Conflicts (CRITICAL)
@@ -227,7 +227,7 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
 - Port 8081 is used by code-server (proxies to 8080)
 - Dashboard runs internally on port 8000
 - If dashboard shows README page, check: `curl http://localhost:8000/` from inside the pod
-- **Preset Manager is DISABLED automatically when Unified Dashboard is enabled** (both use port 8000)
+- **Preset Manager Auto-Disable**: When `ENABLE_UNIFIED_DASHBOARD` is enabled (default), Preset Manager is automatically disabled to prevent port 8000 conflict. To explicitly enable Preset Manager, set `ENABLE_PRESET_MANAGER=true` (not recommended when using Unified Dashboard).
 
 ## Dashboard Startup Requirements
 
@@ -313,6 +313,14 @@ For dependency/startup debugging (no GPU needed):
 - Costs ~$0.05-0.10/hour vs $0.24/hour for GPU
 - Use for: import errors, missing dependencies, container startup
 - Switch to GPU only for final workflow testing
+
+### SSH Log Inspection
+```bash
+# Connect to pod and inspect logs
+ssh root@<pod-ip> -p <ssh-port> -i ~/.ssh/id_ed25519
+tail -f /workspace/logs/*.log
+cat /workspace/logs/comfyui.log | grep -i error
+```
 
 ## Core ComfyUI Dependencies (Must-Have)
 

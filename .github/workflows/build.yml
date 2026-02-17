@@ -14,7 +14,7 @@ on:
       cuda_versions:
         description: 'CUDA versions (comma-separated): 12-6,12-8,12-9,13-0'
         required: false
-        default: '12-6,12-8'
+        default: '12-8'
   schedule:
     - cron: "0 */8 * * *"
   push:
@@ -36,26 +36,18 @@ jobs:
       max-parallel: 2
       matrix:
         include:
-          # Standard variants - full development environment
-          - target: base
-            cuda: 12-6
+          # Only building CUDA 12.8 variants for initial testing
           - target: base
             cuda: 12-8
-          # Production variants - optimized for serving
-          - target: slim
-            cuda: 12-6
           - target: slim
             cuda: 12-8
-          # Minimal variants - ComfyUI + Manager without dev tools
-          - target: minimal
-            cuda: 12-6
           - target: minimal
             cuda: 12-8
     steps:
       - name: Check if should run
         run: |
           TARGETS="${{ github.event.inputs.targets || 'base,slim,minimal' }}"
-          CUDA="${{ github.event.inputs.cuda_versions || '12-6,12-8' }}"
+          CUDA="${{ github.event.inputs.cuda_versions || '12-8' }}"
 
           if [[ ",$TARGETS," != *",${{ matrix.target }},"* ]]; then
             echo "SKIP_BUILD=true" >> $GITHUB_ENV

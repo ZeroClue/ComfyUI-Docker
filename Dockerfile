@@ -6,7 +6,7 @@
 # This Dockerfile implements a 5-stage multi-stage build for maximum efficiency:
 #
 # Stage 1: builder-base
-#   - Ubuntu 24.04 + CUDA 12.6 + UV package manager
+#   - Ubuntu 24.04 + CUDA 12.8.1 + UV package manager
 #   - Foundation for all builds
 #
 # Stage 2: python-deps
@@ -39,8 +39,8 @@
 #
 # Usage:
 # ------
-# docker buildx bake base-12-6  # Build base variant with CUDA 12.6
-# docker buildx bake slim-12-6  # Build slim variant with CUDA 12.6
+# docker buildx bake base-12-8  # Build base variant with CUDA 12.8
+# docker buildx bake slim-12-8  # Build slim variant with CUDA 12.8
 # =============================================================================
 
 # =============================================================================
@@ -49,11 +49,11 @@
 # Purpose: Create base builder image with CUDA and UV
 # This stage is only rebuilt when CUDA version changes
 # =============================================================================
-FROM nvidia/cuda:12.6.3-devel-ubuntu24.04 AS builder-base
+FROM nvidia/cuda:12.8.1-devel-ubuntu24.04 AS builder-base
 
 # Build arguments
 ARG PYTHON_VERSION=3.13
-ARG CUDA_VERSION=cu126
+ARG CUDA_VERSION=cu128
 
 # Set the shell for better error handling
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -96,7 +96,7 @@ FROM builder-base AS python-deps
 # Build arguments
 ARG PYTHON_VERSION=3.13
 ARG TORCH_VERSION=2.8.0
-ARG CUDA_VERSION=cu126
+ARG CUDA_VERSION=cu128
 ARG INSTALL_DEV_TOOLS=true
 ARG INSTALL_SCIENCE_PACKAGES=true
 
@@ -263,12 +263,12 @@ RUN if [ "$BUILD_DASHBOARD" = "true" ]; then \
 # Purpose: Final minimal runtime image
 # Copies only necessary artifacts from previous stages
 # =============================================================================
-FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04 AS runtime
+FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04 AS runtime
 
 # Build arguments
 ARG PYTHON_VERSION=3.13
 ARG TORCH_VERSION=2.8.0
-ARG CUDA_VERSION=cu126
+ARG CUDA_VERSION=cu128
 ARG SKIP_CUSTOM_NODES=""
 ARG BUILD_DASHBOARD=false
 ARG INSTALL_CODE_SERVER=true

@@ -36,10 +36,11 @@ python scripts/preset_updater.py update
 ```
 
 ## Image Variants & Matrix Builds
-- **base** (~8-12GB): ComfyUI + Manager + custom nodes + dev tools
-- **slim** (~4-5GB): ComfyUI + Manager, optimized for serving
+- **base** (~8-12GB): ComfyUI + Manager + custom nodes + dev tools (ONLY VARIANT CURRENTLY BUILT)
 
 **CUDA Support**: 12.4, 12.5, 12.6, 12.8, 12.9, 13.0. Matrix builds defined in `docker-bake.hcl`.
+
+**Note**: slim and minimal variants temporarily disabled in GitHub Actions while focusing on base stability.
 
 # Architecture Overview
 
@@ -296,6 +297,45 @@ python scripts/unified_preset_downloader.py status
 - Monitor GitHub Actions build logs for disk space and timeout issues
 - Use manual workflow triggers for large variants (base-12-8 requires manual build)
 
+## Debugging Dependencies
+
+When adding Python dependencies to the Dockerfile:
+- Check official ComfyUI requirements.txt: https://raw.githubusercontent.com/comfyanonymous/ComfyUI/master/requirements.txt
+- Add missing imports to the "Install ComfyUI requirements" section (around line 119 in Dockerfile)
+- Rebuild and test on RunPod CPU pod first (cheaper) before GPU testing
+
+**Note**: ComfyUI-specific packages (comfyui-frontend-package, comfyui-workflow-templates, comfy-aimdo, etc.) must be manually added as they're not in standard PyPI.
+
+## RunPod CPU Debugging
+
+For dependency/startup debugging (no GPU needed):
+- Use `computeType: "CPU"` in pod deployment
+- Costs ~$0.05-0.10/hour vs $0.24/hour for GPU
+- Use for: import errors, missing dependencies, container startup
+- Switch to GPU only for final workflow testing
+
+## Core ComfyUI Dependencies (Must-Have)
+
+These packages are required for ComfyUI to start:
+- **Core**: aiohttp, yarl, alembic, einops, scipy, psutil, SQLAlchemy
+- **ComfyUI-specific**: comfyui-frontend-package, comfyui-workflow-templates, comfyui-embedded-docs, comfy-kitchen, comfy-aimdo, av, torchsde
+- **Additional**: tokenizers, sentencepiece, safetensors, kornia, spandrel, pydantic
+
+## Known Custom Node Import Failures (Expected)
+
+Some custom nodes fail to import due to additional dependencies. These are non-blocking for core ComfyUI functionality:
+- ComfyUI_TensorRT, ComfyUI-GGUF, ComfyUI-Crystools, ComfyUI-Openrouter_node
+- ComfyUI-Image-Saver, ComfyUI-Impact-Subpack, ComfyUI-Impact-Pack
+- ComfyUI-WanVideoWrapper, ComfyUI-Frame-Interpolation, ComfyUI-SeedVR2_VideoUpscaler
+
+## Additional Dependency Warnings
+
+These packages are commonly missing but cause warnings in custom nodes:
+- `pydantic-settings` - Required by some custom nodes for config parsing
+- `simpleeval` - Required by efficiency-nodes-comfyui
+
+Add to Dockerfile if custom node warnings appear during startup.
+
 ## Model Path Structure
 All models are installed to `/workspace/ComfyUI/models/` with standardized paths:
 - `checkpoints/`: Main model files (diffusion models, FLUX, etc.)
@@ -305,6 +345,3 @@ All models are installed to `/workspace/ComfyUI/models/` with standardized paths
 - `audio_encoders/`: Audio processing models
 - `loras/`: LoRA adapters and enhancement models
 - `upscale_models/`: Image upscaling models
-- you can always ask to connect to the runpod cpu node by asking for the ssh connection
-- runpod documentation for building docker images: https://docs.runpod.io/tutorials/pods/build-docker-images
-- example github repository for building docker images on runpod: https://github.com/therealadityashankar/build-docker-in-runpod.git

@@ -83,7 +83,7 @@ ENV PATH="/root/.local/bin:$PATH"
 
 # Install Python 3.13 using UV
 RUN uv python install ${PYTHON_VERSION} && \
-    python --version
+    python3.13 --version
 
 # =============================================================================
 # Stage 2: python-deps

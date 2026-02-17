@@ -430,11 +430,25 @@ RUN echo 'cat /etc/runpod.txt' >> /root/.bashrc && \
     echo 'echo -e "\nFor detailed documentation and guides, please visit:\n\033[1;34mhttps://docs.runpod.io/\033[0m and \033[1;34mhttps://blog.runpod.io/\033[0m\n\n"' >> /root/.bashrc
 
 # Add build information for debugging
-RUN echo "Build timestamp: $(date)" > /build-info.txt && \
-    echo "Python version: ${PYTHON_VERSION}" >> /build-info.txt && \
-    echo "CUDA version: ${CUDA_VERSION}" >> /build-info.txt && \
-    echo "PyTorch version: ${TORCH_VERSION}" >> /build-info.txt && \
-    echo "Variant flags: CODE_SERVER=${INSTALL_CODE_SERVER}, SKIP_NODES=${SKIP_CUSTOM_NODES}, DASHBOARD=${BUILD_DASHBOARD}" >> /build-info.txt
+RUN echo "========================================" > /build-info.txt && \
+    echo "ComfyUI Docker Image" >> /build-info.txt && \
+    echo "========================================" >> /build-info.txt && \
+    echo "" >> /build-info.txt && \
+    echo "Image Tag:     base-py${PYTHON_VERSION}-${CUDA_VERSION}" >> /build-info.txt && \
+    echo "Build Date:    $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> /build-info.txt && \
+    echo "Build Date ISO: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> /build-info.txt && \
+    echo "" >> /build-info.txt && \
+    echo "Version Info:" >> /build-info.txt && \
+    echo "  Python:      ${PYTHON_VERSION}" >> /build-info.txt && \
+    echo "  CUDA:        ${CUDA_VERSION}" >> /build-info.txt && \
+    echo "  PyTorch:     ${TORCH_VERSION}" >> /build-info.txt && \
+    echo "" >> /build-info.txt && \
+    echo "Build Config:" >> /build-info.txt && \
+    echo "  Code Server: ${INSTALL_CODE_SERVER}" >> /build-info.txt && \
+    echo "  Skip Nodes:  ${SKIP_CUSTOM_NODES}" >> /build-info.txt && \
+    echo "  Dashboard:   ${BUILD_DASHBOARD}" >> /build-info.txt && \
+    echo "" >> /build-info.txt && \
+    echo "========================================" >> /build-info.txt
 
 # Expose ports
 EXPOSE 22 3000 8080 8082 8888 9000

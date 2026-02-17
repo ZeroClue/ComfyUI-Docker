@@ -20,7 +20,7 @@ gh workflow run build.yml
 gh workflow run build.yml -f targets=minimal -f cuda_versions=12-8
 
 # Watch build progress
-gh run watch --interval 30s
+gh run watch --interval 30
 
 # Test preset configuration
 python scripts/preset_validator.py
@@ -134,11 +134,26 @@ Each preset contains complete model definitions with URLs, sizes, file paths, an
 ## Attention Optimization (SageAttention)
 **SageAttention 2.2.0** is compiled from source during build for optimal inference speed:
 - **2x faster** than FlashAttention2 on RTX 4090
-- **Lossless accuracy** for image/video generation
+- **2.7x faster** on RTX 5090
 - **CUDA 12.x**: Full CUDA kernel compilation
 - **CUDA 13.0+**: Falls back to ComfyUI-Attention-Optimizer
 
 Installation handled by `scripts/install_sageattention.sh` during python-deps stage.
+
+**GPU Architectures (SM versions):**
+- SM 8.0: A100
+- SM 8.6: RTX 3090, A6000
+- SM 8.9: RTX 4090, L40, RTX 4000/2000 Ada
+- SM 9.0: H100, H800
+- SM 12.0: RTX 5090, B200 (Blackwell)
+
+**CI Build Requirements (CRITICAL):**
+GitHub Actions runners have ~14GB RAM and no GPU. SageAttention builds require:
+- `FORCE_CUDA=1` - Prevents GPU auto-detection failure
+- `MAX_JOBS=2` - Prevents memory exhaustion during compilation
+- `TORCH_CUDA_ARCH_LIST` - Space-separated SM versions (not semicolons)
+
+If build fails at ~50min with runner communication loss, reduce parallelism further.
 
 ## Preset Configuration Schema
 ```yaml

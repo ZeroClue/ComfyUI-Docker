@@ -403,8 +403,8 @@ start_unified_dashboard() {
     echo "Starting Unified Dashboard..."
 
     # Check if dashboard app exists
-    if [[ ! -f /app/dashboard/app.py ]]; then
-        echo "WARNING: /app/dashboard/app.py not found, skipping startup"
+    if [[ ! -f /app/dashboard/main.py ]]; then
+        echo "WARNING: /app/dashboard/main.py not found, skipping startup"
         echo "Your Docker image may not include the unified dashboard. Please rebuild."
         return 1
     fi

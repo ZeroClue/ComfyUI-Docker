@@ -6,8 +6,8 @@
 # - 2.7x faster on RTX 5090
 # - Lossless accuracy for image/video generation
 #
-# GPU Support: Ampere (RTX 30xx), Ada (RTX 40xx/2000 Ada), Hopper (H100/H800)
-# CUDA Requirements: >= 12.0 (12.4+ for FP8 on Ada, 12.8+ for Blackwell/v2++)
+# GPU Support: Ampere (RTX 30xx), Ada (RTX 40xx/2000 Ada), Hopper (H100/H800), Blackwell (RTX 50xx)
+# CUDA Requirements: >= 12.0 (12.4+ for FP8 on Ada, 12.8+ for Blackwell SM 12.0)
 #
 # For CUDA 13.0+, falls back to ComfyUI-Attention-Optimizer
 
@@ -59,14 +59,18 @@ install_sageattention_from_source() {
     git clone https://github.com/thu-ml/SageAttention.git
     cd SageAttention
 
-    # Set parallel compilation options for faster build
-    export EXT_PARALLEL=4
-    export NVCC_APPEND_FLAGS="--threads 8"
-    export MAX_JOBS=32
+    # Force CUDA compilation without GPU present (prevents auto-detection failures)
+    export FORCE_CUDA=1
+
+    # Set conservative parallel compilation options to avoid memory exhaustion on CI runners
+    # GitHub Actions runners have limited RAM (~14GB), so we serialize builds
+    export MAX_JOBS=2
+    export EXT_PARALLEL=1
+    export NVCC_APPEND_FLAGS="--threads 4"
 
     # Set target GPU architectures (required for builds without GPU)
-    # SM 80: A100, SM 86: RTX 3090/A6000, SM 89: RTX 4090/L40/Ada, SM 90: H100
-    export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0"
+    # SM 80: A100, SM 86: RTX 3090/A6000, SM 89: RTX 4090/L40/Ada, SM 90: H100, SM 120: RTX 5090/Blackwell
+    export TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0 12.0"
 
     # Compile and install (use --no-build-isolation to access already-installed torch)
     pip install --no-cache-dir --no-build-isolation -e .

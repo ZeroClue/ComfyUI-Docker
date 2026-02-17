@@ -66,7 +66,7 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update --yes && \
     apt-get install --yes --no-install-recommends \
         git wget curl build-essential cmake ninja-build \
-        pkg-config libgl1-mesa-glx libglib2.0-0 \
+        pkg-config libgl1 libglib2.0-0 \
         libgomp1 libomp-dev clang && \
     apt-get autoremove -y && \
     apt-get clean && \

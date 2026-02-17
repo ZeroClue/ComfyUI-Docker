@@ -319,7 +319,7 @@ start_comfyui() {
         --input-directory "${COMFYUI_WORKSPACE}/input" \
         --temp-directory "${COMFYUI_WORKSPACE}/temp" \
         --verbose \
-        2>&1 | tee -a "${LOGS_DIR}/comfyui.log" > /dev/tty &
+        2>&1 | tee -a "${LOGS_DIR}/comfyui.log" &
 
     local pid=$!
     echo $pid > "${LOGS_DIR}/comfyui.pid"
@@ -332,10 +332,27 @@ start_comfyui() {
     # Check if process still running
     if ! kill -0 $pid 2>/dev/null; then
         log_error "ComfyUI process exited immediately!"
-        log_error "Last 20 lines of ComfyUI log:"
-        tail -20 "${LOGS_DIR}/comfyui.log" | while IFS= read -r line; do
-            echo "  $line"
-        done
+
+        # Try to get exit code
+        wait $pid 2>/dev/null
+        local exit_code=$?
+        log_error "Exit code: $exit_code"
+
+        # Show log contents
+        if [[ -s "${LOGS_DIR}/comfyui.log" ]]; then
+            log_error "Last 20 lines of ComfyUI log:"
+            tail -20 "${LOGS_DIR}/comfyui.log" | while IFS= read -r line; do
+                echo "  $line"
+            done
+        else
+            log_error "ComfyUI log is empty - crash may have happened before logging"
+            log_error "Trying to run Python directly to capture error:"
+            cd "${COMFYUI_DIR}" && \
+                export PYTHONPATH="${APP_DIR}:${PYTHONPATH}" && \
+                python3 main.py --listen 0.0.0.0 --port ${COMFYUI_PORT} 2>&1 | head -30 | while IFS= read -r line; do
+                    echo "  $line"
+                done
+        fi
         return 1
     fi
 

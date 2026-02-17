@@ -49,6 +49,53 @@ The project uses a sophisticated multi-stage build (`Dockerfile`):
 - **Runtime Stage**: Production-optimized final image with minimal footprint
 - **Matrix Builds**: Supports multiple CUDA versions and image variants via `docker-bake.hcl`
 
+## Revolutionary Architecture
+Apps are baked into container image at `/app/`. Models live on network volume at `/workspace/`.
+
+**Container Volume** (ephemeral, baked in image):
+- `/app/dashboard/`: Unified Dashboard (FastAPI + htmx)
+- `/app/preset_manager/`: Preset management system
+- `/venv/`: Python virtual environment
+- `/ComfyUI/`: ComfyUI application
+
+**Network Volume** (persistent, attached at `/workspace`):
+- `/workspace/models/`: All model files (checkpoints, VAE, LoRA, etc.)
+- `/workspace/output/`: Generated content
+- `/workspace/workflows/`: User workflow files
+- `/workspace/uploads/`: User uploads
+- `/workspace/config/`: User configuration
+
+**Key Benefits**:
+- No rsync needed → instant startup
+- Easy updates → replace container, keep models
+- Follows 12-factor app principles
+- Native RunPod architecture alignment
+
+## Unified Dashboard
+FastAPI-based unified interface replacing Preset Manager and Studio.
+
+**Location**: `/app/dashboard/`
+
+**Structure**:
+- `main.py`: FastAPI application entry point
+- `api/`: REST API endpoints (workflows, models, presets, system)
+- `core/`: ComfyUI client, configuration, WebSocket manager
+- `templates/`: htmx + Alpine.js UI templates
+- `static/`: Tailwind CSS, JavaScript assets
+
+**Key Features**:
+- Workflow execution via ComfyUI API integration
+- Model and preset management
+- Real-time progress tracking via WebSocket
+- System status monitoring
+
+**API Endpoints**:
+- `POST /api/workflows/execute` - Execute ComfyUI workflow
+- `GET /api/workflows/history` - View execution history
+- `GET /api/workflows/queue/status` - Monitor queue
+- `GET /api/models` - List installed models
+- `GET /api/presets` - List available presets
+
 ## Preset Management System
 Located in `scripts/preset_manager/` with three core components:
 
@@ -109,6 +156,9 @@ GitHub Actions workflow (`.github/workflows/build.yml`) provides:
 - `Dockerfile`: Multi-stage build definition with UV optimization
 - `docker-bake.hcl`: Build matrix configuration for all variants
 - `scripts/start.sh`: Container entrypoint and service orchestration
+- `dashboard/main.py`: FastAPI application entry point for Unified Dashboard
+- `dashboard/api/`: REST API endpoints (workflows.py, models.py, presets.py, system.py)
+- `dashboard/core/comfyui_client.py`: ComfyUI API integration for workflow execution
 - `scripts/preset_manager/core.py`: Main preset management logic and ModelManager class
 - `config/presets.yaml`: Central preset configuration (currently 56 presets)
 - `scripts/preset_updater.py`: GitHub-based preset updating system
@@ -177,6 +227,38 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
 - Dashboard runs internally on port 8000
 - If dashboard shows README page, check: `curl http://localhost:8000/` from inside the pod
 - **Preset Manager is DISABLED automatically when Unified Dashboard is enabled** (both use port 8000)
+
+## Dashboard Startup Requirements
+
+**PYTHONPATH Configuration**:
+The dashboard requires `/scripts` in Python path for imports:
+```bash
+export PYTHONPATH="/scripts:/app:$PYTHONPATH"
+```
+
+**Module Execution**:
+Dashboard runs as Python module (not direct script):
+```bash
+cd /app/dashboard
+python3 -m main  # Required for relative imports
+```
+
+## Unified Dashboard Authentication
+
+**Default credentials** (when ACCESS_PASSWORD not set):
+- Username: `admin`
+- Password: `admin`
+
+**Custom password**: Set `ACCESS_PASSWORD` environment variable
+
+## RunPod Proxy URL Format
+
+Direct IP access doesn't work on RunPod. Use proxy URL format:
+```
+https://{pod-id}-{port}.proxy.runpod.net/
+
+Example: https://8myhxhyx0ojmq4-8082.proxy.runpod.net/
+```
 
 # Development & Testing
 

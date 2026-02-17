@@ -3,6 +3,10 @@ name: Build and Push ZeroClue Docker Images (Simple Working Version)
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'Branch to build from'
+        required: false
+        default: 'main'
       targets:
         description: 'Build targets (comma-separated): base,slim,minimal'
         required: false
@@ -114,6 +118,8 @@ jobs:
       - name: Checkout
         if: env.SKIP_BUILD != 'true'
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: Docker login
         if: env.SKIP_BUILD != 'true'

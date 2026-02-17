@@ -136,7 +136,20 @@ RUN pip install --no-cache-dir \
     alembic \
     einops \
     scipy \
-    psutil
+    psutil \
+    comfyui-frontend-package \
+    comfyui-workflow-templates \
+    comfyui-embedded-docs \
+    comfy-kitchen \
+    comfy-aimdo \
+    av \
+    kornia \
+    spandrel \
+    pydantic \
+    tokenizers \
+    sentencepiece \
+    safetensors \
+    torchsde
 
 # Install dev tools (conditional)
 RUN if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \

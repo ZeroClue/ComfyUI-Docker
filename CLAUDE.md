@@ -45,9 +45,11 @@ python scripts/preset_updater.py update
 # Architecture Overview
 
 ## Multi-Stage Docker Build System
-The project uses a sophisticated multi-stage build (`Dockerfile`):
-- **Builder Stage**: Compiles PyTorch, builds heavy dependencies using UV package manager
-- **Runtime Stage**: Production-optimized final image with minimal footprint
+The project uses a 4-stage multi-stage build (`Dockerfile`):
+- **Stage 1 (builder-base)**: Ubuntu + CUDA + UV package manager
+- **Stage 2 (python-deps)**: Python venv with PyTorch, dependencies, SageAttention
+- **Stage 3 (comfyui-core)**: ComfyUI + Manager + custom nodes
+- **Stage 4 (runtime)**: Minimal runtime image with artifacts from previous stages
 - **Matrix Builds**: Supports multiple CUDA versions and image variants via `docker-bake.hcl`
 
 ## Revolutionary Architecture
@@ -56,8 +58,8 @@ Apps are baked into container image at `/app/`. Models live on network volume at
 **Container Volume** (ephemeral, baked in image):
 - `/app/dashboard/`: Unified Dashboard (FastAPI + htmx)
 - `/app/preset_manager/`: Preset management system
-- `/venv/`: Python virtual environment
-- `/ComfyUI/`: ComfyUI application
+- `/app/venv/`: Python virtual environment
+- `/app/comfyui/`: ComfyUI application
 
 **Network Volume** (persistent, attached at `/workspace`):
 - `/workspace/models/`: All model files (checkpoints, VAE, LoRA, etc.)
@@ -129,6 +131,15 @@ Each preset contains complete model definitions with URLs, sizes, file paths, an
 - JupyterLab (port 8888): Notebook interface
 - Nginx: Reverse proxy for service routing
 
+## Attention Optimization (SageAttention)
+**SageAttention 2.2.0** is compiled from source during build for optimal inference speed:
+- **2x faster** than FlashAttention2 on RTX 4090
+- **Lossless accuracy** for image/video generation
+- **CUDA 12.x**: Full CUDA kernel compilation
+- **CUDA 13.0+**: Falls back to ComfyUI-Attention-Optimizer
+
+Installation handled by `scripts/install_sageattention.sh` during python-deps stage.
+
 ## Preset Configuration Schema
 ```yaml
 presets:
@@ -171,12 +182,11 @@ GitHub Actions workflow (`.github/workflows/build.yml`) provides:
 - `PRESET_DOWNLOAD`: Video generation models to install (comma-separated)
 - `IMAGE_PRESET_DOWNLOAD`: Image generation models to install (comma-separated)
 - `AUDIO_PRESET_DOWNLOAD`: Audio generation models to install (comma-separated)
-- `ENABLE_UNIFIED_DASHBOARD`: Enable/disable Unified Dashboard (default: true). When enabled, Preset Manager and Studio are automatically disabled.
-- `ENABLE_PRESET_MANAGER`: Enable/disable preset manager web UI (default: true)
-- `ACCESS_PASSWORD`: Password for web interfaces (code-server, Jupyter, preset manager)
+- `ENABLE_UNIFIED_DASHBOARD`: Enable/disable Unified Dashboard (default: true)
+- `ENABLE_PRESET_MANAGER`: Enable/disable preset manager web UI (auto-disabled when dashboard enabled)
+- `ACCESS_PASSWORD`: Password for web interfaces (code-server, Jupyter, dashboard)
 - `ENABLE_CODE_SERVER`: Enable/disable VS Code server (default: true)
 - `TIME_ZONE`: Container timezone (default: Etc/UTC)
-- `FORCE_SYNC_ALL`: Force full resync of venv and ComfyUI on startup (default: false)
 
 ## RunPod Deployment
 

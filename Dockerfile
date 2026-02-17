@@ -129,7 +129,8 @@ RUN pip install --no-cache-dir \
     pycloudflared \
     sentry-sdk \
     lightning-utilities \
-    voluptuous
+    voluptuous \
+    sqlalchemy
 
 # Install dev tools (conditional)
 RUN if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \

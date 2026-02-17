@@ -1,4 +1,4 @@
-name: Build and Push ZeroClue Docker Images (Simple Working Version)
+name: Build and Push ZeroClue Docker Images (Base Only)
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
       targets:
         description: 'Build targets (comma-separated): base,slim,minimal'
         required: false
-        default: 'base,slim,minimal'
+        default: 'base'
       cuda_versions:
         description: 'CUDA versions (comma-separated): 12-6,12-8,12-9,13-0'
         required: false
@@ -36,17 +36,13 @@ jobs:
       max-parallel: 2
       matrix:
         include:
-          # Only building CUDA 12.8 variants for initial testing
+          # Only building base variant until stable
           - target: base
-            cuda: 12-8
-          - target: slim
-            cuda: 12-8
-          - target: minimal
             cuda: 12-8
     steps:
       - name: Check if should run
         run: |
-          TARGETS="${{ github.event.inputs.targets || 'base,slim,minimal' }}"
+          TARGETS="${{ github.event.inputs.targets || 'base' }}"
           CUDA="${{ github.event.inputs.cuda_versions || '12-8' }}"
 
           if [[ ",$TARGETS," != *",${{ matrix.target }},"* ]]; then
@@ -151,7 +147,7 @@ jobs:
           echo "- **CUDA Version**: ${{ matrix.cuda }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Repository**: zeroclue/comfyui" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Date**: ${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Build Mode**: Simple working version" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Mode**: Base variant only (stability focus)" >> $GITHUB_STEP_SUMMARY
           echo "- **Preset Manager**: Included (all variants)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Component Status" >> $GITHUB_STEP_SUMMARY
@@ -161,5 +157,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Image Variants" >> $GITHUB_STEP_SUMMARY
           echo "- **base**: Full development environment (~8-12GB)" >> $GITHUB_STEP_SUMMARY
-          echo "- **slim**: Optimized for serving (~4-5GB)" >> $GITHUB_STEP_SUMMARY
-          echo "- **minimal**: ComfyUI + Manager without dev tools (~6-7GB)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Focus" >> $GITHUB_STEP_SUMMARY
+          echo "Simplified to base variant only until stable." >> $GITHUB_STEP_SUMMARY

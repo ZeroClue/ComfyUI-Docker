@@ -82,7 +82,7 @@ RUN sh /uv-installer.sh && \
 ENV PATH="/root/.local/bin:$PATH"
 
 # Install Python 3.13 using UV
-RUN uv python install ${PYTHON_VERSION} --preview && \
+RUN uv python install ${PYTHON_VERSION} && \
     python --version
 
 # =============================================================================
@@ -428,7 +428,7 @@ RUN echo "Build timestamp: $(date)" > /build-info.txt && \
     echo "Variant flags: CODE_SERVER=${INSTALL_CODE_SERVER}, SKIP_NODES=${SKIP_CUSTOM_NODES}, DASHBOARD=${BUILD_DASHBOARD}" >> /build-info.txt
 
 # Expose ports
-EXPOSE 22 3000 8080 8888 9000
+EXPOSE 22 3000 8080 8082 8888 9000
 
 # Set entrypoint
 CMD ["/start.sh"]

@@ -64,6 +64,10 @@ install_sageattention_from_source() {
     export NVCC_APPEND_FLAGS="--threads 8"
     export MAX_JOBS=32
 
+    # Set target GPU architectures (required for builds without GPU)
+    # SM 80: A100, SM 86: RTX 3090/A6000, SM 89: RTX 4090/L40/Ada, SM 90: H100
+    export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0"
+
     # Compile and install (use --no-build-isolation to access already-installed torch)
     pip install --no-cache-dir --no-build-isolation -e .
 

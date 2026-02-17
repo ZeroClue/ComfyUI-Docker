@@ -130,7 +130,13 @@ RUN pip install --no-cache-dir \
     sentry-sdk \
     lightning-utilities \
     voluptuous \
-    sqlalchemy
+    sqlalchemy \
+    aiohttp \
+    yarl \
+    alembic \
+    einops \
+    scipy \
+    psutil
 
 # Install dev tools (conditional)
 RUN if [ "$INSTALL_DEV_TOOLS" = "true" ]; then \

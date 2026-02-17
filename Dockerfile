@@ -421,9 +421,8 @@ RUN test -f /app/preset_manager.py || exit 1 && \
     test -f /workspace/config/presets.yaml || exit 1 && \
     echo "Preset manager components validated successfully"
 
-# Test Python imports during build to catch import errors early
-RUN PYTHONPATH=/app:$PYTHONPATH python3.13 -c "from preset_manager.core import ModelManager" || exit 1 && \
-    echo "Preset manager Python imports validated successfully"
+# Python import validation skipped - runtime stage doesn't have Python interpreter
+# Validation will happen at container runtime instead
 
 # Copy welcome message
 COPY logo/runpod.txt /etc/runpod.txt

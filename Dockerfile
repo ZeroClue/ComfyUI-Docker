@@ -146,6 +146,8 @@ RUN pip install --no-cache-dir \
     kornia \
     spandrel \
     pydantic \
+    pydantic-settings \
+    simpleeval \
     tokenizers \
     sentencepiece \
     safetensors \

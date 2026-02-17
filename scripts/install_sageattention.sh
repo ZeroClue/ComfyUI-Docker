@@ -64,8 +64,8 @@ install_sageattention_from_source() {
     export NVCC_APPEND_FLAGS="--threads 8"
     export MAX_JOBS=32
 
-    # Compile and install
-    pip install --no-cache-dir -e .
+    # Compile and install (use --no-build-isolation to access already-installed torch)
+    pip install --no-cache-dir --no-build-isolation -e .
 
     # Cleanup
     cd /

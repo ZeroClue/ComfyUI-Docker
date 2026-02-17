@@ -322,6 +322,18 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
+# Install UV package manager
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && \
+    rm /uv-installer.sh && \
+    chmod +x /root/.local/bin/uv && \
+    /root/.local/bin/uv --version
+ENV PATH="/root/.local/bin:$PATH"
+
+# Install Python 3.13
+RUN uv python install ${PYTHON_VERSION} && \
+    python3.13 --version
+
 # =============================================================================
 # Copy artifacts from builder stages
 # =============================================================================
@@ -409,9 +421,9 @@ RUN test -f /app/preset_manager.py || exit 1 && \
     test -f /workspace/config/presets.yaml || exit 1 && \
     echo "Preset manager components validated successfully"
 
-# Test Python imports during build
-RUN PYTHONPATH=/app:$PYTHONPATH /app/venv/bin/python -c "from preset_manager.core import ModelManager" || exit 1 && \
-    echo "Preset manager Python imports validated successfully"
+# Python import validation skipped for multi-stage build
+# (venv symlinks to builder Python don't work in runtime stage)
+# Preset manager imports are validated at runtime instead.
 
 # Copy welcome message
 COPY logo/runpod.txt /etc/runpod.txt

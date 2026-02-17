@@ -410,7 +410,7 @@ RUN test -f /app/preset_manager.py || exit 1 && \
     echo "Preset manager components validated successfully"
 
 # Test Python imports during build
-RUN PYTHONPATH=/app:$PYTHONPATH python3.13 -c "from preset_manager.core import ModelManager" || exit 1 && \
+RUN PYTHONPATH=/app:$PYTHONPATH /app/venv/bin/python -c "from preset_manager.core import ModelManager" || exit 1 && \
     echo "Preset manager Python imports validated successfully"
 
 # Copy welcome message

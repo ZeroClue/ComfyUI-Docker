@@ -123,7 +123,6 @@ RUN pip install --no-cache-dir \
     tqdm \
     pillow \
     pyyaml \
-    a101 \
     accelerate \
     ampaliang_comfyui_backend \
     anniespcc \

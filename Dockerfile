@@ -124,8 +124,6 @@ RUN pip install --no-cache-dir \
     pillow \
     pyyaml \
     accelerate \
-    ampaliang_comfyui_backend \
-    anniespcc \
     insightface \
     onnxruntime \
     pycloudflared \

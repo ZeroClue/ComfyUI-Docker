@@ -201,8 +201,8 @@ RUN python --version && \
 FROM python-deps AS comfyui-core
 
 # Build arguments
-ARG SKIP_CUSTOM_NODES=""
-ARG ENABLE_EXTRA_NODES=false
+ARG SKIP_CUSTOM_NODES=false
+ARG ENABLE_EXTRA_NODES=true
 
 # Clone ComfyUI from GitHub
 WORKDIR /tmp/comfyui-build
@@ -221,7 +221,7 @@ COPY custom_nodes.txt /tmp/custom_nodes.txt
 COPY custom_nodes_extra.txt /tmp/custom_nodes_extra.txt
 
 # Install custom nodes (conditional)
-RUN if [ -z "$SKIP_CUSTOM_NODES" ]; then \
+RUN if [ "$SKIP_CUSTOM_NODES" != "true" ]; then \
         cd /tmp/comfyui-build/comfyui/custom_nodes && \
         echo "Installing custom nodes..." && \
         xargs -n 1 git clone --recursive < /tmp/custom_nodes.txt 2>/dev/null || true && \
@@ -236,7 +236,7 @@ RUN if [ -z "$SKIP_CUSTOM_NODES" ]; then \
     fi
 
 # Install extra custom nodes (conditional)
-RUN if [ "$ENABLE_EXTRA_NODES" = "true" ] && [ -z "$SKIP_CUSTOM_NODES" ]; then \
+RUN if [ "$ENABLE_EXTRA_NODES" != "false" ] && [ "$SKIP_CUSTOM_NODES" != "true" ]; then \
         cd /tmp/comfyui-build/comfyui/custom_nodes && \
         echo "Installing extra custom nodes..." && \
         xargs -n 1 git clone --recursive < /tmp/custom_nodes_extra.txt 2>/dev/null || true && \
@@ -288,7 +288,7 @@ FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04 AS runtime
 ARG PYTHON_VERSION=3.13
 ARG TORCH_VERSION=2.8.0
 ARG CUDA_VERSION=cu128
-ARG SKIP_CUSTOM_NODES=""
+ARG SKIP_CUSTOM_NODES=false
 ARG BUILD_DASHBOARD=false
 ARG INSTALL_CODE_SERVER=true
 

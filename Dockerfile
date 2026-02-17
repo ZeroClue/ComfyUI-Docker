@@ -328,7 +328,6 @@ RUN sh /uv-installer.sh && \
     rm /uv-installer.sh && \
     chmod +x /root/.local/bin/uv && \
     /root/.local/bin/uv --version
-ENV PATH="/root/.local/bin:$PATH"
 
 # Install Python 3.13
 RUN uv python install ${PYTHON_VERSION} && \
@@ -340,6 +339,9 @@ RUN uv python install ${PYTHON_VERSION} && \
 
 # Copy Python virtual environment (from python-deps stage)
 COPY --from=python-deps /app/venv /app/venv
+
+# Set PATH to include venv bin directory (must come before system paths)
+ENV PATH="/app/venv/bin:/root/.local/bin:$PATH"
 
 # Copy ComfyUI installation (from comfyui-core stage)
 COPY --from=comfyui-core /app/comfyui /app/comfyui

@@ -303,20 +303,41 @@ start_comfyui() {
     # Set Python path
     export PYTHONPATH="${APP_DIR}:${PYTHONPATH}"
 
-    # Start ComfyUI in background
-    nohup python3 main.py \
+    # Debug: log Python version and path
+    log_info "Python: $(which python3) ($(python3 --version 2>&1))"
+    log_info "PYTHONPATH: ${PYTHONPATH}"
+
+    # Clear previous log
+    > "${LOGS_DIR}/comfyui.log"
+
+    # Start ComfyUI in background with tee for real-time logging
+    # Output goes to both log file and stdout for monitoring
+    python3 main.py \
         --listen 0.0.0.0 \
         --port ${COMFYUI_PORT} \
         --output-directory "${COMFYUI_WORKSPACE}/output" \
         --input-directory "${COMFYUI_WORKSPACE}/input" \
         --temp-directory "${COMFYUI_WORKSPACE}/temp" \
         --verbose \
-        >> "${LOGS_DIR}/comfyui.log" 2>&1 &
+        2>&1 | tee -a "${LOGS_DIR}/comfyui.log" > /dev/tty &
 
     local pid=$!
     echo $pid > "${LOGS_DIR}/comfyui.pid"
 
     log_success "ComfyUI started with PID ${pid}"
+
+    # Small delay to catch immediate crashes
+    sleep 2
+
+    # Check if process still running
+    if ! kill -0 $pid 2>/dev/null; then
+        log_error "ComfyUI process exited immediately!"
+        log_error "Last 20 lines of ComfyUI log:"
+        tail -20 "${LOGS_DIR}/comfyui.log" | while IFS= read -r line; do
+            echo "  $line"
+        done
+        return 1
+    fi
 
     # Wait for ComfyUI to be ready
     wait_for_comfyui

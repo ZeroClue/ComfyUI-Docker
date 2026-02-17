@@ -76,6 +76,18 @@ CODE_SERVER_PORT=8080
 COMFYUI_HEALTH_URL="http://localhost:${COMFYUI_PORT}/system_stats"
 
 # -----------------------------------------------------------------------------
+# Service Auto-Configuration
+# -----------------------------------------------------------------------------
+# When Unified Dashboard is enabled, automatically disable Preset Manager
+# since the dashboard provides overlapping functionality and avoids port conflicts
+if [[ "${ENABLE_UNIFIED_DASHBOARD,,}" != "false" ]]; then
+    if [[ -z "${ENABLE_PRESET_MANAGER}" ]]; then
+        # Only auto-disable if not explicitly set by user
+        export ENABLE_PRESET_MANAGER="false"
+    fi
+fi
+
+# -----------------------------------------------------------------------------
 # Utility Functions
 # -----------------------------------------------------------------------------
 
@@ -585,7 +597,9 @@ start_unified_dashboard() {
 
     # Start the dashboard FastAPI application
     cd /app/dashboard
-    nohup /venv/bin/python3 -m main &> "${LOGS_DIR}/unified_dashboard.log" &
+    # Set PYTHONPATH for proper module imports
+    export PYTHONPATH="/app:${PYTHONPATH}"
+    nohup python3 -m main &> "${LOGS_DIR}/unified_dashboard.log" &
     local pid=$!
     echo $pid > "${LOGS_DIR}/unified_dashboard.pid"
 

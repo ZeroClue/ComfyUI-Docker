@@ -42,7 +42,6 @@ target "_common" {
         INSTALL_CODE_SERVER = "true"
         INSTALL_DEV_TOOLS   = "true"
         INSTALL_SCIENCE_PACKAGES = "true"
-        BUILD_DASHBOARD     = "true"
     }
 }
 

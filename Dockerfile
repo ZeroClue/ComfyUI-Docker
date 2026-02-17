@@ -3,7 +3,7 @@
 # =============================================================================
 # Architecture Overview:
 # ---------------------
-# This Dockerfile implements a 5-stage multi-stage build for maximum efficiency:
+# This Dockerfile implements a 4-stage multi-stage build for maximum efficiency:
 #
 # Stage 1: builder-base
 #   - Ubuntu 24.04 + CUDA 12.8.1 + UV package manager
@@ -20,13 +20,10 @@
 #   - Custom nodes (conditional via SKIP_CUSTOM_NODES)
 #   - Installed at /app/comfyui
 #
-# Stage 4: dashboard-builder (conditional via BUILD_DASHBOARD)
-#   - Builds static dashboard assets
-#   - Only runs for non-minimal variants
-#
-# Stage 5: runtime
+# Stage 4: runtime
 #   - Minimal runtime image
 #   - Copies artifacts from previous stages
+#   - Dashboard code copied directly from repository
 #   - Immutable app code at /app/
 #   - Network volume at /workspace/
 #
@@ -192,6 +189,12 @@ RUN python --version && \
     pip list | grep torch && \
     echo "Python dependencies installed successfully"
 
+# Install attention optimization (SageAttention for CUDA 12.x, ComfyUI-Attention-Optimizer for CUDA 13+)
+COPY scripts/install_sageattention.sh /tmp/install_sageattention.sh
+RUN chmod +x /tmp/install_sageattention.sh && \
+    CUDA_VERSION=${CUDA_VERSION} /tmp/install_sageattention.sh && \
+    rm /tmp/install_sageattention.sh
+
 # =============================================================================
 # Stage 3: comfyui-core
 # =============================================================================
@@ -258,26 +261,7 @@ RUN test -f /app/comfyui/main.py && \
     echo "ComfyUI core installed successfully"
 
 # =============================================================================
-# Stage 4: dashboard-builder (conditional)
-# =============================================================================
-# Purpose: Build dashboard static assets
-# Only runs when BUILD_DASHBOARD=true (non-minimal variants)
-# =============================================================================
-FROM python-deps AS dashboard-builder
-
-ARG BUILD_DASHBOARD=false
-
-# Create minimal dashboard structure
-RUN if [ "$BUILD_DASHBOARD" = "true" ]; then \
-        echo "Building dashboard assets..." && \
-        mkdir -p /app/dashboard/static /app/dashboard/templates; \
-    else \
-        echo "Skipping dashboard build"; \
-        mkdir -p /app/dashboard; \
-    fi
-
-# =============================================================================
-# Stage 5: runtime
+# Stage 4: runtime
 # =============================================================================
 # Purpose: Final minimal runtime image
 # Copies only necessary artifacts from previous stages
@@ -289,7 +273,6 @@ ARG PYTHON_VERSION=3.13
 ARG TORCH_VERSION=2.8.0
 ARG CUDA_VERSION=cu128
 ARG SKIP_CUSTOM_NODES=false
-ARG BUILD_DASHBOARD=false
 ARG INSTALL_CODE_SERVER=true
 
 # Set the shell
@@ -371,8 +354,8 @@ ENV PATH="/app/venv/bin:/root/.local/bin:$PATH"
 # Copy ComfyUI installation (from comfyui-core stage)
 COPY --from=comfyui-core /app/comfyui /app/comfyui
 
-# Copy dashboard assets (from dashboard-builder stage)
-COPY --from=dashboard-builder /app/dashboard /app/dashboard
+# Copy dashboard application code (from repository)
+COPY dashboard/ /app/dashboard/
 
 # =============================================================================
 # Install code-server (conditional)
@@ -431,6 +414,10 @@ COPY --chmod=755 scripts/generate_download_scripts.py /scripts/
 COPY --chmod=755 scripts/preset_validator.py /scripts/
 COPY --chmod=755 scripts/test_preset_system.py /scripts/
 
+# Copy extra_model_paths generator to /app/scripts (expected by start.sh)
+RUN mkdir -p /app/scripts
+COPY --chmod=755 scripts/generate_extra_paths.py /app/scripts/
+
 # Copy preset manager web application
 COPY --chmod=755 scripts/preset_manager_cli.py /app/preset_manager.py
 COPY --chmod=644 scripts/preset_manager/ /app/preset_manager/
@@ -473,7 +460,6 @@ RUN echo "========================================" > /build-info.txt && \
     echo "Build Config:" >> /build-info.txt && \
     echo "  Code Server: ${INSTALL_CODE_SERVER}" >> /build-info.txt && \
     echo "  Skip Nodes:  ${SKIP_CUSTOM_NODES}" >> /build-info.txt && \
-    echo "  Dashboard:   ${BUILD_DASHBOARD}" >> /build-info.txt && \
     echo "" >> /build-info.txt && \
     echo "========================================" >> /build-info.txt
 

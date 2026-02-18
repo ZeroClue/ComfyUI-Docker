@@ -135,6 +135,20 @@ async def settings_page(request: Request):
     )
 
 
+@app.get("/gallery", response_class=HTMLResponse)
+async def gallery_page(request: Request):
+    """Render gallery interface"""
+    return templates.TemplateResponse(
+        "gallery.html",
+        {
+            "request": request,
+            "title": "Gallery - ComfyUI Dashboard",
+            "comfyui_url": f"http://localhost:{settings.COMFYUI_PORT}",
+            "api_base": "/api"
+        }
+    )
+
+
 @app.get("/pro", response_class=HTMLResponse)
 async def pro_page(request: Request):
     """Render pro/features interface"""

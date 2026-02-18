@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Gallery - ComfyUI Dashboard{% endblock %}
+
+{% block page_breadcrumb %}
+<span class="text-text-primary font-medium">Gallery</span>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 lg:p-8" x-data="galleryPage()" x-init="initGalleryPage()">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight mb-1">Gallery</h1>
+            <p class="text-text-secondary text-sm">View and manage your generated content</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <select x-model="filterType"
+                    class="bg-bg-tertiary border border-border-subtle rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-primary">
+                <option value="all">All Types</option>
+                <option value="image">Images</option>
+                <option value="video">Videos</option>
+            </select>
+            <button class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                    @click="refreshGallery">
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="flex gap-6 mb-6 text-sm">
+        <div class="flex items-center gap-2">
+            <span class="text-text-secondary">Total:</span>
+            <span class="font-semibold" x-text="generations.length"></span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-text-secondary">Images:</span>
+            <span class="font-semibold" x-text="generations.filter(g => !g.isVideo).length"></span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-text-secondary">Videos:</span>
+            <span class="font-semibold" x-text="generations.filter(g => g.isVideo).length"></span>
+        </div>
+    </div>
+
+    <!-- Gallery Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <template x-for="gen in filteredGenerations" :key="gen.id">
+            <div class="group relative bg-bg-secondary border border-border-subtle rounded-lg overflow-hidden card-hover cursor-pointer"
+                 @click="openPreview(gen)">
+
+                <!-- Thumbnail -->
+                <div class="aspect-square bg-bg-tertiary">
+                    <img :src="gen.thumbnail"
+                         class="w-full h-full object-cover"
+                         :class="gen.isVideo ? 'opacity-80' : ''"
+                         loading="lazy">
+                    <!-- Video indicator -->
+                    <div x-show="gen.isVideo" class="absolute inset-0 flex items-center justify-center">
+                        <div class="w-12 h-12 bg-black/50 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hover overlay -->
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div class="absolute bottom-0 left-0 right-0 p-3">
+                        <p class="text-white text-xs truncate" x-text="gen.filename"></p>
+                        <p class="text-white/60 text-xs" x-text="formatDate(gen.timestamp)"></p>
+                    </div>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button class="w-8 h-8 bg-black/50 rounded-lg flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                            @click.stop="downloadFile(gen)"
+                            title="Download">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </button>
+                    <button class="w-8 h-8 bg-black/50 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-500/50 transition-colors"
+                            @click.stop="deleteFile(gen)"
+                            title="Delete">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="filteredGenerations.length === 0 && !isLoading" class="text-center py-16">
+        <div class="text-6xl mb-4">◉</div>
+        <h3 class="text-xl font-semibold mb-2">No generations yet</h3>
+        <p class="text-text-secondary mb-4">Start generating content to see it here</p>
+        <a href="/generate" class="btn btn-primary py-2 px-4 rounded-md text-sm font-medium inline-block">
+            Start Generating
+        </a>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="isLoading" class="text-center py-16">
+        <div class="animate-spin text-4xl mb-4">◉</div>
+        <p class="text-text-secondary">Loading gallery...</p>
+    </div>
+
+    <!-- Preview Modal -->
+    <div x-show="previewItem"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="display: none;"
+         @click.self="previewItem = null">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+
+        <!-- Modal Content -->
+        <div class="relative bg-bg-secondary border border-border-medium rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl"
+             @click.stop>
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
+                <div>
+                    <h3 class="font-semibold" x-text="previewItem?.filename"></h3>
+                    <p class="text-sm text-text-secondary" x-text="formatDate(previewItem?.timestamp)"></p>
+                </div>
+                <button class="text-text-secondary hover:text-text-primary transition-colors p-2"
+                        @click="previewItem = null">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Preview Content -->
+            <div class="flex items-center justify-center p-4 bg-black/20 min-h-[400px] max-h-[calc(90vh-140px)] overflow-auto">
+                <img x-show="previewItem && !previewItem.isVideo"
+                     :src="previewItem?.output"
+                     class="max-w-full max-h-full object-contain">
+                <video x-show="previewItem && previewItem.isVideo"
+                       :src="previewItem?.output"
+                       controls
+                       class="max-w-full max-h-full">
+                </video>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-subtle">
+                <button class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium"
+                        @click="downloadFile(previewItem)">
+                    Download
+                </button>
+                <button class="btn py-2 px-4 rounded-md text-sm font-medium bg-red-500/10 text-red-400 border border-red-400/30 hover:bg-red-500/20 transition-all"
+                        @click="deleteFile(previewItem); previewItem = null">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function galleryPage() {
+    return {
+        generations: [],
+        filterType: 'all',
+        isLoading: false,
+        previewItem: null,
+
+        async initGalleryPage() {
+            await this.loadGallery();
+        },
+
+        async loadGallery() {
+            this.isLoading = true;
+            try {
+                const response = await fetch('/api/gallery/recent?limit=100');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.generations = data.generations.map((g, i) => ({
+                        ...g,
+                        id: g.id || `gen_${i}`,
+                        filename: g.filename || this.extractFilename(g.output),
+                        isVideo: g.output?.endsWith('.mp4') || g.output?.endsWith('.webm') || false
+                    }));
+                }
+            } catch (error) {
+                console.error('Failed to load gallery:', error);
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        get filteredGenerations() {
+            if (this.filterType === 'all') {
+                return this.generations;
+            }
+            if (this.filterType === 'image') {
+                return this.generations.filter(g => !g.isVideo);
+            }
+            if (this.filterType === 'video') {
+                return this.generations.filter(g => g.isVideo);
+            }
+            return this.generations;
+        },
+
+        extractFilename(path) {
+            if (!path) return 'Unknown';
+            return path.split('/').pop();
+        },
+
+        formatDate(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        },
+
+        openPreview(gen) {
+            this.previewItem = gen;
+        },
+
+        async refreshGallery() {
+            await this.loadGallery();
+            window.showToast('success', 'Refreshed', 'Gallery updated');
+        },
+
+        downloadFile(gen) {
+            if (!gen?.output) return;
+            const link = document.createElement('a');
+            link.href = gen.output;
+            link.download = gen.filename || 'download';
+            link.click();
+        },
+
+        async deleteFile(gen) {
+            if (!gen) return;
+            if (!confirm(`Delete ${gen.filename}?\n\nThis cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                // Delete via API (would need to implement this endpoint)
+                const response = await fetch(`/api/gallery/${gen.id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    this.generations = this.generations.filter(g => g.id !== gen.id);
+                    window.showToast('success', 'Deleted', `${gen.filename} removed`);
+                } else {
+                    // Fallback: just remove from local list
+                    this.generations = this.generations.filter(g => g.id !== gen.id);
+                    window.showToast('info', 'Removed', `${gen.filename} removed from gallery`);
+                }
+            } catch (error) {
+                console.error('Failed to delete:', error);
+                window.showToast('error', 'Delete Failed', 'Could not delete file');
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

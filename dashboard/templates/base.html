@@ -486,6 +486,15 @@
                 }
             }
         }
+
+        // Global toast function for use by other pages
+        window.showToast = function(type, title, message, duration = 5000) {
+            // Find the Alpine.js dashboard app and call its showToast
+            const app = document.querySelector('[x-data="dashboardApp()"]');
+            if (app && app.__x) {
+                app.__x.$data.showToast(type, title, message, duration);
+            }
+        };
     </script>
 
     {% block extra_scripts %}{% endblock %}

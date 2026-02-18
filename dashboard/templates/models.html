@@ -365,21 +365,65 @@ function modelsPage() {
 
         handleWebSocketMessage(data) {
             if (data.type === 'download_progress') {
-                if (data.preset_id === this.downloadQueue.current ||
-                    data.presetId === this.downloadQueue.current) {
+                const presetId = data.preset_id || data.presetId;
+
+                // Update current download progress
+                if (presetId === this.downloadQueue.current) {
                     this.currentProgress = data.data?.progress || data.progress || 0;
                     this.currentProgressText = `${data.data?.downloaded || 0} / ${data.data?.total || 0}`;
+                }
+
+                // Dispatch to individual card for progress bar update
+                const model = this.models.find(m => m.id === presetId);
+                if (model) {
+                    model.progress = data.data?.progress || data.progress || 0;
+                    model.status = 'downloading';
+                    // Dispatch custom event for the card
+                    window.dispatchEvent(new CustomEvent('download-progress', {
+                        detail: {
+                            presetId: presetId,
+                            progress: model.progress,
+                            status: 'downloading'
+                        }
+                    }));
                 }
             } else if (data.type === 'download_complete') {
                 const presetId = data.preset_id || data.presetId;
                 window.showToast('success', 'Download Complete', `${presetId} installed successfully`);
+
+                // Update model status
+                const model = this.models.find(m => m.id === presetId);
+                if (model) {
+                    model.status = 'installed';
+                    model.progress = 100;
+                }
+
                 this.loadModels();
             } else if (data.type === 'download_failed') {
                 const presetId = data.preset_id || data.presetId;
                 window.showToast('error', 'Download Failed', `${presetId}: ${data.error || 'Unknown error'}`);
+
+                // Update model status
+                const model = this.models.find(m => m.id === presetId);
+                if (model) {
+                    model.status = 'failed';
+                }
             } else if (data.type === 'queue_updated') {
                 this.downloadQueue.current = data.current;
                 this.downloadQueue.queue = data.queue || [];
+
+                // Update model statuses based on queue
+                this.models.forEach(model => {
+                    if (model.id === data.current) {
+                        model.status = 'downloading';
+                    } else if (data.queue && data.queue.includes(model.id)) {
+                        model.status = 'queued';
+                    } else if (model.status === 'queued' || model.status === 'downloading') {
+                        // Reset if no longer in queue
+                        model.status = 'available';
+                    }
+                });
+
                 if (!data.current) {
                     this.currentProgress = 0;
                     this.currentProgressText = 'Preparing...';
@@ -530,18 +574,28 @@ function presetCard(model) {
 
         updateText() {
             const statusMap = {
-                'installed': { statusText: 'Installed', actionText: 'Generate', progressText: '' },
-                'available': { statusText: 'Available', actionText: 'Install', progressText: '' },
-                'queued': { statusText: 'Queued', actionText: 'In Queue', progressText: 'Waiting...' },
-                'downloading': { statusText: 'Downloading', actionText: 'Pause', progressText: 'Downloading...' },
-                'paused': { statusText: 'Paused', actionText: 'Resume', progressText: 'Paused' },
-                'failed': { statusText: 'Failed', actionText: 'Retry', progressText: '' }
+                'installed': { statusText: 'Installed', actionText: 'Generate' },
+                'available': { statusText: 'Available', actionText: 'Install' },
+                'queued': { statusText: 'Queued', actionText: 'In Queue' },
+                'downloading': { statusText: 'Downloading', actionText: 'Pause' },
+                'paused': { statusText: 'Paused', actionText: 'Resume' },
+                'failed': { statusText: 'Failed', actionText: 'Retry' }
             };
 
             const config = statusMap[this.model.status] || statusMap['available'];
             this.statusText = config.statusText;
             this.actionText = config.actionText;
-            this.progressText = config.progressText;
+
+            // Dynamic progress text
+            if (this.model.status === 'downloading' && this.model.progress > 0) {
+                this.progressText = `${Math.round(this.model.progress)}%`;
+            } else if (this.model.status === 'queued') {
+                this.progressText = 'Waiting in queue...';
+            } else if (this.model.status === 'paused') {
+                this.progressText = `Paused at ${Math.round(this.model.progress)}%`;
+            } else {
+                this.progressText = '';
+            }
         },
 
         updateProgress(detail) {

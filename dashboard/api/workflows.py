@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from ..core.config import settings
 from ..core.comfyui_client import ComfyUIClient
+from ..core.template_scanner import TemplateScanner
 
 
 # Request/Response Models
@@ -247,3 +248,65 @@ async def get_system_metrics():
         return metrics
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting system metrics: {str(e)}")
+
+
+@router.get("/templates")
+async def list_templates():
+    """List ComfyUI templates with model compatibility info"""
+    # ComfyUI templates location
+    template_paths = [
+        Path("/app/comfyui/web/assets"),
+        Path("/workspace/workflows"),
+    ]
+
+    scanner = TemplateScanner(settings.MODEL_BASE_PATH)
+    templates = []
+
+    for base_path in template_paths:
+        if not base_path.exists():
+            continue
+
+        for template_file in base_path.glob("**/*.json"):
+            try:
+                missing = scanner.get_missing_models(template_file)
+
+                templates.append({
+                    "id": str(template_file.relative_to(base_path)),
+                    "name": template_file.stem,
+                    "path": str(template_file),
+                    "compatible": len(missing) == 0,
+                    "missing_models": missing,
+                    "missing_count": len(missing)
+                })
+            except Exception:
+                continue
+
+    return {"templates": templates, "total": len(templates)}
+
+
+@router.get("/templates/{template_id:path}/missing-models")
+async def get_template_missing_models(template_id: str):
+    """Get missing models for a specific template"""
+    # Find template
+    template_paths = [
+        Path("/app/comfyui/web/assets") / template_id,
+        Path("/workspace/workflows") / template_id,
+    ]
+
+    template_file = None
+    for path in template_paths:
+        if path.exists():
+            template_file = path
+            break
+
+    if not template_file:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    scanner = TemplateScanner(settings.MODEL_BASE_PATH)
+    missing = scanner.get_missing_models(template_file)
+
+    return {
+        "template_id": template_id,
+        "missing_models": missing,
+        "can_generate": len(missing) == 0
+    }

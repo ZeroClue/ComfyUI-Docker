@@ -16,12 +16,10 @@
         </div>
         <div class="flex items-center gap-3">
             <button class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
-                    hx-get="/api/models/refresh"
-                    hx-indicator="#refresh-spinner">
-                <span class="htmx-indicator" id="refresh-spinner">
-                    <span class="spinner inline-block"></span>
-                </span>
-                <span class="htmx-indicator-hide">↻ Refresh</span>
+                    @click="refreshPresets"
+                    :disabled="isRefreshing">
+                <span x-show="isRefreshing" class="spinner inline-block"></span>
+                <span x-show="!isRefreshing">↻ Refresh</span>
             </button>
             <button class="btn btn-primary py-2 px-4 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all"
                     @click="showUploadModal = true">
@@ -181,6 +179,7 @@ function modelsPage() {
         sortBy: 'name',
         showUploadModal: false,
         modelCounts: { all: 0, video: 0, image: 0, audio: 0 },
+        isRefreshing: false,
 
         async initModelsPage() {
             await this.loadModels();
@@ -194,89 +193,47 @@ function modelsPage() {
 
         async loadModels() {
             try {
-                const response = await fetch('/api/models/presets');
+                const response = await fetch('/api/presets/');
                 if (response.ok) {
                     const data = await response.json();
-                    this.models = data.models || [];
+                    this.models = data.presets.map(preset => ({
+                        id: preset.id,
+                        name: preset.name,
+                        description: preset.description,
+                        size: preset.download_size,
+                        category: preset.category,
+                        type: preset.type,
+                        status: preset.installed ? 'installed' : 'available',
+                        progress: preset.installed ? 100 : 0,
+                        tags: preset.tags || []
+                    }));
                     this.calculateCounts();
                 }
             } catch (error) {
                 console.error('Failed to load models:', error);
-                // Use mock data for demo
-                this.models = this.getMockModels();
+                // Show empty state instead of mock data
+                this.models = [];
                 this.calculateCounts();
             }
         },
 
-        getMockModels() {
-            return [
-                {
-                    id: 'wan_21_14b',
-                    name: 'WAN 2.1 14B',
-                    description: 'State-of-the-art text-to-video generation with 14B parameter model',
-                    size: '14.5 GB',
-                    category: 'Video Generation',
-                    type: 'video',
-                    status: 'installed',
-                    progress: 100,
-                    tags: ['t2v', 'hq', '14b']
-                },
-                {
-                    id: 'ltx_video',
-                    name: 'LTX Video',
-                    description: 'Lightning-fast text-to-video with real-time preview capabilities',
-                    size: '2.1 GB',
-                    category: 'Video Generation',
-                    type: 'video',
-                    status: 'available',
-                    progress: 0,
-                    tags: ['fast', 't2v', 'efficient']
-                },
-                {
-                    id: 'hunyuan_video',
-                    name: 'Hunyuan Video',
-                    description: 'High-quality video generation with advanced motion control',
-                    size: '8.2 GB',
-                    category: 'Video Generation',
-                    type: 'video',
-                    status: 'downloading',
-                    progress: 67,
-                    tags: ['hq', 't2v', '720p']
-                },
-                {
-                    id: 'flux_schnell',
-                    name: 'FLUX Schnell',
-                    description: 'Fast, high-quality image generation with FLUX model',
-                    size: '24 GB',
-                    category: 'Image Generation',
-                    type: 'image',
-                    status: 'available',
-                    progress: 0,
-                    tags: ['fast', 'quality', 'sdxl']
-                },
-                {
-                    id: 'sdxl_turbo',
-                    name: 'SDXL Turbo',
-                    description: 'Real-time image generation with 1-4 step inference',
-                    size: '6.9 GB',
-                    category: 'Image Generation',
-                    type: 'image',
-                    status: 'installed',
-                    progress: 100,
-                    tags: ['turbo', 'real-time', 'sdxl']
-                },
-                {
-                    id: 'musicgen',
-                    name: 'MusicGen Medium',
-                    description: 'Music generation model for creating original compositions',
-                    size: '2.8 GB',
-                    category: 'Audio Generation',
-                    type: 'audio',
-                    status: 'available',
-                    progress: 0,
-                    tags: ['music', 'generation', 'audio']
+        async refreshPresets() {
+            this.isRefreshing = true;
+            try {
+                const response = await fetch('/api/presets/refresh', { method: 'POST' });
+                if (response.ok) {
+                    const data = await response.json();
+                    window.showToast('success', 'Presets Refreshed', `Loaded ${data.total_presets} presets (v${data.version})`);
+                    await this.loadModels();
+                } else {
+                    throw new Error('Refresh failed');
                 }
-            ];
+            } catch (error) {
+                console.error('Refresh failed:', error);
+                window.showToast('error', 'Refresh Failed', 'Could not fetch latest presets');
+            } finally {
+                this.isRefreshing = false;
+            }
         },
 
         calculateCounts() {

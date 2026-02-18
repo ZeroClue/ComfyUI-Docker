@@ -325,3 +325,82 @@ async def refresh_presets():
 async def get_queue_status():
     """Get current download queue status"""
     return download_manager.get_queue_status()
+
+
+@router.post("/{preset_id}/install")
+async def install_preset(preset_id: str, force: bool = False):
+    """
+    Queue preset for installation
+
+    - **preset_id**: The ID of the preset to install
+    - **force**: Force re-download even if files exist
+    """
+    config = await get_presets_from_config()
+
+    if preset_id not in config.get('presets', {}):
+        raise HTTPException(status_code=404, detail=f"Preset {preset_id} not found")
+
+    preset_data = config['presets'][preset_id]
+
+    download_id = await download_manager.start_download(
+        preset_id=preset_id,
+        files=preset_data.get('files', []),
+        force=force
+    )
+
+    return {
+        "preset_id": preset_id,
+        "status": "queued",
+        "download_id": download_id
+    }
+
+
+@router.post("/{preset_id}/pause")
+async def pause_preset_download(preset_id: str):
+    """Pause active download"""
+    success = await download_manager.pause_download(preset_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="No active download for this preset")
+    return {"preset_id": preset_id, "status": "paused"}
+
+
+@router.post("/{preset_id}/resume")
+async def resume_preset_download(preset_id: str):
+    """Resume paused download"""
+    success = await download_manager.resume_download(preset_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="No paused download for this preset")
+    return {"preset_id": preset_id, "status": "resumed"}
+
+
+@router.post("/{preset_id}/cancel")
+async def cancel_preset_download(preset_id: str, keep_partial: bool = True):
+    """Cancel download"""
+    success = await download_manager.cancel_download(preset_id, keep_partial)
+    if not success:
+        raise HTTPException(status_code=404, detail="No download to cancel")
+    return {"preset_id": preset_id, "status": "cancelled"}
+
+
+@router.post("/{preset_id}/retry")
+async def retry_preset_download(preset_id: str):
+    """Retry failed download"""
+    config = await get_presets_from_config()
+
+    if preset_id not in config.get('presets', {}):
+        raise HTTPException(status_code=404, detail=f"Preset {preset_id} not found")
+
+    preset_data = config['presets'][preset_id]
+
+    # Force re-download
+    download_id = await download_manager.start_download(
+        preset_id=preset_id,
+        files=preset_data.get('files', []),
+        force=True
+    )
+
+    return {
+        "preset_id": preset_id,
+        "status": "retrying",
+        "download_id": download_id
+    }

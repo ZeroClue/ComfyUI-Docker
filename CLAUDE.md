@@ -258,17 +258,15 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
 
 ## Dashboard Startup Requirements
 
-**PYTHONPATH Configuration**:
-The dashboard requires `/scripts` in Python path for imports:
+**Module Execution**:
+Dashboard runs as a Python module from `/app`:
 ```bash
-export PYTHONPATH="/scripts:/app:$PYTHONPATH"
+cd /app && PYTHONPATH=/app python3 -m dashboard.main
 ```
 
-**Module Execution**:
-Dashboard runs as Python module (not direct script):
+Or with uvicorn:
 ```bash
-cd /app/dashboard
-python3 -m main  # Required for relative imports
+cd /app && PYTHONPATH=/app uvicorn dashboard.main:app --host 0.0.0.0 --port 8000
 ```
 
 ## Unified Dashboard Authentication
@@ -286,6 +284,22 @@ Direct IP access doesn't work on RunPod. Use proxy URL format:
 https://{pod-id}-{port}.proxy.runpod.net/
 
 Example: https://8myhxhyx0ojmq4-8082.proxy.runpod.net/
+```
+
+## RunPod Pod Management
+
+```bash
+# List all pods
+source .runpod/.env && curl -s "https://rest.runpod.io/v1/pods" -H "Authorization: Bearer $RUNPOD_API_KEY"
+
+# Get pod details
+source .runpod/.env && curl -s "https://rest.runpod.io/v1/pods/{pod-id}" -H "Authorization: Bearer $RUNPOD_API_KEY"
+
+# Stop a pod
+source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods/{pod-id}/stop" -H "Authorization: Bearer $RUNPOD_API_KEY"
+
+# Terminate a pod
+source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods/{pod-id}/terminate" -H "Authorization: Bearer $RUNPOD_API_KEY"
 ```
 
 # Development & Testing
@@ -376,6 +390,16 @@ Key files:
 - `dashboard/core/websocket.py`: WebSocket handlers for real-time updates
 - `dashboard/api/system.py`: System status endpoints (requires `Optional` from typing)
 
+**Feature Status**:
+- ✅ Preset management (downloads, status)
+- ✅ Model listing/validation
+- ✅ Workflow execution via ComfyUI API
+- ✅ System monitoring (CPU, memory, disk, GPU)
+- ✅ WebSocket real-time updates
+- ⚠️ Dashboard stats (needs real data connection)
+- ❌ Workflow editor (not implemented)
+- ❌ Gallery view (not implemented)
+
 ## Additional Dependency Warnings
 
 These packages are commonly missing but cause warnings in custom nodes:
@@ -385,7 +409,7 @@ These packages are commonly missing but cause warnings in custom nodes:
 Add to Dockerfile if custom node warnings appear during startup.
 
 ## Model Path Structure
-All models are installed to `/workspace/ComfyUI/models/` with standardized paths:
+All models are installed to `/workspace/models/` with standardized paths:
 - `checkpoints/`: Main model files (diffusion models, FLUX, etc.)
 - `text_encoders/`: T5, CLIP-L, and other text encoders
 - `vae/`: Variational autoencoders

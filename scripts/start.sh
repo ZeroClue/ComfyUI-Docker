@@ -596,10 +596,10 @@ start_unified_dashboard() {
     fi
 
     # Start the dashboard FastAPI application
-    # Must run from /app with module path dashboard.main for relative imports to work
+    # Use uvicorn directly for proper async support
     cd /app
     export PYTHONPATH="/app:${PYTHONPATH}"
-    nohup python3 -m dashboard.main &> "${LOGS_DIR}/unified_dashboard.log" &
+    nohup /app/venv/bin/python3 -m uvicorn dashboard.main:app --host 0.0.0.0 --port ${DASHBOARD_PORT} &> "${LOGS_DIR}/unified_dashboard.log" &
     local pid=$!
     echo $pid > "${LOGS_DIR}/unified_dashboard.pid"
 
@@ -607,7 +607,7 @@ start_unified_dashboard() {
 
     # Verify process started successfully
     sleep 2
-    if ! pgrep -f "python3 -m dashboard.main" > /dev/null; then
+    if ! pgrep -f "uvicorn dashboard.main" > /dev/null; then
         log_warning "Unified Dashboard process not running after startup"
         log_info "Check logs at ${LOGS_DIR}/unified_dashboard.log"
         return 1

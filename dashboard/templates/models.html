@@ -71,7 +71,10 @@
                 <option value="all">All Status</option>
                 <option value="installed">Installed</option>
                 <option value="available">Available</option>
+                <option value="queued">Queued</option>
                 <option value="downloading">Downloading</option>
+                <option value="paused">Paused</option>
+                <option value="failed">Failed</option>
             </select>
             <select x-model="sortBy"
                     class="px-4 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all appearance-none cursor-pointer">
@@ -129,8 +132,10 @@
                      :class="{
                          'bg-accent-success/15 text-accent-success': model.status === 'installed',
                          'bg-accent-info/15 text-accent-info': model.status === 'available',
-                         'bg-accent-warning/15 text-accent-warning': model.status === 'partial',
-                         'bg-accent-primary/15 text-accent-primary': model.status === 'downloading'
+                         'bg-accent-warning/15 text-accent-warning': model.status === 'queued',
+                         'bg-accent-warning/15 text-accent-warning': model.status === 'paused',
+                         'bg-accent-primary/15 text-accent-primary': model.status === 'downloading',
+                         'bg-accent-error/15 text-accent-error': model.status === 'failed'
                      }"
                      x-text="statusText">
                 </div>
@@ -178,9 +183,10 @@
                             :class="{
                                 'btn-primary': model.status === 'available',
                                 'btn-secondary': model.status === 'installed',
-                                'bg-bg-tertiary text-text-secondary': model.status === 'downloading'
+                                'bg-accent-warning text-text-inverse': model.status === 'failed',
+                                'bg-bg-tertiary text-text-secondary': model.status === 'downloading' || model.status === 'queued'
                             }"
-                            :disabled="model.status === 'downloading'"
+                            :disabled="model.status === 'downloading' || model.status === 'queued'"
                             @click="handleAction">
                         <span x-text="actionText"></span>
                     </button>
@@ -415,8 +421,10 @@ function presetCard(model) {
             const statusMap = {
                 'installed': { statusText: 'Installed', actionText: 'Generate', progressText: '' },
                 'available': { statusText: 'Available', actionText: 'Install', progressText: '' },
-                'partial': { statusText: 'Partial', actionText: 'Resume', progressText: 'Downloading...' },
-                'downloading': { statusText: 'Downloading', actionText: 'Pause', progressText: 'Downloading...' }
+                'queued': { statusText: 'Queued', actionText: 'In Queue', progressText: 'Waiting...' },
+                'downloading': { statusText: 'Downloading', actionText: 'Pause', progressText: 'Downloading...' },
+                'paused': { statusText: 'Paused', actionText: 'Resume', progressText: 'Paused' },
+                'failed': { statusText: 'Failed', actionText: 'Retry', progressText: '' }
             };
 
             const config = statusMap[this.model.status] || statusMap['available'];
@@ -435,29 +443,48 @@ function presetCard(model) {
 
         async handleAction() {
             if (this.model.status === 'available') {
-                // Install the model
                 try {
-                    const response = await fetch(`/api/models/${this.model.id}/install`, { method: 'POST' });
+                    const response = await fetch(`/api/presets/${this.model.id}/install`, { method: 'POST' });
                     if (response.ok) {
-                        this.model.status = 'downloading';
+                        this.model.status = 'queued';
                         this.updateText();
-                        window.showToast('success', 'Download Started', `${this.model.name} is being downloaded`);
+                        window.showToast('success', 'Queued', `${this.model.name} added to download queue`);
                     }
                 } catch (error) {
-                    console.error('Failed to install model:', error);
-                    window.showToast('error', 'Install Failed', 'Could not start download');
+                    console.error('Failed to queue preset:', error);
+                    window.showToast('error', 'Queue Failed', 'Could not queue preset for download');
                 }
             } else if (this.model.status === 'installed') {
-                // Navigate to generate page
                 window.location.href = `/generate?model=${this.model.id}`;
+            } else if (this.model.status === 'queued') {
+                // Already in queue, show info
+                window.showToast('info', 'In Queue', `${this.model.name} is waiting to download`);
             } else if (this.model.status === 'downloading') {
-                // Pause download
                 try {
-                    await fetch(`/api/models/${this.model.id}/pause`, { method: 'POST' });
-                    this.model.status = 'partial';
+                    await fetch(`/api/presets/${this.model.id}/pause`, { method: 'POST' });
+                    this.model.status = 'paused';
                     this.updateText();
                 } catch (error) {
                     console.error('Failed to pause download:', error);
+                }
+            } else if (this.model.status === 'paused') {
+                try {
+                    await fetch(`/api/presets/${this.model.id}/resume`, { method: 'POST' });
+                    this.model.status = 'queued';
+                    this.updateText();
+                } catch (error) {
+                    console.error('Failed to resume download:', error);
+                }
+            } else if (this.model.status === 'failed') {
+                try {
+                    const response = await fetch(`/api/presets/${this.model.id}/retry`, { method: 'POST' });
+                    if (response.ok) {
+                        this.model.status = 'queued';
+                        this.updateText();
+                        window.showToast('success', 'Retrying', `${this.model.name} download restarted`);
+                    }
+                } catch (error) {
+                    console.error('Failed to retry:', error);
                 }
             }
         }

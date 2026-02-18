@@ -427,12 +427,47 @@ Major features have design docs in `docs/plans/`:
 
 These documents are gitignored but tracked with `git add -f`.
 
+## Dashboard Known Issues (2026-02-18)
+
+**Models Page:**
+- Category filter may show no results (frontend filters by `type` but API uses `category`)
+- Details button non-functional (sets `showDetails=true` but no modal UI)
+- No visual download progress indicator in queue UI
+- Should default to showing installed models first
+
+**Generate Page:**
+- Gallery/View All link broken (no `/gallery` route)
+- Queue card UI exists but not connected to ComfyUI
+- Generation progress feedback minimal
+
+**Workflows Page:**
+- Import button non-functional (missing `/api/workflows/import` endpoint)
+- May trigger browser network access prompt (expected API calls)
+
 ## Session Learnings (2026-02-18)
 
 ### Bug Fixes Applied
 - **psutil.uname()**: Use `.sysname` not `.system` (posix.uname_result has no 'system' attribute)
 - **WebSocket endpoint**: Dashboard templates expect `/ws/dashboard`, not just `/ws`
 - **Dashboard port**: Internal port 8000, external 8082 (via nginx)
+- **Pydantic validation**: Preset `files` and `categories` need `Dict[str, Any]` not `Dict[str, str]` (preset YAML has boolean `optional: false` and nested category objects)
+
+### RunPod Pod Management
+**CRITICAL**: Always verify pod status after stop command:
+```bash
+# Stop pod
+curl -X POST "https://rest.runpod.io/v1/pods/{pod-id}/stop" -H "Authorization: Bearer $RUNPOD_API_KEY"
+
+# Verify it stopped (check desiredStatus = "EXITED")
+curl -s "https://rest.runpod.io/v1/pods/{pod-id}" -H "Authorization: Bearer $RUNPOD_API_KEY"
+```
+
+### CPU Pod Debugging
+CPU pods require `--cpu` flag for ComfyUI to disable GPU check:
+```bash
+# ComfyUI won't start on CPU pods without this flag
+python main.py --cpu --listen 0.0.0.0
+```
 
 ### Communication Pattern
 Use ntfy for user notifications during long-running tasks:

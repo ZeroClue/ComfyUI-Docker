@@ -5,7 +5,7 @@ Handles preset listing, installation, and status checking
 
 import asyncio
 import aiohttp
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
@@ -25,7 +25,7 @@ class PresetResponse(BaseModel):
     type: str
     description: str
     download_size: str
-    files: List[Dict[str, str]]
+    files: List[Dict[str, Any]]
     use_case: str
     tags: List[str]
     installed: bool = False

@@ -297,6 +297,23 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
+@app.websocket("/ws/dashboard")
+async def dashboard_websocket(websocket: WebSocket):
+    """WebSocket endpoint for dashboard real-time updates"""
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # Handle dashboard-specific messages
+            message = json.loads(data) if data.startswith('{') else {"type": "message", "data": data}
+            await manager.broadcast(json.dumps({
+                "type": message.get("type", "update"),
+                "data": message.get("data", data)
+            }))
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+
 @app.websocket("/ws/downloads")
 async def downloads_websocket(websocket: WebSocket):
     """WebSocket endpoint for download progress updates"""

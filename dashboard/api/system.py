@@ -301,10 +301,11 @@ async def get_dashboard_stats():
 
 def get_system_info() -> Dict:
     """Get basic system information"""
+    uname_result = psutil.os.uname()
     return {
-        "hostname": psutil.os.uname().nodename,
-        "platform": psutil.os.uname().system,
-        "release": psutil.os.uname().release,
+        "hostname": uname_result.nodename,
+        "platform": uname_result.sysname,
+        "release": uname_result.release,
         "python_version": f"{psutil.version_info.major}.{psutil.version_info.minor}.{psutil.version_info.micro}",
         "uptime": get_uptime()
     }

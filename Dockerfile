@@ -191,6 +191,8 @@ RUN pip install --no-cache-dir \
     piexif \
     # Deep object comparison (Crystools)
     deepdiff \
+    # CPU info (Crystools)
+    py-cpuinfo \
     # GGUF model format support
     gguf \
     # Tokenizer for LLM nodes
@@ -210,7 +212,15 @@ RUN pip install --no-cache-dir \
     # YOLO for Impact-Subpack detection nodes
     ultralytics \
     # Segment Anything for RMBG and segmentation nodes
-    segment-anything-py
+    segment-anything-py \
+    # Serialization (Impact-Subpack)
+    dill \
+    # Rotary embeddings (SeedVR2)
+    rotary-embedding-torch \
+    # Text fixing (WanVideoWrapper)
+    ftfy \
+    # Regex for advanced text matching
+    regex
 
 # Verify Python environment
 RUN python --version && \

@@ -119,7 +119,7 @@ Each preset contains complete model definitions with URLs, sizes, file paths, an
 - `/scripts/`: Startup orchestration, preset management, validation tools
 - `/config/`: YAML preset configurations, schemas, and migration utilities
 - `/proxy/`: Nginx reverse proxy for service routing
-- `/workspace/ComfyUI/models/`: Target model storage directory
+- `/workspace/models/`: Target model storage directory (network volume)
 - `/scripts/preset_manager/templates/`: Web UI templates
 
 ## Core Services Architecture

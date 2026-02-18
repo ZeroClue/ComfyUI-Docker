@@ -35,7 +35,7 @@ class PresetResponse(BaseModel):
 class PresetListResponse(BaseModel):
     """Response for preset list endpoint"""
     total: int
-    categories: Dict[str, str]
+    categories: Dict[str, Any]
     presets: List[PresetResponse]
 
 

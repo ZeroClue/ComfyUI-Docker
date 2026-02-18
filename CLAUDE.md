@@ -382,22 +382,46 @@ All other custom nodes should load successfully with the included dependencies.
 
 The dashboard runs as a Python module from `/app`:
 ```bash
-cd /app && PYTHONPATH=/app python3 -m dashboard.main
+cd /app && PYTHONPATH=/app uvicorn dashboard.main:app --host 0.0.0.0 --port 8000
 ```
 
-Key files:
+**Key files:**
 - `dashboard/main.py`: FastAPI application entry point
 - `dashboard/core/websocket.py`: WebSocket handlers for real-time updates
-- `dashboard/api/system.py`: System status endpoints (requires `Optional` from typing)
+- `dashboard/core/config.py`: Settings (MODEL_BASE_PATH=/workspace/models)
+- `dashboard/core/comfyui_client.py`: ComfyUI REST API client
+- `dashboard/api/*.py`: REST API endpoints
+
+**API Endpoints:**
+- `/api/dashboard/stats` - Home page statistics
+- `/api/models/presets` - Presets with installation status (for Models page)
+- `/api/models/` - Installed model files
+- `/api/workflows/` - Workflow management
+- `/api/presets/` - Preset download management
+- `/api/system/` - System status and resources
+- `/api/generate` - Content generation endpoint
+
+**Page Routes:**
+- `/` - Home dashboard
+- `/generate` - Content generation interface
+- `/models` - Model preset management
+- `/workflows` - Workflow library
+- `/settings` - Settings page
+- `/pro` - Pro features
+
+**Startup command in start.sh:**
+```bash
+cd /app && PYTHONPATH=/app /app/venv/bin/python3 -m uvicorn dashboard.main:app --host 0.0.0.0 --port 8000
+```
 
 **Feature Status**:
 - ✅ Preset management (downloads, status)
-- ✅ Model listing/validation
+- ✅ Model listing/validation with installation status
 - ✅ Workflow execution via ComfyUI API
 - ✅ System monitoring (CPU, memory, disk, GPU)
 - ✅ WebSocket real-time updates
-- ⚠️ Dashboard stats (needs real data connection)
-- ❌ Workflow editor (not implemented)
+- ✅ Dashboard stats (connected to real data)
+- ✅ Page routes (/generate, /models, /workflows, /settings, /pro)
 - ❌ Gallery view (not implemented)
 
 ## Additional Dependency Warnings

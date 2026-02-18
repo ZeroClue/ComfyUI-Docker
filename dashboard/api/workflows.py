@@ -288,6 +288,10 @@ async def list_templates():
 @router.get("/templates/{template_id:path}/missing-models")
 async def get_template_missing_models(template_id: str):
     """Get missing models for a specific template"""
+    # Validate template_id does not contain path traversal
+    if ".." in template_id or template_id.startswith("/") or template_id.startswith("\\"):
+        raise HTTPException(status_code=400, detail="Invalid template ID")
+
     # Find template
     template_paths = [
         Path("/app/comfyui/web/assets") / template_id,
@@ -349,9 +353,14 @@ async def import_workflow(request: WorkflowImportRequest) -> WorkflowImportRespo
     if not safe_name:
         safe_name = "imported_workflow"
 
+    # Sanitize category to prevent path traversal
+    safe_category = "".join(c for c in (request.category or "imported") if c.isalnum() or c in ('_', '-')).strip()
+    if not safe_category:
+        safe_category = "imported"
+
     # Create category subdirectory if specified
-    if request.category and request.category != "uncategorized":
-        target_dir = workflow_dir / request.category
+    if safe_category and safe_category != "uncategorized":
+        target_dir = workflow_dir / safe_category
         target_dir.mkdir(parents=True, exist_ok=True)
     else:
         target_dir = workflow_dir

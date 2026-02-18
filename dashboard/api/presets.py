@@ -344,6 +344,9 @@ async def delete_preset(preset_id: str):
         except Exception as e:
             errors.append(f"{file_path}: {str(e)}")
 
+    # Invalidate installation status cache since files changed
+    preset_cache.invalidate_installed()
+
     return {
         "preset_id": preset_id,
         "deleted_files": deleted_files,

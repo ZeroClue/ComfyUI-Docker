@@ -283,18 +283,67 @@ class DownloadManager:
             ]
         }
 
-    async def cancel_download(self, preset_id: str) -> bool:
-        """Cancel active download for a preset"""
+    async def pause_download(self, preset_id: str) -> bool:
+        """Pause active download (keeps partial file)"""
+        if preset_id not in self.active_downloads:
+            return False
 
+        for task in self.active_downloads[preset_id]:
+            if task.status == "downloading":
+                task.status = "paused"
+
+        await self._broadcast_queue_update()
+        return True
+
+    async def resume_download(self, preset_id: str) -> bool:
+        """Resume paused download"""
+        if preset_id not in self.active_downloads:
+            return False
+
+        for task in self.active_downloads[preset_id]:
+            if task.status == "paused":
+                task.status = "pending"
+
+        # Re-queue if not currently downloading
+        if self.current_download != preset_id:
+            await self.download_queue.put((preset_id, self.active_downloads[preset_id]))
+
+        await self._broadcast_queue_update()
+        return True
+
+    async def cancel_download(self, preset_id: str, keep_partial: bool = True) -> bool:
+        """Cancel download, optionally keeping partial files"""
         if preset_id in self.active_downloads:
-            # Mark all tasks as cancelled
             for task in self.active_downloads[preset_id]:
                 task.status = "cancelled"
+                if not keep_partial:
+                    full_path = self.base_path / task.file_path
+                    if full_path.exists():
+                        full_path.unlink()
 
             del self.active_downloads[preset_id]
+            await self._broadcast_queue_update()
             return True
 
         return False
+
+    async def retry_download(self, preset_id: str) -> bool:
+        """Retry failed download from beginning"""
+        # This will be handled by re-calling start_download
+        return False  # API endpoint will handle this
+
+    def get_queue_status(self) -> Dict:
+        """Get current queue status"""
+        queue_list = []
+        for item in list(self.download_queue._queue):
+            if isinstance(item, tuple):
+                queue_list.append(item[0])
+
+        return {
+            "current": self.current_download,
+            "queue": queue_list,
+            "active_downloads": len(self.active_downloads)
+        }
 
     def get_active_downloads(self) -> List[str]:
         """Get list of preset IDs with active downloads"""

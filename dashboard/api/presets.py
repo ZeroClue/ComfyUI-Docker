@@ -319,3 +319,9 @@ async def refresh_presets():
 
     except aiohttp.ClientError as e:
         raise HTTPException(status_code=503, detail=f"Failed to fetch from GitHub: {str(e)}")
+
+
+@router.get("/queue/status")
+async def get_queue_status():
+    """Get current download queue status"""
+    return download_manager.get_queue_status()

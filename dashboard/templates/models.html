@@ -83,6 +83,40 @@
         </div>
     </div>
 
+    <!-- Download Queue -->
+    <div x-show="downloadQueue.current || downloadQueue.queue.length > 0"
+         class="bg-bg-secondary border border-border-subtle rounded-lg p-4 mb-6">
+
+        <!-- Current Download -->
+        <div x-show="downloadQueue.current" class="mb-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium">Downloading: <span x-text="downloadQueue.current" class="text-accent-primary"></span></span>
+                <button @click="pauseDownload(downloadQueue.current)" class="text-xs text-text-secondary hover:text-text-primary">Pause</button>
+            </div>
+            <div class="h-2 bg-bg-tertiary rounded-full overflow-hidden mb-2">
+                <div class="h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full transition-all duration-300"
+                     :style="`width: ${currentProgress}%`"></div>
+            </div>
+            <div class="flex justify-between text-xs text-text-tertiary">
+                <span x-text="currentProgressText"></span>
+                <span x-text="`${currentProgress}%`"></span>
+            </div>
+        </div>
+
+        <!-- Queue -->
+        <div x-show="downloadQueue.queue.length > 0">
+            <div class="text-sm font-medium mb-2">Queue (<span x-text="downloadQueue.queue.length"></span>)</div>
+            <div class="space-y-1">
+                <template x-for="(presetId, index) in downloadQueue.queue" :key="presetId">
+                    <div class="flex items-center justify-between text-sm text-text-secondary py-1">
+                        <span x-text="presetId"></span>
+                        <button @click="cancelDownload(presetId)" class="text-xs text-accent-error hover:text-red-400">Cancel</button>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
     <!-- Models Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <template x-for="model in filteredModels" :key="model.id">
@@ -180,15 +214,77 @@ function modelsPage() {
         showUploadModal: false,
         modelCounts: { all: 0, video: 0, image: 0, audio: 0 },
         isRefreshing: false,
+        downloadQueue: {
+            current: null,
+            queue: []
+        },
+        currentProgress: 0,
+        currentProgressText: 'Preparing...',
+        ws: null,
 
         async initModelsPage() {
             await this.loadModels();
             this.calculateCounts();
+            this.initWebSocket();
 
             // Listen for download progress updates
             window.addEventListener('download-progress', (e) => {
                 this.updateModelProgress(e.detail);
             });
+        },
+
+        initWebSocket() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws/dashboard`;
+
+            this.ws = new WebSocket(wsUrl);
+
+            this.ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    this.handleWebSocketMessage(data);
+                } catch (e) {
+                    console.error('WebSocket parse error:', e);
+                }
+            };
+
+            this.ws.onclose = () => {
+                // Reconnect after 5 seconds
+                setTimeout(() => this.initWebSocket(), 5000);
+            };
+        },
+
+        handleWebSocketMessage(data) {
+            if (data.type === 'download_progress') {
+                if (data.preset_id === this.downloadQueue.current ||
+                    data.presetId === this.downloadQueue.current) {
+                    this.currentProgress = data.data?.progress || data.progress || 0;
+                    this.currentProgressText = `${data.data?.downloaded || 0} / ${data.data?.total || 0}`;
+                }
+            } else if (data.type === 'download_complete') {
+                const presetId = data.preset_id || data.presetId;
+                window.showToast('success', 'Download Complete', `${presetId} installed successfully`);
+                this.loadModels();
+            } else if (data.type === 'download_failed') {
+                const presetId = data.preset_id || data.presetId;
+                window.showToast('error', 'Download Failed', `${presetId}: ${data.error || 'Unknown error'}`);
+            } else if (data.type === 'queue_updated') {
+                this.downloadQueue.current = data.current;
+                this.downloadQueue.queue = data.queue || [];
+                if (!data.current) {
+                    this.currentProgress = 0;
+                    this.currentProgressText = 'Preparing...';
+                }
+            }
+        },
+
+        async pauseDownload(presetId) {
+            await fetch(`/api/presets/${presetId}/pause`, { method: 'POST' });
+        },
+
+        async cancelDownload(presetId) {
+            await fetch(`/api/presets/${presetId}/cancel`, { method: 'POST' });
+            this.loadModels();
         },
 
         async loadModels() {

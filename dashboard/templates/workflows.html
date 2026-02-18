@@ -342,16 +342,39 @@ function workflowsPage() {
             input.onchange = async (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    const text = await file.text();
-                    const workflow = JSON.parse(text);
-                    // Import workflow
-                    await fetch('/api/workflows/import', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(workflow)
-                    });
-                    window.showToast('success', 'Workflow Imported', workflow.name);
-                    this.loadWorkflows();
+                    try {
+                        const text = await file.text();
+                        const workflow = JSON.parse(text);
+
+                        // Extract name from filename or workflow metadata
+                        const name = file.name.replace('.json', '');
+                        const category = workflow._meta?.category || 'imported';
+                        const description = workflow._meta?.description || '';
+
+                        // Import workflow with proper request format
+                        const response = await fetch('/api/workflows/import', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: name,
+                                workflow: workflow,
+                                category: category,
+                                description: description
+                            })
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            window.showToast('success', 'Workflow Imported', `${data.name} saved successfully`);
+                            this.loadWorkflows();
+                        } else {
+                            const error = await response.json();
+                            window.showToast('error', 'Import Failed', error.detail || 'Could not import workflow');
+                        }
+                    } catch (error) {
+                        console.error('Failed to import workflow:', error);
+                        window.showToast('error', 'Import Failed', 'Invalid JSON file');
+                    }
                 }
             };
             input.click();

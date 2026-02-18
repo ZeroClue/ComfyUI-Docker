@@ -6,8 +6,9 @@ Handles workflow listing, execution, and ComfyUI integration
 from typing import List, Dict, Optional
 from pathlib import Path
 import json
+import shutil
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, UploadFile, File, Form
 from pydantic import BaseModel, Field
 
 from ..core.config import settings
@@ -310,3 +311,139 @@ async def get_template_missing_models(template_id: str):
         "missing_models": missing,
         "can_generate": len(missing) == 0
     }
+
+
+class WorkflowImportRequest(BaseModel):
+    """Request model for workflow import"""
+    name: str = Field(..., description="Name for the workflow")
+    workflow: Dict = Field(..., description="ComfyUI workflow JSON")
+    category: Optional[str] = Field("imported", description="Category for the workflow")
+    description: Optional[str] = Field("", description="Description of the workflow")
+
+
+class WorkflowImportResponse(BaseModel):
+    """Response for workflow import"""
+    status: str
+    name: str
+    path: str
+    message: str
+
+
+@router.post("/import", response_model=WorkflowImportResponse)
+async def import_workflow(request: WorkflowImportRequest) -> WorkflowImportResponse:
+    """
+    Import a workflow JSON to the workflows directory
+
+    - **name**: Name for the workflow file (without .json extension)
+    - **workflow**: ComfyUI workflow JSON object
+    - **category**: Optional category (default: "imported")
+    - **description**: Optional description
+    """
+    workflow_dir = Path(settings.WORKFLOW_BASE_PATH)
+
+    # Create workflow directory if it doesn't exist
+    workflow_dir.mkdir(parents=True, exist_ok=True)
+
+    # Sanitize name - remove dangerous characters
+    safe_name = "".join(c for c in request.name if c.isalnum() or c in ('_', '-', ' ')).strip()
+    if not safe_name:
+        safe_name = "imported_workflow"
+
+    # Create category subdirectory if specified
+    if request.category and request.category != "uncategorized":
+        target_dir = workflow_dir / request.category
+        target_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        target_dir = workflow_dir
+
+    # Check if file already exists
+    workflow_file = target_dir / f"{safe_name}.json"
+    counter = 1
+    while workflow_file.exists():
+        workflow_file = target_dir / f"{safe_name}_{counter}.json"
+        counter += 1
+
+    # Add metadata to workflow
+    workflow_with_meta = request.workflow.copy()
+    workflow_with_meta['_meta'] = {
+        'name': safe_name,
+        'category': request.category or 'imported',
+        'description': request.description or ''
+    }
+
+    try:
+        with open(workflow_file, 'w') as f:
+            json.dump(workflow_with_meta, f, indent=2)
+
+        relative_path = str(workflow_file.relative_to(workflow_dir))
+
+        return WorkflowImportResponse(
+            status="imported",
+            name=safe_name,
+            path=relative_path,
+            message=f"Workflow imported successfully as {workflow_file.name}"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving workflow: {str(e)}")
+
+
+@router.post("/upload")
+async def upload_workflow(
+    file: UploadFile = File(...),
+    name: Optional[str] = Form(None),
+    category: Optional[str] = Form("imported")
+):
+    """
+    Upload a workflow JSON file
+
+    - **file**: Workflow JSON file
+    - **name**: Optional name (uses filename if not provided)
+    - **category**: Optional category (default: "imported")
+    """
+    if not file.filename.endswith('.json'):
+        raise HTTPException(status_code=400, detail="Only JSON files are accepted")
+
+    try:
+        content = await file.read()
+        workflow_data = json.loads(content)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON file")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+
+    # Use provided name or filename
+    workflow_name = name or Path(file.filename).stem
+
+    # Create import request and delegate to import endpoint logic
+    import_request = WorkflowImportRequest(
+        name=workflow_name,
+        workflow=workflow_data,
+        category=category,
+        description=workflow_data.get('_meta', {}).get('description', '')
+    )
+
+    return await import_workflow(import_request)
+
+
+@router.delete("/{workflow_name}")
+async def delete_workflow(workflow_name: str):
+    """Delete a workflow file"""
+    workflow_dir = Path(settings.WORKFLOW_BASE_PATH)
+
+    if not workflow_dir.exists():
+        raise HTTPException(status_code=404, detail="Workflow directory not found")
+
+    # Find workflow file
+    workflow_file = None
+    for file_path in workflow_dir.rglob(f"{workflow_name}.json"):
+        workflow_file = file_path
+        break
+
+    if not workflow_file:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_name} not found")
+
+    try:
+        workflow_file.unlink()
+        return {"status": "deleted", "name": workflow_name, "message": f"Workflow {workflow_name} deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting workflow: {str(e)}")

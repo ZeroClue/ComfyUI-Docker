@@ -3,7 +3,7 @@ System status and health check API endpoints
 Handles system monitoring, resource usage, and service status
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 import shutil
 import psutil
 from datetime import datetime

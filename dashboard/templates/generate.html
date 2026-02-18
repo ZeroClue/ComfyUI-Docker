@@ -342,7 +342,7 @@ function generatePage() {
 
         async loadInstalledModels() {
             try {
-                const response = await fetch('/api/models?status=installed');
+                const response = await fetch('/api/models/presets?status=installed');
                 if (response.ok) {
                     const data = await response.json();
                     this.installedModels = data.models || [];

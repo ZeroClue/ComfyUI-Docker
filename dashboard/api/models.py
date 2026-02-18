@@ -107,12 +107,14 @@ def scan_model_directory(base_path: Path) -> Dict[str, List[ModelFile]]:
 
 @router.get("/", response_model=ModelsResponse)
 async def list_models(
-    model_type: Optional[str] = Query(None, description="Filter by model type")
+    model_type: Optional[str] = Query(None, description="Filter by model type"),
+    status: Optional[str] = Query(None, description="Filter by status (installed, available)")
 ) -> ModelsResponse:
     """
     List all installed models with size information
 
     - **model_type**: Optional filter for specific model type (checkpoints, vae, etc.)
+    - **status**: Optional filter by installation status
     """
     base_path = Path(settings.MODEL_BASE_PATH)
 
@@ -139,6 +141,72 @@ async def list_models(
         total_size_human=get_file_size_human(total_size),
         by_type=models_by_type
     )
+
+
+@router.get("/presets")
+async def list_model_presets(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    status: Optional[str] = Query(None, description="Filter by installation status")
+):
+    """
+    List all presets with their installation status.
+    This is the main endpoint for the Models page UI.
+    """
+    import yaml
+
+    config_path = Path(settings.PRESET_CONFIG_PATH)
+    base_path = Path(settings.MODEL_BASE_PATH)
+
+    models = []
+
+    if config_path.exists():
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+
+        for preset_id, preset_data in config.get('presets', {}).items():
+            # Apply category filter
+            if category and preset_data.get('type') != category:
+                continue
+
+            # Check installation status
+            preset_files = preset_data.get('files', [])
+            installed_count = 0
+            for file_info in preset_files:
+                file_path = base_path / file_info.get('path', '')
+                if file_path.exists():
+                    installed_count += 1
+
+            if installed_count == len(preset_files) and len(preset_files) > 0:
+                install_status = 'installed'
+            elif installed_count > 0:
+                install_status = 'partial'
+            else:
+                install_status = 'available'
+
+            # Apply status filter
+            if status and install_status != status:
+                continue
+
+            # Map category to type
+            category_map = {
+                'Video Generation': 'video',
+                'Image Generation': 'image',
+                'Audio Generation': 'audio'
+            }
+
+            models.append({
+                'id': preset_id,
+                'name': preset_data.get('name', preset_id),
+                'description': preset_data.get('description', ''),
+                'size': preset_data.get('download_size', 'Unknown'),
+                'category': preset_data.get('category', 'Unknown'),
+                'type': category_map.get(preset_data.get('category'), 'unknown'),
+                'status': install_status,
+                'progress': 100 if install_status == 'installed' else 0,
+                'tags': preset_data.get('tags', [])
+            })
+
+    return {'models': models, 'total': len(models)}
 
 
 @router.get("/validate", response_model=ModelValidationResponse)

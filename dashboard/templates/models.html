@@ -194,7 +194,7 @@ function modelsPage() {
 
         async loadModels() {
             try {
-                const response = await fetch('/api/models');
+                const response = await fetch('/api/models/presets');
                 if (response.ok) {
                     const data = await response.json();
                     this.models = data.models || [];

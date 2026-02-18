@@ -50,6 +50,11 @@ class ConnectionManager:
             for connection in disconnected:
                 self.active_connections[channel].discard(connection)
 
+    async def broadcast_json(self, data: dict, channel: str = "general"):
+        """Broadcast JSON data to all connected clients"""
+        message = json.dumps(data)
+        await self.broadcast(message, channel)
+
     async def send_personal(self, message: str, websocket: WebSocket):
         """Send a message to a specific connection"""
         try:

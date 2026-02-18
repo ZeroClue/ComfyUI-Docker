@@ -140,6 +140,8 @@ Each preset contains complete model definitions with URLs, sizes, file paths, an
 
 Installation handled by `scripts/install_sageattention.sh` during python-deps stage.
 
+**CRITICAL**: Do NOT use editable install (`pip install -e .`) for SageAttention. The script deletes the source directory after install, which would break an editable install. Use regular install (`pip install .`).
+
 **GPU Architectures (SM versions):**
 - SM 8.0: A100
 - SM 8.6: RTX 3090, A6000
@@ -356,10 +358,23 @@ These packages are required for ComfyUI to start:
 
 ## Known Custom Node Import Failures (Expected)
 
-Some custom nodes fail to import due to additional dependencies. These are non-blocking for core ComfyUI functionality:
-- ComfyUI_TensorRT, ComfyUI-GGUF, ComfyUI-Crystools, ComfyUI-Openrouter_node
-- ComfyUI-Image-Saver, ComfyUI-Impact-Subpack, ComfyUI-Impact-Pack
-- ComfyUI-WanVideoWrapper, ComfyUI-Frame-Interpolation, ComfyUI-SeedVR2_VideoUpscaler
+Only these custom nodes are expected to fail (require heavy/proprietary dependencies):
+- **ComfyUI_TensorRT**: Requires NVIDIA TensorRT SDK (not included in base image)
+- **ComfyUI_LayerStyle (dzNodes)**: `guidedFilter` not available in current OpenCV version
+
+All other custom nodes should load successfully with the included dependencies.
+
+## Dashboard Module Structure
+
+The dashboard runs as a Python module from `/app`:
+```bash
+cd /app && PYTHONPATH=/app python3 -m dashboard.main
+```
+
+Key files:
+- `dashboard/main.py`: FastAPI application entry point
+- `dashboard/core/websocket.py`: WebSocket handlers for real-time updates
+- `dashboard/api/system.py`: System status endpoints (requires `Optional` from typing)
 
 ## Additional Dependency Warnings
 

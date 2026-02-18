@@ -82,22 +82,45 @@ FastAPI-based unified interface replacing Preset Manager and Studio.
 **Structure**:
 - `main.py`: FastAPI application entry point
 - `api/`: REST API endpoints (workflows, models, presets, system)
-- `core/`: ComfyUI client, configuration, WebSocket manager
+- `core/`: ComfyUI client, configuration, WebSocket manager, downloader
 - `templates/`: htmx + Alpine.js UI templates
 - `static/`: Tailwind CSS, JavaScript assets
 
 **Key Features**:
 - Workflow execution via ComfyUI API integration
-- Model and preset management
-- Real-time progress tracking via WebSocket
+- Model and preset management with download queue
+- Real-time progress tracking via WebSocket (`/ws/dashboard`)
 - System status monitoring
 
 **API Endpoints**:
-- `POST /api/workflows/execute` - Execute ComfyUI workflow
-- `GET /api/workflows/history` - View execution history
-- `GET /api/workflows/queue/status` - Monitor queue
-- `GET /api/models` - List installed models
-- `GET /api/presets` - List available presets
+- `/api/dashboard/stats` - Home page statistics
+- `/api/models/` - List installed models
+- `/api/models/presets` - Presets with installation status
+- `/api/presets/` - Preset management (list, refresh, install, pause, cancel)
+- `/api/presets/queue/status` - Download queue status
+- `/api/presets/refresh` - Fetch latest presets.yaml from GitHub
+- `/api/workflows/` - Workflow management and execution
+- `/api/system/status` - System health check
+- `/api/system/resources` - CPU, memory, disk, GPU usage
+- `/api/generate` - Content generation endpoint
+
+**Page Routes**:
+- `/` - Home dashboard
+- `/generate` - Content generation interface
+- `/models` - Model preset management
+- `/workflows` - Workflow library
+- `/settings` - Settings page
+- `/pro` - Pro features
+
+**Feature Status**:
+- ✅ Preset management (downloads, status)
+- ✅ Model listing/validation with installation status
+- ✅ Workflow execution via ComfyUI API
+- ✅ System monitoring (CPU, memory, disk, GPU)
+- ✅ WebSocket real-time updates
+- ✅ Dashboard stats (connected to real data)
+- ✅ Page routes (/generate, /models, /workflows, /settings, /pro)
+- ❌ Gallery view (not implemented)
 
 ## Preset Management System
 Located in `scripts/preset_manager/` with three core components:
@@ -378,52 +401,6 @@ Only these custom nodes are expected to fail (require heavy/proprietary dependen
 
 All other custom nodes should load successfully with the included dependencies.
 
-## Dashboard Module Structure
-
-The dashboard runs as a Python module from `/app`:
-```bash
-cd /app && PYTHONPATH=/app uvicorn dashboard.main:app --host 0.0.0.0 --port 8000
-```
-
-**Key files:**
-- `dashboard/main.py`: FastAPI application entry point
-- `dashboard/core/websocket.py`: WebSocket handlers for real-time updates
-- `dashboard/core/config.py`: Settings (MODEL_BASE_PATH=/workspace/models)
-- `dashboard/core/comfyui_client.py`: ComfyUI REST API client
-- `dashboard/api/*.py`: REST API endpoints
-
-**API Endpoints:**
-- `/api/dashboard/stats` - Home page statistics
-- `/api/models/presets` - Presets with installation status (for Models page)
-- `/api/models/` - Installed model files
-- `/api/workflows/` - Workflow management
-- `/api/presets/` - Preset download management
-- `/api/system/` - System status and resources
-- `/api/generate` - Content generation endpoint
-
-**Page Routes:**
-- `/` - Home dashboard
-- `/generate` - Content generation interface
-- `/models` - Model preset management
-- `/workflows` - Workflow library
-- `/settings` - Settings page
-- `/pro` - Pro features
-
-**Startup command in start.sh:**
-```bash
-cd /app && PYTHONPATH=/app /app/venv/bin/python3 -m uvicorn dashboard.main:app --host 0.0.0.0 --port 8000
-```
-
-**Feature Status**:
-- ✅ Preset management (downloads, status)
-- ✅ Model listing/validation with installation status
-- ✅ Workflow execution via ComfyUI API
-- ✅ System monitoring (CPU, memory, disk, GPU)
-- ✅ WebSocket real-time updates
-- ✅ Dashboard stats (connected to real data)
-- ✅ Page routes (/generate, /models, /workflows, /settings, /pro)
-- ❌ Gallery view (not implemented)
-
 ## Additional Dependency Warnings
 
 These packages are commonly missing but cause warnings in custom nodes:
@@ -441,3 +418,28 @@ All models are installed to `/workspace/models/` with standardized paths:
 - `audio_encoders/`: Audio processing models
 - `loras/`: LoRA adapters and enhancement models
 - `upscale_models/`: Image upscaling models
+
+## Design Documentation
+
+Major features have design docs in `docs/plans/`:
+- `2026-02-18-preset-system-design.md` - Preset system architecture
+- `2026-02-18-preset-system-implementation.md` - Implementation tasks (17 bite-sized tasks)
+
+These documents are gitignored but tracked with `git add -f`.
+
+## Session Learnings (2026-02-18)
+
+### Bug Fixes Applied
+- **psutil.uname()**: Use `.sysname` not `.system` (posix.uname_result has no 'system' attribute)
+- **WebSocket endpoint**: Dashboard templates expect `/ws/dashboard`, not just `/ws`
+- **Dashboard port**: Internal port 8000, external 8082 (via nginx)
+
+### Communication Pattern
+Use ntfy for user notifications during long-running tasks:
+```bash
+# Send notification via MCP tool
+mcp__ntfy-me-mcp-extended__ntfy_me(taskTitle="Build Complete", taskSummary="...")
+
+# Ask question with action buttons
+mcp__ntfy-me-mcp-extended__ntfy_me_ask(question="Continue?", options=["Yes", "No"])
+```

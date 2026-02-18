@@ -198,6 +198,102 @@
                         <span x-text="actionText"></span>
                     </button>
                 </div>
+
+                <!-- Details Modal -->
+                <div x-show="showDetails"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                     style="display: none;"
+                     @click.self="showDetails = false">
+                    <!-- Backdrop -->
+                    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+                    <!-- Modal Content -->
+                    <div class="relative bg-bg-secondary border border-border-medium rounded-lg max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-xl"
+                         @click.stop>
+                        <!-- Header -->
+                        <div class="sticky top-0 bg-bg-secondary border-b border-border-subtle px-6 py-4 flex items-center justify-between">
+                            <h3 class="text-lg font-semibold" x-text="model.name"></h3>
+                            <button class="text-text-secondary hover:text-text-primary transition-colors p-1"
+                                    @click="showDetails = false">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Body -->
+                        <div class="px-6 py-4 space-y-4">
+                            <!-- Status Badge -->
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold px-2.5 py-1 rounded-full"
+                                      :class="{
+                                          'bg-accent-success/15 text-accent-success': model.status === 'installed',
+                                          'bg-accent-info/15 text-accent-info': model.status === 'available',
+                                          'bg-accent-warning/15 text-accent-warning': model.status === 'queued' || model.status === 'paused',
+                                          'bg-accent-primary/15 text-accent-primary': model.status === 'downloading',
+                                          'bg-accent-error/15 text-accent-error': model.status === 'failed'
+                                      }"
+                                      x-text="statusText"></span>
+                                <span class="text-sm text-text-secondary"
+                                      :class="{
+                                          'capitalize': true
+                                      }"
+                                      x-text="model.category"></span>
+                            </div>
+
+                            <!-- Description -->
+                            <div>
+                                <p class="text-sm text-text-secondary" x-text="model.description"></p>
+                            </div>
+
+                            <!-- Info Grid -->
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-text-secondary">Size:</span>
+                                    <span class="ml-2 font-medium text-accent-primary" x-text="model.size"></span>
+                                </div>
+                                <div>
+                                    <span class="text-text-secondary">Type:</span>
+                                    <span class="ml-2 capitalize" x-text="model.type"></span>
+                                </div>
+                            </div>
+
+                            <!-- Tags -->
+                            <div x-show="model.tags && model.tags.length > 0">
+                                <span class="text-sm text-text-secondary block mb-2">Tags:</span>
+                                <div class="flex flex-wrap gap-1">
+                                    <template x-for="tag in model.tags" :key="tag">
+                                        <span class="text-xs bg-bg-tertiary text-text-secondary px-2 py-1 rounded"
+                                              x-text="tag"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="sticky bottom-0 bg-bg-secondary border-t border-border-subtle px-6 py-4 flex gap-3">
+                            <button class="btn btn-secondary flex-1 py-2 px-4 rounded-md text-sm font-medium border border-border-medium"
+                                    @click="showDetails = false">
+                                Close
+                            </button>
+                            <button class="btn flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all"
+                                    :class="{
+                                        'btn-primary': model.status === 'available',
+                                        'btn-secondary': model.status === 'installed',
+                                        'bg-accent-warning text-text-inverse': model.status === 'failed'
+                                    }"
+                                    @click="showDetails = false; handleAction()">
+                                <span x-text="actionText"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </template>
     </div>
@@ -378,6 +474,14 @@ function modelsPage() {
                     return true;
                 })
                 .sort((a, b) => {
+                    // Installed models always first
+                    const aInstalled = a.status === 'installed' ? 0 : 1;
+                    const bInstalled = b.status === 'installed' ? 0 : 1;
+                    if (aInstalled !== bInstalled) {
+                        return aInstalled - bInstalled;
+                    }
+
+                    // Then by selected sort option
                     switch (this.sortBy) {
                         case 'name':
                             return a.name.localeCompare(b.name);

@@ -248,6 +248,57 @@ async def get_system_config():
     }
 
 
+@router.get("/stats")
+async def get_dashboard_stats():
+    """Get dashboard statistics for the home page"""
+    from pathlib import Path
+    import yaml
+
+    # Count models installed
+    model_base = Path(settings.MODEL_BASE_PATH)
+    models_installed = 0
+    if model_base.exists():
+        for model_dir in model_base.iterdir():
+            if model_dir.is_dir() and not model_dir.name.startswith('.'):
+                models_installed += len(list(model_dir.glob('*.safetensors'))) + \
+                                   len(list(model_dir.glob('*.ckpt'))) + \
+                                   len(list(model_dir.glob('*.pt')))
+
+    # Count workflows
+    workflow_base = Path(settings.WORKFLOW_BASE_PATH)
+    active_workflows = 0
+    if workflow_base.exists():
+        active_workflows = len(list(workflow_base.glob('*.json')))
+
+    # Get storage used
+    storage_used = "0 GB"
+    try:
+        if model_base.exists():
+            total_size = sum(f.stat().st_size for f in model_base.rglob('*') if f.is_file())
+            for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+                if total_size < 1024.0:
+                    storage_used = f"{total_size:.1f} {unit}"
+                    break
+                total_size /= 1024.0
+    except Exception:
+        pass
+
+    # Get generations from ComfyUI history
+    total_generations = 0
+    try:
+        history = await comfyui_client.get_history()
+        total_generations = len(history)
+    except Exception:
+        pass
+
+    return {
+        "totalGenerations": total_generations,
+        "modelsInstalled": models_installed,
+        "storageUsed": storage_used,
+        "activeWorkflows": active_workflows
+    }
+
+
 def get_system_info() -> Dict:
     """Get basic system information"""
     return {

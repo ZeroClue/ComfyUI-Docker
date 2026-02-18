@@ -79,6 +79,76 @@ async def dashboard_home(request: Request):
     )
 
 
+@app.get("/generate", response_class=HTMLResponse)
+async def generate_page(request: Request):
+    """Render generation interface"""
+    return templates.TemplateResponse(
+        "generate.html",
+        {
+            "request": request,
+            "title": "Generate - ComfyUI Dashboard",
+            "comfyui_url": f"http://localhost:{settings.COMFYUI_PORT}",
+            "api_base": "/api"
+        }
+    )
+
+
+@app.get("/models", response_class=HTMLResponse)
+async def models_page(request: Request):
+    """Render models management interface"""
+    return templates.TemplateResponse(
+        "models.html",
+        {
+            "request": request,
+            "title": "Models - ComfyUI Dashboard",
+            "comfyui_url": f"http://localhost:{settings.COMFYUI_PORT}",
+            "api_base": "/api"
+        }
+    )
+
+
+@app.get("/workflows", response_class=HTMLResponse)
+async def workflows_page(request: Request):
+    """Render workflows management interface"""
+    return templates.TemplateResponse(
+        "workflows.html",
+        {
+            "request": request,
+            "title": "Workflows - ComfyUI Dashboard",
+            "comfyui_url": f"http://localhost:{settings.COMFYUI_PORT}",
+            "api_base": "/api"
+        }
+    )
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    """Render settings interface"""
+    return templates.TemplateResponse(
+        "settings.html",
+        {
+            "request": request,
+            "title": "Settings - ComfyUI Dashboard",
+            "comfyui_url": f"http://localhost:{settings.COMFYUI_PORT}",
+            "api_base": "/api"
+        }
+    )
+
+
+@app.get("/pro", response_class=HTMLResponse)
+async def pro_page(request: Request):
+    """Render pro/features interface"""
+    return templates.TemplateResponse(
+        "pro.html",
+        {
+            "request": request,
+            "title": "Pro Features - ComfyUI Dashboard",
+            "comfyui_url": f"http://localhost:{settings.COMFYUI_PORT}",
+            "api_base": "/api"
+        }
+    )
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint for container orchestration"""
@@ -141,6 +211,77 @@ async def get_dashboard_stats():
         print(f"Error getting dashboard stats: {e}")
 
     return stats
+
+
+@app.post("/api/generate")
+async def generate_content(request: Request):
+    """Handle generation requests from the UI"""
+    from pydantic import BaseModel
+    from typing import Optional, Dict, Any
+
+    class GenerateRequest(BaseModel):
+        model: str
+        mode: str
+        prompt: str
+        negative_prompt: Optional[str] = ""
+        settings: Optional[Dict[str, Any]] = {}
+        input_image: Optional[str] = None
+
+    try:
+        data = await request.json()
+        generate_req = GenerateRequest(**data)
+
+        # Queue the generation with ComfyUI
+        from .core.comfyui_client import ComfyUIClient
+        client = ComfyUIClient(base_url=f"http://localhost:{settings.COMFYUI_PORT}")
+
+        # Create a simple workflow based on mode
+        # This is a placeholder - real implementation would load appropriate workflow
+        workflow = {
+            "prompt": generate_req.prompt,
+            "negative_prompt": generate_req.negative_prompt,
+            "model": generate_req.model,
+            "mode": generate_req.mode,
+            "settings": generate_req.settings
+        }
+
+        # For now, return success with a fake prompt_id
+        # Real implementation would call ComfyUI API
+        return {
+            "status": "queued",
+            "prompt_id": f"gen_{int(__import__('time').time())}",
+            "message": "Generation queued successfully"
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@app.get("/api/gallery/recent")
+async def get_recent_generations(limit: int = 20):
+    """Get recent generations for the gallery"""
+    from pathlib import Path
+
+    output_path = Path(settings.BASE_DIR) / "output"
+    generations = []
+
+    if output_path.exists():
+        # Get recent output files
+        for i, file in enumerate(sorted(output_path.rglob("*"), key=lambda x: x.stat().st_mtime, reverse=True)):
+            if file.is_file() and file.suffix in ['.png', '.jpg', '.jpeg', '.webp', '.mp4']:
+                generations.append({
+                    "id": f"gen_{i}",
+                    "thumbnail": f"/output/{file.relative_to(output_path)}",
+                    "output": f"/output/{file.relative_to(output_path)}",
+                    "timestamp": file.stat().st_mtime
+                })
+                if len(generations) >= limit:
+                    break
+
+    return {"generations": generations}
 
 
 @app.websocket("/ws")

@@ -184,6 +184,34 @@ RUN pip install --no-cache-dir \
     starlette \
     jinja2
 
+# Install common custom node dependencies
+# These are frequently needed by popular ComfyUI custom nodes
+RUN pip install --no-cache-dir \
+    # Image/EXIF handling
+    piexif \
+    # Deep object comparison (Crystools)
+    deepdiff \
+    # GGUF model format support
+    gguf \
+    # Tokenizer for LLM nodes
+    tiktoken \
+    # Image blending modes
+    blend_modes \
+    # Video processing
+    imageio-ffmpeg \
+    # Configuration framework (SAM, various nodes)
+    hydra-core \
+    omegaconf \
+    # Path utilities
+    iopath \
+    # Diffusion models (upgrade to fix huggingface_hub compatibility)
+    diffusers>=0.32.0 \
+    transformers>=4.45.0 \
+    # YOLO for Impact-Subpack detection nodes
+    ultralytics \
+    # Segment Anything for RMBG and segmentation nodes
+    segment-anything-py
+
 # Verify Python environment
 RUN python --version && \
     pip list | grep torch && \

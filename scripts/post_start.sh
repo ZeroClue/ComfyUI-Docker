@@ -1,12 +1,12 @@
 #!/bin/bash
+# Post-start script for RunPod compatibility
+#
+# NOTE: This script is now a no-op because start.sh handles all service startup.
+# Previously this script started ComfyUI, but that's now done in start.sh Phase 2.
+# Keeping this file for backward compatibility with RunPod templates.
 
-export PYTHONUNBUFFERED=1
+log_info() {
+    echo "[INFO] $1"
+}
 
-export PATH="/venv/bin:$PATH"
-cd /ComfyUI
-
-echo "**** Displays the available arguments for running ComfyUI. ****" 
-python main.py --help
-
-echo "**** Starts ComfyUI, listening on port 3000, with additional arguments specified by COMFYUI_EXTRA_ARGS. ****"
-python main.py --listen --port 3000 $COMFYUI_EXTRA_ARGS &
+log_info "Post-start script running (no-op - services already started by start.sh)"

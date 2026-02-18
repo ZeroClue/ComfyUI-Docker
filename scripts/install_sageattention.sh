@@ -73,9 +73,10 @@ install_sageattention_from_source() {
     export TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0 12.0"
 
     # Compile and install (use --no-build-isolation to access already-installed torch)
-    pip install --no-cache-dir --no-build-isolation -e .
+    # Note: Do NOT use -e (editable) install because we delete the source directory after
+    pip install --no-cache-dir --no-build-isolation .
 
-    # Cleanup
+    # Cleanup (safe to delete because we did a regular install, not editable)
     cd /
     rm -rf /tmp/SageAttention
 

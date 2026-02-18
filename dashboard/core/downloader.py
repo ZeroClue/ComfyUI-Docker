@@ -75,6 +75,11 @@ class DownloadManager:
         if preset_id in self.active_downloads:
             return f"Download already active for preset {preset_id}"
 
+        # Check if already in queue
+        for item in list(self.download_queue._queue):
+            if isinstance(item, tuple) and item[0] == preset_id:
+                return f"Preset {preset_id} is already in download queue"
+
         # Create download tasks
         tasks = []
         for file_info in files:
@@ -220,6 +225,10 @@ class DownloadManager:
                     # Download with progress tracking
                     with open(full_path, 'wb') as f:
                         async for chunk in response.content.iter_chunked(settings.DOWNLOAD_CHUNK_SIZE):
+                            # Check if paused or cancelled during download
+                            if task.status in ("paused", "cancelled"):
+                                break
+
                             f.write(chunk)
                             task.downloaded_bytes += len(chunk)
 

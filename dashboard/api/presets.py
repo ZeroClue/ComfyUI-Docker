@@ -5,6 +5,7 @@ Handles preset listing, installation, and status checking
 
 import asyncio
 import aiohttp
+import time
 from typing import List, Dict, Optional, Any
 from pathlib import Path
 
@@ -14,6 +15,54 @@ from pydantic import BaseModel, Field
 from ..core.config import settings
 from ..core.downloader import DownloadManager
 from ..core.comfyui_client import ComfyUIClient
+
+
+# Cache for preset configuration and installation status
+class PresetCache:
+    """Simple cache for preset data to avoid repeated file I/O"""
+
+    def __init__(self, ttl_seconds: int = 60):
+        self._config_cache: Optional[Dict] = None
+        self._config_timestamp: float = 0
+        self._installed_cache: Dict[str, bool] = {}
+        self._installed_timestamp: float = 0
+        self._ttl = ttl_seconds
+
+    def get_config(self) -> Optional[Dict]:
+        """Get cached config if still valid"""
+        if self._config_cache and (time.time() - self._config_timestamp) < self._ttl:
+            return self._config_cache
+        return None
+
+    def set_config(self, config: Dict):
+        """Cache the config"""
+        self._config_cache = config
+        self._config_timestamp = time.time()
+
+    def invalidate_config(self):
+        """Invalidate config cache"""
+        self._config_cache = None
+        self._config_timestamp = 0
+
+    def get_installed_status(self) -> Dict[str, bool]:
+        """Get cached installation status if still valid"""
+        if (time.time() - self._installed_timestamp) < self._ttl:
+            return self._installed_cache.copy()
+        return {}
+
+    def set_installed_status(self, status: Dict[str, bool]):
+        """Cache installation status"""
+        self._installed_cache = status
+        self._installed_timestamp = time.time()
+
+    def invalidate_installed(self):
+        """Invalidate installation status cache"""
+        self._installed_cache = {}
+        self._installed_timestamp = 0
+
+
+# Global cache instance
+preset_cache = PresetCache(ttl_seconds=60)
 
 
 # Request/Response Models
@@ -61,19 +110,40 @@ comfyui_client = ComfyUIClient(base_url=f"http://localhost:{settings.COMFYUI_POR
 
 
 async def get_presets_from_config() -> Dict:
-    """Load presets from configuration file"""
+    """Load presets from configuration file with caching"""
     import yaml
+
+    # Check cache first
+    cached = preset_cache.get_config()
+    if cached:
+        return cached
 
     config_path = Path(settings.PRESET_CONFIG_PATH)
     if not config_path.exists():
         raise HTTPException(status_code=404, detail="Preset configuration not found")
 
     with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
+        config = yaml.safe_load(f)
+
+    # Cache the result
+    preset_cache.set_config(config)
+    return config
 
 
-async def check_preset_installed(preset_id: str, preset_files: List[Dict]) -> bool:
-    """Check if all preset files are installed"""
+async def check_preset_installed(preset_id: str, preset_files: List[Dict], use_cache: bool = True) -> bool:
+    """Check if all preset files are installed
+
+    Args:
+        preset_id: The preset ID
+        preset_files: List of file dictionaries
+        use_cache: Whether to use cached status (default True)
+    """
+    # Check cache first if enabled
+    if use_cache:
+        cached_status = preset_cache.get_installed_status()
+        if preset_id in cached_status:
+            return cached_status[preset_id]
+
     base_path = Path(settings.MODEL_BASE_PATH)
 
     for file_info in preset_files:
@@ -81,6 +151,25 @@ async def check_preset_installed(preset_id: str, preset_files: List[Dict]) -> bo
         if not file_path.exists():
             return False
     return True
+
+
+async def batch_check_installed(config: Dict) -> Dict[str, bool]:
+    """Check installation status for all presets and cache results"""
+    base_path = Path(settings.MODEL_BASE_PATH)
+    status_map = {}
+
+    for preset_id, preset_data in config.get('presets', {}).items():
+        all_installed = True
+        for file_info in preset_data.get('files', []):
+            file_path = base_path / file_info.get('path', '')
+            if not file_path.exists():
+                all_installed = False
+                break
+        status_map[preset_id] = all_installed
+
+    # Cache the results
+    preset_cache.set_installed_status(status_map)
+    return status_map
 
 
 @router.get("/", response_model=PresetListResponse)
@@ -96,6 +185,9 @@ async def list_presets(
     """
     config = await get_presets_from_config()
 
+    # Batch check all installation status (uses cache if available)
+    installed_status = await batch_check_installed(config)
+
     presets_data = []
     for preset_id, preset_data in config.get('presets', {}).items():
         # Apply filters
@@ -104,11 +196,8 @@ async def list_presets(
         if type_filter and preset_data.get('type') != type_filter:
             continue
 
-        # Check installation status
-        is_installed = await check_preset_installed(
-            preset_id,
-            preset_data.get('files', [])
-        )
+        # Use pre-computed installation status
+        is_installed = installed_status.get(preset_id, False)
 
         presets_data.append(PresetResponse(
             id=preset_id,
@@ -433,6 +522,9 @@ async def uninstall_preset(preset_id: str):
                 deleted_files.append(file_path)
             except Exception as e:
                 errors.append({"file": file_path, "error": str(e)})
+
+    # Invalidate installation status cache since files changed
+    preset_cache.invalidate_installed()
 
     return {
         "preset_id": preset_id,

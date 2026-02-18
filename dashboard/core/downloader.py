@@ -248,6 +248,10 @@ class DownloadManager:
             task.completed_at = datetime.utcnow()
             task.progress = 100.0
 
+            # Invalidate preset cache since files changed
+            from ..api.presets import preset_cache
+            preset_cache.invalidate_installed()
+
             # Broadcast completion
             await broadcast_download_progress(task.preset_id, {
                 "file": task.file_path,

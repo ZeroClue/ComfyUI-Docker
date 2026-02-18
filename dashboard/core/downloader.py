@@ -43,8 +43,15 @@ class DownloadManager:
 
     def __init__(self):
         self.active_downloads: Dict[str, List[DownloadTask]] = {}
-        self.download_semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_DOWNLOADS)
+        self.download_queue: asyncio.Queue = asyncio.Queue()
+        self.current_download: Optional[str] = None
+        self.queue_processor_running: bool = False
         self.base_path = Path(settings.MODEL_BASE_PATH)
+        self.retry_config = {
+            "max_retries": 3,
+            "base_delay": 5,  # seconds
+            "max_delay": 60
+        }
 
     async def start_download(
         self,

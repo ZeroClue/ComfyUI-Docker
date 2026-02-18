@@ -103,25 +103,96 @@ class DownloadManager:
 
         self.active_downloads[preset_id] = tasks
 
-        # Start background download
-        asyncio.create_task(self._download_preset(preset_id, tasks))
+        # Add to queue for sequential processing
+        await self.download_queue.put((preset_id, tasks))
+
+        # Start queue processor if not running
+        if not self.queue_processor_running:
+            asyncio.create_task(self._process_queue())
 
         return download_id
 
-    async def _download_preset(self, preset_id: str, tasks: List[DownloadTask]):
-        """Download all files for a preset concurrently"""
+    async def _process_queue(self):
+        """Process downloads sequentially from queue"""
+        self.queue_processor_running = True
 
-        async def download_with_semaphore(task: DownloadTask):
-            async with self.download_semaphore:
-                await self._download_file(task)
+        while True:
+            try:
+                # Get next preset from queue
+                preset_id, tasks = await self.download_queue.get()
 
-        # Start all downloads
-        download_coroutines = [download_with_semaphore(task) for task in tasks]
-        await asyncio.gather(*download_coroutines, return_exceptions=True)
+                if preset_id not in self.active_downloads:
+                    # Download was cancelled while in queue
+                    continue
 
-        # Clean up completed downloads
-        if preset_id in self.active_downloads:
-            del self.active_downloads[preset_id]
+                self.current_download = preset_id
+
+                # Broadcast queue update
+                await self._broadcast_queue_update()
+
+                # Download files sequentially within preset
+                for task in tasks:
+                    if task.status == "cancelled":
+                        continue
+
+                    retry_count = 0
+                    while retry_count < self.retry_config["max_retries"]:
+                        await self._download_file(task)
+
+                        if task.status == "completed":
+                            break
+                        elif task.status == "failed":
+                            retry_count += 1
+                            if retry_count < self.retry_config["max_retries"]:
+                                delay = min(
+                                    self.retry_config["base_delay"] * (2 ** retry_count),
+                                    self.retry_config["max_delay"]
+                                )
+                                task.status = "retrying"
+                                task.error = f"Retrying ({retry_count}/{self.retry_config['max_retries']})..."
+                                await asyncio.sleep(delay)
+                                task.status = "downloading"
+
+                    if task.status == "failed":
+                        # Max retries exhausted
+                        await broadcast_download_progress(preset_id, {
+                            "type": "download_failed",
+                            "preset_id": preset_id,
+                            "file": task.file_path,
+                            "error": task.error,
+                            "retry_count": self.retry_config["max_retries"]
+                        })
+
+                # Mark preset complete
+                if preset_id in self.active_downloads:
+                    del self.active_downloads[preset_id]
+
+                self.current_download = None
+                await self._broadcast_queue_update()
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                print(f"Queue processor error: {e}")
+                await asyncio.sleep(1)
+
+        self.queue_processor_running = False
+
+    async def _broadcast_queue_update(self):
+        """Broadcast current queue state via WebSocket"""
+        from .websocket import manager
+
+        queue_list = []
+        # Get items in queue without removing them
+        for item in list(self.download_queue._queue):
+            if isinstance(item, tuple):
+                queue_list.append(item[0])
+
+        await manager.broadcast_json({
+            "type": "queue_updated",
+            "current": self.current_download,
+            "queue": queue_list
+        })
 
     async def _download_file(self, task: DownloadTask):
         """Download a single file with progress tracking"""

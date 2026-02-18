@@ -140,17 +140,17 @@
                      x-text="statusText">
                 </div>
 
-                <!-- Title -->
-                <div class="text-base font-semibold mb-2 pr-14" x-text="model.name"></div>
+                <!-- Title & Size -->
+                <div class="flex items-baseline gap-2 mb-2 pr-14">
+                    <div class="text-base font-semibold" x-text="model.name"></div>
+                    <div class="text-sm font-medium text-accent-primary" x-text="model.size"></div>
+                </div>
 
                 <!-- Description -->
                 <div class="text-text-secondary text-sm leading-relaxed mb-3 min-h-10" x-text="model.description"></div>
 
                 <!-- Meta Info -->
                 <div class="flex gap-4 mb-3 text-xs text-text-tertiary">
-                    <div class="flex items-center gap-1">
-                        <span>◉</span> <span x-text="model.size"></span>
-                    </div>
                     <div class="flex items-center gap-1">
                         <span>◈</span> <span x-text="model.category"></span>
                     </div>
@@ -178,6 +178,13 @@
                     <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
                             @click="showDetails = true">
                         Details
+                    </button>
+                    <!-- Uninstall button for installed models -->
+                    <button x-show="model.status === 'installed'"
+                            class="btn py-2 px-3 rounded-md text-sm font-medium text-red-400 border border-red-400/30 hover:bg-red-400/10 transition-all"
+                            @click="uninstallModel"
+                            title="Delete model files">
+                        ✕
                     </button>
                     <button class="btn flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all"
                             :class="{
@@ -486,6 +493,29 @@ function presetCard(model) {
                 } catch (error) {
                     console.error('Failed to retry:', error);
                 }
+            }
+        },
+
+        async uninstallModel() {
+            if (!confirm(`Delete all files for ${this.model.name}?\n\nThis cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/presets/${this.model.id}/files`, { method: 'DELETE' });
+                if (response.ok) {
+                    const data = await response.json();
+                    this.model.status = 'available';
+                    this.model.progress = 0;
+                    this.updateText();
+                    window.showToast('success', 'Uninstalled', `Deleted ${data.deleted_count} files for ${this.model.name}`);
+                } else {
+                    const error = await response.json();
+                    window.showToast('error', 'Uninstall Failed', error.detail || 'Could not delete files');
+                }
+            } catch (error) {
+                console.error('Failed to uninstall:', error);
+                window.showToast('error', 'Uninstall Failed', 'Could not delete model files');
             }
         }
     }

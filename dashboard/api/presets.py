@@ -404,3 +404,40 @@ async def retry_preset_download(preset_id: str):
         "status": "retrying",
         "download_id": download_id
     }
+
+
+@router.delete("/{preset_id}/files")
+async def uninstall_preset(preset_id: str):
+    """Delete all files for an installed preset"""
+    config = await get_presets_from_config()
+
+    if preset_id not in config.get('presets', {}):
+        raise HTTPException(status_code=404, detail=f"Preset {preset_id} not found")
+
+    preset_data = config['presets'][preset_id]
+    files = preset_data.get('files', [])
+    base_path = Path(settings.MODEL_BASE_PATH)
+
+    deleted_files = []
+    errors = []
+
+    for file_info in files:
+        file_path = file_info.get('path', '')
+        if not file_path:
+            continue
+
+        full_path = base_path / file_path
+        if full_path.exists():
+            try:
+                full_path.unlink()
+                deleted_files.append(file_path)
+            except Exception as e:
+                errors.append({"file": file_path, "error": str(e)})
+
+    return {
+        "preset_id": preset_id,
+        "status": "uninstalled",
+        "deleted_files": deleted_files,
+        "deleted_count": len(deleted_files),
+        "errors": errors
+    }

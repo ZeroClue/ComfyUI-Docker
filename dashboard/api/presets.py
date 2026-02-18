@@ -4,6 +4,7 @@ Handles preset listing, installation, and status checking
 """
 
 import asyncio
+import aiohttp
 from typing import List, Dict, Optional
 from pathlib import Path
 
@@ -267,3 +268,54 @@ async def list_categories():
     """List all available preset categories"""
     config = await get_presets_from_config()
     return config.get('categories', {})
+
+
+@router.post("/refresh")
+async def refresh_presets():
+    """
+    Fetch latest presets.yaml from GitHub
+
+    Smart refresh: updates preset definitions without interrupting active downloads
+    """
+    import yaml
+    import shutil
+
+    github_url = "https://raw.githubusercontent.com/ZeroClue/ComfyUI-Docker/main/config/presets.yaml"
+    local_path = Path(settings.PRESET_CONFIG_PATH)
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(github_url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status != 200:
+                    raise HTTPException(
+                        status_code=response.status,
+                        detail=f"GitHub returned {response.status}"
+                    )
+
+                content = await response.text()
+
+        # Validate YAML before saving
+        try:
+            new_config = yaml.safe_load(content)
+        except yaml.YAMLError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid YAML: {str(e)}")
+
+        # Backup existing config
+        if local_path.exists():
+            backup_path = local_path.with_suffix('.yaml.bak')
+            shutil.copy(local_path, backup_path)
+
+        # Write new config
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(local_path, 'w') as f:
+            f.write(content)
+
+        return {
+            "status": "success",
+            "message": "Presets refreshed successfully",
+            "total_presets": len(new_config.get('presets', {})),
+            "version": new_config.get('metadata', {}).get('version', 'unknown')
+        }
+
+    except aiohttp.ClientError as e:
+        raise HTTPException(status_code=503, detail=f"Failed to fetch from GitHub: {str(e)}")

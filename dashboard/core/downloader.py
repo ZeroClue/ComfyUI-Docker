@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 from .config import settings
 from .websocket import broadcast_download_progress
+from ..api.activity import add_activity
 
 
 class DownloadTask:
@@ -251,6 +252,15 @@ class DownloadManager:
             # Invalidate preset cache since files changed
             from ..api.presets import preset_cache
             preset_cache.invalidate_installed()
+
+            # Record activity for completed download
+            add_activity(
+                activity_type="download",
+                status="completed",
+                title="Model download completed",
+                subtitle=task.preset_id,
+                link=f"/models?preset={task.preset_id}"
+            )
 
             # Broadcast completion
             await broadcast_download_progress(task.preset_id, {

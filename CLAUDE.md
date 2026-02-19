@@ -79,6 +79,14 @@ FastAPI-based unified interface replacing Preset Manager and Studio.
 
 **Location**: `/app/dashboard/`
 
+### Home Page Data Sources
+All sections use real API data (no mockups):
+- **Stats Grid**: `/api/dashboard/stats`
+- **Download Queue**: `/api/presets/queue/status` + WebSocket `/ws/downloads`
+- **System Resources**: `/api/system/resources` (10s auto-refresh)
+- **Recent Models**: `/api/presets/?limit=6` (installed first, then available)
+- **Recent Activity**: `/api/activity/recent` (combined generations + downloads)
+
 **Structure**:
 - `main.py`: FastAPI application entry point
 - `api/`: REST API endpoints (workflows, models, presets, system)
@@ -94,6 +102,8 @@ FastAPI-based unified interface replacing Preset Manager and Studio.
 
 **API Endpoints**:
 - `/api/dashboard/stats` - Home page statistics
+- `/api/activity/recent` - Combined activity feed (generations + downloads)
+- `/api/activity/clear` - Clear activity history
 - `/api/models/` - List installed models
 - `/api/models/presets` - Presets with installation status
 - `/api/presets/` - Preset management (list, refresh, install, pause, cancel)
@@ -204,6 +214,10 @@ GitHub Actions workflow (`.github/workflows/build.yml`) provides:
 - Automatic Docker Hub pushes for successful builds
 - Manual build triggers for large variants (base-12-8)
 - Build status monitoring and reliability optimization
+
+**Known Issue**: GitHub Actions runners have ~14GB disk space. Large builds may fail with
+"No space left on device" error. Solution: Retry the build - different runners may have
+more free space. Successful builds typically take 25-30 minutes.
 
 ## Important Files
 - `Dockerfile`: Multi-stage build definition with UV optimization

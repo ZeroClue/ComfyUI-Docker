@@ -5,6 +5,7 @@ Handles system monitoring, resource usage, and service status
 
 from typing import Dict, List, Optional
 import shutil
+import sys
 import psutil
 from datetime import datetime
 
@@ -306,7 +307,7 @@ def get_system_info() -> Dict:
         "hostname": uname_result.nodename,
         "platform": uname_result.sysname,
         "release": uname_result.release,
-        "python_version": f"{psutil.version_info.major}.{psutil.version_info.minor}.{psutil.version_info.micro}",
+        "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "uptime": get_uptime()
     }
 

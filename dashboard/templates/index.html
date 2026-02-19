@@ -71,6 +71,93 @@
         </div>
     </section>
 
+    <!-- Download Queue -->
+    <section class="mb-8" x-data="downloadQueue()" x-init="initQueue()" x-show="hasActiveDownloads" x-cloak>
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Download Queue</h2>
+            <button class="text-accent-primary text-sm font-medium hover:text-accent-secondary transition-colors"
+                    @click="refreshQueue()">
+                ↻ Refresh
+            </button>
+        </div>
+
+        <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4">
+            <!-- Current Download -->
+            <template x-if="currentDownload">
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-accent-primary animate-pulse"></span>
+                            <span class="text-sm font-medium" x-text="currentDownload.name || currentDownload.preset_id"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-text-tertiary" x-text="currentDownload.file"></span>
+                            <button class="btn btn-secondary btn-xs py-1 px-2 rounded text-xs border border-border-medium hover:bg-bg-hover"
+                                    @click="pauseDownload(currentDownload.preset_id)"
+                                    x-show="currentDownload.status === 'downloading'">
+                                Pause
+                            </button>
+                            <button class="btn btn-secondary btn-xs py-1 px-2 rounded text-xs border border-border-medium hover:bg-bg-hover"
+                                    @click="resumeDownload(currentDownload.preset_id)"
+                                    x-show="currentDownload.status === 'paused'">
+                                Resume
+                            </button>
+                            <button class="btn bg-bg-tertiary btn-xs py-1 px-2 rounded text-xs text-text-secondary hover:bg-bg-hover"
+                                    @click="cancelDownload(currentDownload.preset_id)">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="progress h-2 bg-bg-tertiary rounded-full overflow-hidden mb-1">
+                        <div class="progress-bar-animated h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full transition-all duration-300"
+                             :style="`width: ${currentDownload.progress || 0}%`"></div>
+                    </div>
+
+                    <!-- Progress Stats -->
+                    <div class="flex items-center justify-between text-xs text-text-tertiary">
+                        <span x-text="formatProgress(currentDownload)"></span>
+                        <span x-text="currentDownload.eta ? `ETA: ${currentDownload.eta}` : ''"></span>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Queued Downloads -->
+            <template x-if="queuedDownloads.length > 0">
+                <div class="border-t border-border-subtle pt-3">
+                    <div class="text-xs text-text-tertiary mb-2">
+                        <span x-text="`${queuedDownloads.length} in queue`"></span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <template x-for="(item, index) in queuedDownloads" :key="item.preset_id">
+                            <div class="flex items-center justify-between p-2 bg-bg-tertiary rounded-md">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-text-tertiary" x-text="`${index + 1}.`"></span>
+                                    <span class="text-sm" x-text="item.name || item.preset_id"></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-text-tertiary" x-text="item.download_size || ''"></span>
+                                    <button class="text-xs text-text-tertiary hover:text-accent-error transition-colors"
+                                            @click="removeFromQueue(item.preset_id)">
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Empty State -->
+            <template x-if="!currentDownload && queuedDownloads.length === 0">
+                <div class="text-center py-4 text-text-tertiary text-sm">
+                    No active downloads
+                </div>
+            </template>
+        </div>
+    </section>
+
     <!-- System Resources -->
     <section class="mb-8" x-data="systemResources()">
         <div class="flex items-center justify-between mb-4">
@@ -404,6 +491,217 @@ function presetCard(id, status, progress) {
                 // Navigate to generate page
                 window.location.href = `/generate?model=${this.id}`;
             }
+        }
+    }
+}
+
+function downloadQueue() {
+    return {
+        currentDownload: null,
+        queuedDownloads: [],
+        hasActiveDownloads: false,
+        ws: null,
+        reconnectAttempts: 0,
+        maxReconnectAttempts: 5,
+
+        get hasActiveDownloads() {
+            return this.currentDownload !== null || this.queuedDownloads.length > 0;
+        },
+
+        async initQueue() {
+            // Load initial queue status
+            await this.refreshQueue();
+
+            // Connect to WebSocket for real-time updates
+            this.connectWebSocket();
+
+            // Poll for updates as fallback
+            setInterval(() => this.refreshQueue(), 10000);
+        },
+
+        connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/downloads`;
+
+            try {
+                this.ws = new WebSocket(wsUrl);
+
+                this.ws.onopen = () => {
+                    console.log('Download queue WebSocket connected');
+                    this.reconnectAttempts = 0;
+                };
+
+                this.ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        this.handleWebSocketMessage(data);
+                    } catch (e) {
+                        console.error('Failed to parse WebSocket message:', e);
+                    }
+                };
+
+                this.ws.onclose = () => {
+                    console.log('Download queue WebSocket disconnected');
+                    this.attemptReconnect();
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+            } catch (error) {
+                console.error('Failed to connect WebSocket:', error);
+                this.attemptReconnect();
+            }
+        },
+
+        attemptReconnect() {
+            if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                this.reconnectAttempts++;
+                const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+                setTimeout(() => this.connectWebSocket(), delay);
+            }
+        },
+
+        handleWebSocketMessage(data) {
+            if (data.type === 'download_progress') {
+                // Update current download progress
+                this.currentDownload = {
+                    preset_id: data.preset_id,
+                    name: data.preset_id, // Could be enhanced to show friendly name
+                    file: data.data.file,
+                    progress: data.data.progress,
+                    downloaded: data.data.downloaded,
+                    total: data.data.total,
+                    status: data.data.status,
+                    eta: this.calculateETA(data.data)
+                };
+            } else if (data.type === 'queue_updated') {
+                // Update queue state
+                this.currentDownload = data.current ? {
+                    preset_id: data.current,
+                    name: data.current,
+                    progress: 0,
+                    status: 'downloading'
+                } : null;
+
+                // Update queued items
+                this.queuedDownloads = data.queue.map(preset_id => ({
+                    preset_id: preset_id,
+                    name: preset_id
+                }));
+            }
+        },
+
+        async refreshQueue() {
+            try {
+                const response = await fetch('/api/presets/queue/status');
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Update current download
+                    if (data.current) {
+                        this.currentDownload = {
+                            preset_id: data.current,
+                            name: data.current,
+                            progress: 0,
+                            status: 'downloading'
+                        };
+
+                        // Get detailed status for current download
+                        const statusResponse = await fetch(`/api/presets/${data.current}/status`);
+                        if (statusResponse.ok) {
+                            const statusData = await statusResponse.json();
+                            if (statusData.download_status && statusData.download_status.files) {
+                                const downloadingFile = statusData.download_status.files.find(
+                                    f => f.status === 'downloading'
+                                );
+                                if (downloadingFile) {
+                                    this.currentDownload.file = downloadingFile.path;
+                                    this.currentDownload.progress = downloadingFile.progress;
+                                }
+                            }
+                        }
+                    } else {
+                        this.currentDownload = null;
+                    }
+
+                    // Update queued downloads
+                    this.queuedDownloads = data.queue.map(preset_id => ({
+                        preset_id: preset_id,
+                        name: preset_id
+                    }));
+                }
+            } catch (error) {
+                console.error('Failed to refresh queue:', error);
+            }
+        },
+
+        formatProgress(download) {
+            if (!download) return '';
+
+            const progress = download.progress || 0;
+            const downloaded = this.formatBytes(download.downloaded || 0);
+            const total = this.formatBytes(download.total || 0);
+
+            return `${progress.toFixed(1)}% (${downloaded} / ${total})`;
+        },
+
+        formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        },
+
+        calculateETA(data) {
+            if (!data || !data.downloaded || !data.total || data.progress < 1) {
+                return null;
+            }
+
+            // Simple ETA calculation (would need start time for accurate calculation)
+            const remaining = data.total - data.downloaded;
+            // Assuming average speed, this is a placeholder
+            return 'Calculating...';
+        },
+
+        async pauseDownload(presetId) {
+            try {
+                const response = await fetch(`/api/presets/${presetId}/pause`, { method: 'POST' });
+                if (response.ok && this.currentDownload) {
+                    this.currentDownload.status = 'paused';
+                }
+            } catch (error) {
+                console.error('Failed to pause download:', error);
+            }
+        },
+
+        async resumeDownload(presetId) {
+            try {
+                const response = await fetch(`/api/presets/${presetId}/resume`, { method: 'POST' });
+                if (response.ok && this.currentDownload) {
+                    this.currentDownload.status = 'downloading';
+                }
+            } catch (error) {
+                console.error('Failed to resume download:', error);
+            }
+        },
+
+        async cancelDownload(presetId) {
+            try {
+                const response = await fetch(`/api/presets/${presetId}/cancel`, { method: 'POST' });
+                if (response.ok) {
+                    this.currentDownload = null;
+                    await this.refreshQueue();
+                }
+            } catch (error) {
+                console.error('Failed to cancel download:', error);
+            }
+        },
+
+        async removeFromQueue(presetId) {
+            // Cancel the queued download
+            await this.cancelDownload(presetId);
         }
     }
 }

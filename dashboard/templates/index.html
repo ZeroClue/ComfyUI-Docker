@@ -231,112 +231,141 @@
         </div>
     </section>
 
-    <!-- Featured Models -->
-    <section class="mb-8">
+    <!-- Recent Models -->
+    <section class="mb-8" x-data="recentModels()" x-init="loadModels()">
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-semibold">Featured Models</h2>
+            <h2 class="text-xl font-semibold">Recent Models</h2>
             <a href="/models" class="text-accent-primary text-sm font-medium hover:text-accent-secondary transition-colors">
                 View All →
             </a>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- Model Card 1 -->
-            <div class="preset-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover relative">
-                <div class="preset-badge absolute top-3 right-3 bg-accent-success/15 text-accent-success text-xs font-semibold px-2.5 py-1 rounded-full">
-                    Installed
-                </div>
-                <div class="preset-title text-base font-semibold mb-2 pr-14">WAN 2.1 14B</div>
-                <div class="preset-description text-text-secondary text-sm leading-relaxed mb-3 min-h-10">
-                    State-of-the-art text-to-video generation with 14B parameter model
-                </div>
-                <div class="preset-meta flex gap-4 mb-3 text-xs text-text-tertiary">
-                    <div class="preset-meta-item flex items-center gap-1">
-                        <span>◉</span> 14.5 GB
-                    </div>
-                    <div class="preset-meta-item flex items-center gap-1">
-                        <span>◈</span> Video
-                    </div>
-                    <div class="preset-meta-item flex items-center gap-1">
-                        <span>⚡</span> T2V
+        <!-- Loading State -->
+        <div x-show="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <template x-for="i in 3" :key="i">
+                <div class="bg-bg-secondary border border-border-subtle rounded-lg p-4 animate-pulse">
+                    <div class="h-4 bg-bg-tertiary rounded w-20 mb-3"></div>
+                    <div class="h-5 bg-bg-tertiary rounded w-3/4 mb-2"></div>
+                    <div class="h-4 bg-bg-tertiary rounded w-full mb-3"></div>
+                    <div class="h-3 bg-bg-tertiary rounded w-1/2 mb-4"></div>
+                    <div class="flex gap-2">
+                        <div class="h-9 bg-bg-tertiary rounded flex-1"></div>
+                        <div class="h-9 bg-bg-tertiary rounded flex-1"></div>
                     </div>
                 </div>
-                <div class="preset-actions flex gap-2">
-                    <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all">
-                        Details
-                    </button>
-                    <button class="btn btn-primary flex-1 py-2 px-3 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all">
-                        Generate
-                    </button>
-                </div>
-            </div>
+            </template>
+        </div>
 
-            <!-- Model Card 2 -->
-            <div class="preset-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover relative">
-                <div class="preset-badge absolute top-3 right-3 bg-accent-info/15 text-accent-info text-xs font-semibold px-2.5 py-1 rounded-full">
-                    Available
-                </div>
-                <div class="preset-title text-base font-semibold mb-2 pr-14">LTX Video</div>
-                <div class="preset-description text-text-secondary text-sm leading-relaxed mb-3 min-h-10">
-                    Lightning-fast text-to-video with real-time preview capabilities
-                </div>
-                <div class="preset-meta flex gap-4 mb-3 text-xs text-text-tertiary">
-                    <div class="preset-meta-item flex items-center gap-1">
-                        <span>◉</span> 2.1 GB
+        <!-- Models Grid -->
+        <div x-show="!loading && models.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <template x-for="model in models" :key="model.id">
+                <div class="preset-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover relative"
+                     :class="{ 'border-accent-primary/30': model.is_installed }">
+                    <!-- Status Badge -->
+                    <div class="preset-badge absolute top-3 right-3 text-xs font-semibold px-2.5 py-1 rounded-full"
+                         :class="model.is_installed ? 'bg-accent-success/15 text-accent-success' : 'bg-accent-info/15 text-accent-info'">
+                        <span x-text="model.is_installed ? 'Installed' : 'Available'"></span>
                     </div>
-                    <div class="preset-meta-item flex items-center gap-1">
-                        <span>◈</span> Video
-                    </div>
-                    <div class="preset-meta-item flex items-center gap-1">
-                        <span>⚡</span> Fast
-                    </div>
-                </div>
-                <div class="preset-actions flex gap-2">
-                    <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all">
-                        Details
-                    </button>
-                    <button class="btn btn-primary flex-1 py-2 px-3 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all">
-                        Install
-                    </button>
-                </div>
-            </div>
 
-            <!-- Model Card 3 -->
-            <div class="preset-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover relative">
-                <div class="preset-badge absolute top-3 right-3 bg-accent-warning/15 text-accent-warning text-xs font-semibold px-2.5 py-1 rounded-full">
-                    Partial
-                </div>
-                <div class="preset-title text-base font-semibold mb-2 pr-14">Hunyuan Video</div>
-                <div class="preset-description text-text-secondary text-sm leading-relaxed mb-3 min-h-10">
-                    High-quality video generation with advanced motion control
-                </div>
-                <div class="preset-meta flex gap-4 mb-3 text-xs text-text-tertiary">
-                    <div class="preset-meta-item flex items-center gap-1">
-                        <span>◉</span> 8.2 GB
+                    <!-- Model Info -->
+                    <div class="preset-title text-base font-semibold mb-2 pr-14" x-text="model.name"></div>
+                    <div class="preset-description text-text-secondary text-sm leading-relaxed mb-3 min-h-10"
+                         x-text="model.description || model.use_case || 'No description available'"></div>
+
+                    <!-- Model Meta -->
+                    <div class="preset-meta flex gap-4 mb-3 text-xs text-text-tertiary">
+                        <div class="preset-meta-item flex items-center gap-1">
+                            <span>◉</span>
+                            <span x-text="model.download_size || 'Unknown'"></span>
+                        </div>
+                        <div class="preset-meta-item flex items-center gap-1" x-show="model.category">
+                            <span>◈</span>
+                            <span x-text="model.category"></span>
+                        </div>
+                        <div class="preset-meta-item flex items-center gap-1" x-show="model.type">
+                            <span>⚡</span>
+                            <span x-text="model.type.toUpperCase()"></span>
+                        </div>
                     </div>
-                    <div class="preset-meta-item flex items-center gap-1">
-                        <span>◈</span> Video
+
+                    <!-- Download Progress (shown when downloading) -->
+                    <template x-if="downloadingModels[model.id]">
+                        <div class="mb-3">
+                            <div class="progress h-2 bg-bg-tertiary rounded-full overflow-hidden mb-2">
+                                <div class="progress-bar-animated h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full transition-all duration-300"
+                                     :style="`width: ${downloadingModels[model.id].progress || 0}%`"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-text-tertiary">
+                                <span x-text="downloadingModels[model.id].status || 'Downloading...'"></span>
+                                <span x-text="`${(downloadingModels[model.id].progress || 0).toFixed(0)}%`"></span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Actions -->
+                    <div class="preset-actions flex gap-2">
+                        <!-- Installed: Show Generate button -->
+                        <template x-if="model.is_installed && !downloadingModels[model.id]">
+                            <div class="flex gap-2 w-full">
+                                <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                                        @click="showDetails(model)">
+                                    Details
+                                </button>
+                                <a :href="`/generate?model=${model.id}`"
+                                   class="btn btn-primary flex-1 py-2 px-3 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all text-center">
+                                    Generate
+                                </a>
+                            </div>
+                        </template>
+
+                        <!-- Available: Show Install button -->
+                        <template x-if="!model.is_installed && !downloadingModels[model.id]">
+                            <div class="flex gap-2 w-full">
+                                <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                                        @click="showDetails(model)">
+                                    Details
+                                </button>
+                                <button class="btn btn-primary flex-1 py-2 px-3 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all"
+                                        @click="installModel(model)"
+                                        :disabled="installing[model.id]">
+                                    <span x-show="!installing[model.id]">Install</span>
+                                    <span x-show="installing[model.id]" class="animate-spin">⟳</span>
+                                </button>
+                            </div>
+                        </template>
+
+                        <!-- Downloading: Show Pause/Cancel -->
+                        <template x-if="downloadingModels[model.id]">
+                            <div class="flex gap-2 w-full">
+                                <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                                        @click="pauseDownload(model.id)"
+                                        x-show="downloadingModels[model.id].status !== 'paused'">
+                                    Pause
+                                </button>
+                                <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                                        @click="resumeDownload(model.id)"
+                                        x-show="downloadingModels[model.id].status === 'paused'">
+                                    Resume
+                                </button>
+                                <button class="btn bg-bg-tertiary text-text-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium hover:bg-bg-hover transition-all"
+                                        @click="cancelDownload(model.id)">
+                                    Cancel
+                                </button>
+                            </div>
+                        </template>
                     </div>
-                    <div class="preset-meta-item flex items-center gap-1">
-                        <span>⚡</span> HQ
-                    </div>
                 </div>
-                <div class="progress h-2 bg-bg-tertiary rounded-full overflow-hidden mb-2">
-                    <div class="progress-bar-animated h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full" style="width: 67%;"></div>
-                </div>
-                <div class="flex justify-between text-xs text-text-tertiary mb-3">
-                    <span>Downloading checkpoint...</span>
-                    <span>67%</span>
-                </div>
-                <div class="preset-actions flex gap-2">
-                    <button class="btn btn-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all">
-                        Pause
-                    </button>
-                    <button class="btn bg-bg-tertiary text-text-secondary flex-1 py-2 px-3 rounded-md text-sm font-medium hover:bg-bg-hover transition-all">
-                        Cancel
-                    </button>
-                </div>
-            </div>
+            </template>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="!loading && models.length === 0" class="bg-bg-secondary border border-border-subtle rounded-lg p-12 text-center">
+            <div class="text-4xl mb-4">◌</div>
+            <h3 class="text-lg font-semibold mb-2">No models installed yet</h3>
+            <p class="text-text-secondary text-sm mb-6">Get started by browsing and installing model presets</p>
+            <a href="/models" class="btn btn-primary py-2.5 px-5 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all inline-block">
+                Browse Models
+            </a>
         </div>
     </section>
 
@@ -398,6 +427,138 @@
 
 {% block extra_scripts %}
 <script>
+function recentModels() {
+    return {
+        models: [],
+        loading: true,
+        installing: {},
+        downloadingModels: {},
+        ws: null,
+
+        async loadModels() {
+            this.loading = true;
+            try {
+                const response = await fetch('/api/presets/?limit=6');
+                if (response.ok) {
+                    const data = await response.json();
+                    // Sort: installed models first (up to 3), then fill with available
+                    const installed = (data.presets || []).filter(p => p.is_installed).slice(0, 3);
+                    const available = (data.presets || []).filter(p => !p.is_installed);
+                    const remaining = 6 - installed.length;
+                    this.models = [...installed, ...available.slice(0, remaining)];
+                }
+            } catch (error) {
+                console.error('Failed to load models:', error);
+            } finally {
+                this.loading = false;
+            }
+
+            // Connect to WebSocket for real-time updates
+            this.connectWebSocket();
+        },
+
+        connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/dashboard`;
+
+            try {
+                this.ws = new WebSocket(wsUrl);
+
+                this.ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        this.handleWebSocketMessage(data);
+                    } catch (e) {
+                        console.error('Failed to parse WebSocket message:', e);
+                    }
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+            } catch (error) {
+                console.error('Failed to connect WebSocket:', error);
+            }
+        },
+
+        handleWebSocketMessage(data) {
+            if (data.type === 'download_progress') {
+                const presetId = data.preset_id;
+                this.downloadingModels[presetId] = {
+                    progress: data.data?.progress || 0,
+                    status: data.data?.status || 'downloading',
+                    file: data.data?.file
+                };
+            } else if (data.type === 'download_complete') {
+                const presetId = data.preset_id;
+                delete this.downloadingModels[presetId];
+                // Reload models to update installed status
+                this.loadModels();
+            } else if (data.type === 'download_cancelled') {
+                const presetId = data.preset_id;
+                delete this.downloadingModels[presetId];
+            }
+        },
+
+        async installModel(model) {
+            this.installing[model.id] = true;
+            try {
+                const response = await fetch(`/api/presets/${model.id}/install`, { method: 'POST' });
+                if (response.ok) {
+                    // Mark as downloading
+                    this.downloadingModels[model.id] = { progress: 0, status: 'starting' };
+                } else {
+                    const error = await response.json();
+                    console.error('Failed to install model:', error);
+                    alert(error.detail || 'Failed to start installation');
+                }
+            } catch (error) {
+                console.error('Failed to install model:', error);
+                alert('Failed to start installation');
+            } finally {
+                this.installing[model.id] = false;
+            }
+        },
+
+        async pauseDownload(presetId) {
+            try {
+                await fetch(`/api/presets/${presetId}/pause`, { method: 'POST' });
+                if (this.downloadingModels[presetId]) {
+                    this.downloadingModels[presetId].status = 'paused';
+                }
+            } catch (error) {
+                console.error('Failed to pause download:', error);
+            }
+        },
+
+        async resumeDownload(presetId) {
+            try {
+                await fetch(`/api/presets/${presetId}/resume`, { method: 'POST' });
+                if (this.downloadingModels[presetId]) {
+                    this.downloadingModels[presetId].status = 'downloading';
+                }
+            } catch (error) {
+                console.error('Failed to resume download:', error);
+            }
+        },
+
+        async cancelDownload(presetId) {
+            try {
+                await fetch(`/api/presets/${presetId}/cancel`, { method: 'POST' });
+                delete this.downloadingModels[presetId];
+            } catch (error) {
+                console.error('Failed to cancel download:', error);
+            }
+        },
+
+        showDetails(model) {
+            // For now, navigate to models page with model selected
+            // Could be enhanced to show a modal in the future
+            window.location.href = `/models?model=${model.id}`;
+        }
+    };
+}
+
 function homeDashboard() {
     return {
         stats: {

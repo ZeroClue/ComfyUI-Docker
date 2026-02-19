@@ -73,16 +73,18 @@ async def get_recent_activity(limit: int = 10):
 
     # Add current download as activity if active
     queue_status = download_manager.get_queue_status()
-    if queue_status.get("current"):
-        current = queue_status["current"]
+    current = queue_status.get("current")
+    if current:
+        # current is the preset_id string, not a dict
+        preset_id = current if isinstance(current, str) else current.get('preset_id', 'unknown')
         dl_activity = ActivityItem(
-            id=f"dl_{current.get('preset_id', 'unknown')}",
+            id=f"dl_{preset_id}",
             type="download",
             status="started",
-            title=f"Downloading {current.get('preset_id', 'Model')}",
-            subtitle=f"{current.get('progress', 0)}% complete",
+            title=f"Downloading {preset_id}",
+            subtitle="Download in progress",
             timestamp=datetime.utcnow().isoformat() + "Z",
-            link=f"/models?preset={current.get('preset_id', '')}"
+            link=f"/models?preset={preset_id}"
         )
         # Insert at beginning if not already there
         if not activities or activities[0].id != dl_activity.id:

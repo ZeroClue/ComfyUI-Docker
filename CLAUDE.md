@@ -444,6 +444,11 @@ These documents are gitignored but tracked with `git add -f`.
 
 ## Dashboard Known Issues (2026-02-19)
 
+**Download Queue:**
+- Downloads are queued but not executing (queue processor not running)
+- Likely issue: asyncio.create_task() for _process_queue() not executing properly
+- Needs investigation in `dashboard/core/downloader.py`
+
 **Models Page:**
 - ✅ Category filter working (caching implemented)
 - ✅ Details button functional (modal added)
@@ -474,6 +479,11 @@ These documents are gitignored but tracked with `git add -f`.
 - **WebSocket endpoint**: Dashboard templates expect `/ws/dashboard`, not just `/ws`
 - **Dashboard port**: Internal port 8000, external 8082 (via nginx)
 - **Pydantic validation**: Preset `files` and `categories` need `Dict[str, Any]` not `Dict[str, str]` (preset YAML has boolean `optional: false` and nested category objects)
+
+### Bug Fixes Applied (2026-02-19)
+- **FastAPI route ordering**: Literal routes must come BEFORE parameterized routes. `/queue/status` must be defined before `/{preset_id}/status` or FastAPI matches `preset_id="queue"`
+- **psutil.version_info**: It's a tuple, not namedtuple. Use `sys.version_info` for Python version
+- **activity.py current**: `get_queue_status()` returns `current` as string (preset_id), not dict with properties
 
 ### RunPod Pod Management
 **CRITICAL**: Always verify pod status after stop command:

@@ -159,67 +159,74 @@
     </section>
 
     <!-- System Resources -->
-    <section class="mb-8" x-data="systemResources()">
+    <section class="mb-8" x-data="systemResources()" x-init="initResources()">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-semibold">System Resources</h2>
-            <button class="btn btn-secondary btn-sm py-1.5 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
-                    hx-get="/api/system/resources"
-                    hx-target="#resources-grid"
-                    hx-swap="innerHTML">
-                ↻ Refresh
-            </button>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-text-tertiary" x-text="lastUpdated"></span>
+                <button class="btn btn-secondary btn-sm py-1.5 px-3 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all"
+                        @click="refreshResources()"
+                        :disabled="loading">
+                    <span x-show="!loading">↻</span>
+                    <span x-show="loading" class="animate-spin">⟳</span>
+                </button>
+            </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="resources-grid">
             <!-- GPU Memory -->
-            <div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
-                <div class="resource-header flex items-center justify-between mb-3">
-                    <span class="resource-title text-sm font-medium text-text-secondary">GPU Memory</span>
-                    <span class="text-xs text-accent-success">● Optimal</span>
+            <template x-if="hasGPU">
+                <div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
+                    <div class="resource-header flex items-center justify-between mb-3">
+                        <span class="resource-title text-sm font-medium text-text-secondary">GPU Memory</span>
+                        <span class="text-xs" :class="getStatusColor(gpuMemory.percent)">● <span x-text="getStatusLabel(gpuMemory.percent)"></span></span>
+                    </div>
+                    <div class="resource-value text-lg font-bold mb-2" x-text="`${formatBytes(gpuMemory.used)} / ${formatBytes(gpuMemory.total)}`">-- / -- GB</div>
+                    <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
+                        <div class="resource-fill h-full rounded-full transition-all duration-200" :class="getBarColor(gpuMemory.percent)" :style="`width: ${gpuMemory.percent}%;`"></div>
+                    </div>
+                    <div class="resource-label text-xs text-text-tertiary" x-text="`${gpuMemory.percent.toFixed(1)}% utilized`">--% utilized</div>
                 </div>
-                <div class="resource-value text-lg font-bold mb-2">14.2 / 24 GB</div>
-                <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
-                    <div class="resource-fill h-full bg-gradient-to-r from-accent-success to-accent-warning rounded-full transition-all duration-200" style="width: 59%;"></div>
+            </template>
+
+            <!-- GPU Utilization (shown when GPU available) -->
+            <template x-if="hasGPU">
+                <div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
+                    <div class="resource-header flex items-center justify-between mb-3">
+                        <span class="resource-title text-sm font-medium text-text-secondary">GPU Utilization</span>
+                        <span class="text-xs" :class="getStatusColor(gpuUtilization)">● <span x-text="getStatusLabel(gpuUtilization)"></span></span>
+                    </div>
+                    <div class="resource-value text-lg font-bold mb-2" x-text="`${gpuUtilization.toFixed(1)}%`">--%</div>
+                    <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
+                        <div class="resource-fill h-full rounded-full transition-all duration-200" :class="getBarColor(gpuUtilization)" :style="`width: ${gpuUtilization}%;`"></div>
+                    </div>
+                    <div class="resource-label text-xs text-text-tertiary" x-text="gpuName">GPU</div>
                 </div>
-                <div class="resource-label text-xs text-text-tertiary">59% utilized</div>
-            </div>
+            </template>
 
             <!-- System Memory -->
             <div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
                 <div class="resource-header flex items-center justify-between mb-3">
                     <span class="resource-title text-sm font-medium text-text-secondary">System Memory</span>
-                    <span class="text-xs text-accent-warning">● Moderate</span>
+                    <span class="text-xs" :class="getStatusColor(memory.percent)">● <span x-text="getStatusLabel(memory.percent)"></span></span>
                 </div>
-                <div class="resource-value text-lg font-bold mb-2">42.8 / 64 GB</div>
+                <div class="resource-value text-lg font-bold mb-2" x-text="`${formatBytes(memory.used)} / ${formatBytes(memory.total)}`">-- / -- GB</div>
                 <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
-                    <div class="resource-fill from-accent-warning to-accent-error h-full bg-gradient-to-r rounded-full transition-all duration-200" style="width: 67%;"></div>
+                    <div class="resource-fill h-full rounded-full transition-all duration-200" :class="getBarColor(memory.percent)" :style="`width: ${memory.percent}%;`"></div>
                 </div>
-                <div class="resource-label text-xs text-text-tertiary">67% utilized</div>
+                <div class="resource-label text-xs text-text-tertiary" x-text="`${memory.percent.toFixed(1)}% utilized`">--% utilized</div>
             </div>
 
             <!-- Disk Space -->
             <div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
                 <div class="resource-header flex items-center justify-between mb-3">
                     <span class="resource-title text-sm font-medium text-text-secondary">Disk Space</span>
-                    <span class="text-xs text-accent-success">● Available</span>
+                    <span class="text-xs" :class="getStatusColor(disk.percent)">● <span x-text="getStatusLabel(disk.percent)"></span></span>
                 </div>
-                <div class="resource-value text-lg font-bold mb-2">24.5 / 500 GB</div>
+                <div class="resource-value text-lg font-bold mb-2" x-text="`${formatBytes(disk.used)} / ${formatBytes(disk.total)}`">-- / -- GB</div>
                 <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
-                    <div class="resource-fill h-full bg-gradient-to-r from-accent-success to-accent-warning rounded-full transition-all duration-200" style="width: 5%;"></div>
+                    <div class="resource-fill h-full rounded-full transition-all duration-200" :class="getBarColor(disk.percent)" :style="`width: ${disk.percent}%;`"></div>
                 </div>
-                <div class="resource-label text-xs text-text-tertiary">5% utilized</div>
-            </div>
-
-            <!-- GPU Temperature -->
-            <div class="resource-card bg-bg-secondary border border-border-subtle rounded-lg p-3">
-                <div class="resource-header flex items-center justify-between mb-3">
-                    <span class="resource-title text-sm font-medium text-text-secondary">GPU Temperature</span>
-                    <span class="text-xs text-accent-success">● Normal</span>
-                </div>
-                <div class="resource-value text-lg font-bold mb-2">68°C</div>
-                <div class="resource-bar h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-1">
-                    <div class="resource-fill h-full bg-gradient-to-r from-accent-success to-accent-warning rounded-full transition-all duration-200" style="width: 68%;"></div>
-                </div>
-                <div class="resource-label text-xs text-text-tertiary">Well within limits</div>
+                <div class="resource-label text-xs text-text-tertiary" x-text="`${disk.percent.toFixed(1)}% utilized`">--% utilized</div>
             </div>
         </div>
     </section>
@@ -431,11 +438,100 @@ function homeDashboard() {
 
 function systemResources() {
     return {
-        resources: {
-            gpu: { used: 14.2, total: 24, percentage: 59, status: 'optimal' },
-            memory: { used: 42.8, total: 64, percentage: 67, status: 'moderate' },
-            disk: { used: 24.5, total: 500, percentage: 5, status: 'optimal' },
-            temperature: { value: 68, percentage: 68, status: 'normal' }
+        // Resource data
+        memory: { used: 0, total: 0, percent: 0 },
+        disk: { used: 0, total: 0, percent: 0 },
+        gpuMemory: { used: 0, total: 0, percent: 0 },
+        gpuUtilization: 0,
+        gpuName: 'GPU',
+
+        // State
+        hasGPU: false,
+        loading: false,
+        lastUpdated: '',
+        refreshInterval: null,
+
+        async initResources() {
+            // Initial load
+            await this.refreshResources();
+
+            // Auto-refresh every 10 seconds
+            this.refreshInterval = setInterval(() => this.refreshResources(), 10000);
+        },
+
+        async refreshResources() {
+            if (this.loading) return;
+
+            this.loading = true;
+            try {
+                const response = await fetch('/api/system/resources');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.updateResources(data);
+                    this.lastUpdated = `Updated ${new Date().toLocaleTimeString()}`;
+                }
+            } catch (error) {
+                console.error('Failed to fetch system resources:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        updateResources(data) {
+            // Update memory
+            this.memory = {
+                used: data.memory.used,
+                total: data.memory.total,
+                percent: data.memory.percent
+            };
+
+            // Update disk
+            this.disk = {
+                used: data.disk.used,
+                total: data.disk.total,
+                percent: data.disk.percent
+            };
+
+            // Update GPU info if available
+            if (data.gpu && data.gpu.devices && data.gpu.devices.length > 0) {
+                const gpu = data.gpu.devices[0];
+                this.hasGPU = true;
+                this.gpuName = gpu.name;
+                this.gpuMemory = {
+                    used: gpu.memory_used * 1024 * 1024, // Convert MB to bytes
+                    total: gpu.memory_total * 1024 * 1024,
+                    percent: gpu.memory_total > 0 ? (gpu.memory_used / gpu.memory_total) * 100 : 0
+                };
+                this.gpuUtilization = gpu.utilization;
+            } else {
+                this.hasGPU = false;
+            }
+        },
+
+        formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        },
+
+        getStatusColor(percent) {
+            if (percent < 70) return 'text-accent-success';
+            if (percent < 90) return 'text-accent-warning';
+            return 'text-accent-error';
+        },
+
+        getStatusLabel(percent) {
+            if (percent < 70) return 'Optimal';
+            if (percent < 90) return 'Moderate';
+            return 'Critical';
+        },
+
+        getBarColor(percent) {
+            if (percent < 70) return 'bg-gradient-to-r from-accent-success to-accent-success';
+            if (percent < 90) return 'bg-gradient-to-r from-accent-warning to-accent-warning';
+            return 'bg-gradient-to-r from-accent-error to-accent-error';
         }
     }
 }

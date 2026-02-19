@@ -161,15 +161,16 @@
                     </template>
                 </div>
 
-                <!-- Progress Bar (when downloading) -->
-                <div x-show="model.status === 'downloading'" class="mb-3" style="display: none;">
+                <!-- Progress Bar (when downloading or queued) -->
+                <div x-show="model.status === 'downloading' || model.status === 'queued'" class="mb-3">
                     <div class="progress h-2 bg-bg-tertiary rounded-full overflow-hidden mb-2">
                         <div class="progress-bar-animated h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full transition-all duration-300"
                              :style="`width: ${model.progress}%`"></div>
                     </div>
                     <div class="flex justify-between text-xs text-text-tertiary">
                         <span x-text="progressText"></span>
-                        <span x-text="`${model.progress}%`"></span>
+                        <span x-show="model.status === 'downloading'" x-text="`${Math.round(model.progress)}%`"></span>
+                        <span x-show="model.status === 'queued'" x-text="'Waiting...'"></span>
                     </div>
                 </div>
 

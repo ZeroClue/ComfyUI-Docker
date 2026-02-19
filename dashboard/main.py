@@ -31,6 +31,13 @@ async def lifespan(app: FastAPI):
     print("Starting ComfyUI Unified Dashboard...")
     print(f"Dashboard URL: http://localhost:{settings.DASHBOARD_PORT}")
     print(f"ComfyUI API: http://localhost:{settings.COMFYUI_PORT}")
+
+    # Create necessary directories
+    from pathlib import Path
+    Path(settings.WORKFLOW_BASE_PATH).mkdir(parents=True, exist_ok=True)
+    Path(settings.BASE_DIR).mkdir(parents=True, exist_ok=True)
+    print(f"Workflow directory: {settings.WORKFLOW_BASE_PATH}")
+
     yield
     # Shutdown
     print("Shutting down ComfyUI Unified Dashboard...")

@@ -370,56 +370,55 @@
     </section>
 
     <!-- Recent Activity -->
-    <section class="mb-8">
+    <section class="mb-8" x-data="activityFeed()" x-init="loadActivity()">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-semibold">Recent Activity</h2>
-            <button class="text-accent-primary text-sm font-medium hover:text-accent-secondary transition-colors">
+            <button @click="clearActivity()"
+                    x-show="activities.length > 0"
+                    class="text-accent-primary text-sm font-medium hover:text-accent-secondary transition-colors">
                 Clear All
             </button>
         </div>
 
-        <div class="flex flex-col gap-2">
-            <!-- Activity Item 1 -->
-            <div class="activity-item flex items-center gap-4 p-3 bg-bg-secondary border border-border-subtle rounded-md">
-                <div class="activity-icon w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-accent-success/15">
-                    ✓
+        <!-- Loading State -->
+        <div x-show="loading" class="flex flex-col gap-2">
+            <template x-for="i in 3" :key="i">
+                <div class="activity-item flex items-center gap-4 p-3 bg-bg-secondary border border-border-subtle rounded-md animate-pulse">
+                    <div class="w-10 h-10 rounded-md bg-bg-tertiary"></div>
+                    <div class="flex-1">
+                        <div class="h-4 bg-bg-tertiary rounded w-3/4 mb-2"></div>
+                        <div class="h-3 bg-bg-tertiary rounded w-1/2"></div>
+                    </div>
                 </div>
-                <div class="activity-content flex-1 min-w-0">
-                    <div class="activity-title text-sm font-medium mb-0.5">Image generation completed</div>
-                    <div class="activity-meta text-xs text-text-tertiary">Txt2Img SDXL • 2 minutes ago</div>
-                </div>
-                <div class="activity-status px-2.5 py-1 rounded-full text-xs font-semibold bg-accent-success/15 text-accent-success flex-shrink-0">
-                    Complete
-                </div>
-            </div>
+            </template>
+        </div>
 
-            <!-- Activity Item 2 -->
-            <div class="activity-item flex items-center gap-4 p-3 bg-bg-secondary border border-border-subtle rounded-md">
-                <div class="activity-icon w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-accent-primary/15">
-                    ◫
-                </div>
-                <div class="activity-content flex-1 min-w-0">
-                    <div class="activity-title text-sm font-medium mb-0.5">Model download in progress</div>
-                    <div class="activity-meta text-xs text-text-tertiary">Hunyuan Video • ETA: 3m 24s</div>
-                </div>
-                <div class="activity-status px-2.5 py-1 rounded-full text-xs font-semibold bg-accent-primary/15 text-accent-primary flex-shrink-0">
-                    67%
-                </div>
-            </div>
+        <!-- Activity List -->
+        <div x-show="!loading && activities.length > 0" class="flex flex-col gap-2">
+            <template x-for="activity in activities" :key="activity.id">
+                <a :href="activity.link !== '#' ? activity.link : 'javascript:void(0)'"
+                   class="activity-item flex items-center gap-4 p-3 bg-bg-secondary border border-border-subtle rounded-md hover:bg-bg-hover transition-colors">
+                    <div class="activity-icon w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0"
+                         :class="getActivityIconBg(activity)">
+                        <span x-text="getActivityIcon(activity)"></span>
+                    </div>
+                    <div class="activity-content flex-1 min-w-0">
+                        <div class="activity-title text-sm font-medium mb-0.5" x-text="activity.title"></div>
+                        <div class="activity-meta text-xs text-text-tertiary" x-text="activity.subtitle + ' • ' + formatTime(activity.timestamp)"></div>
+                    </div>
+                    <div class="activity-status px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0"
+                         :class="getActivityStatusClass(activity.status)">
+                        <span x-text="capitalize(activity.status)"></span>
+                    </div>
+                </a>
+            </template>
+        </div>
 
-            <!-- Activity Item 3 -->
-            <div class="activity-item flex items-center gap-4 p-3 bg-bg-secondary border border-border-subtle rounded-md">
-                <div class="activity-icon w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-accent-error/15">
-                    ✕
-                </div>
-                <div class="activity-content flex-1 min-w-0">
-                    <div class="activity-title text-sm font-medium mb-0.5">Generation failed</div>
-                    <div class="activity-meta text-xs text-text-tertiary">Video WAN • Out of memory</div>
-                </div>
-                <div class="activity-status px-2.5 py-1 rounded-full text-xs font-semibold bg-accent-error/15 text-accent-error flex-shrink-0">
-                    Failed
-                </div>
-            </div>
+        <!-- Empty State -->
+        <div x-show="!loading && activities.length === 0" class="bg-bg-secondary border border-border-subtle rounded-lg p-8 text-center">
+            <div class="text-4xl mb-4 text-text-tertiary">◌</div>
+            <h3 class="text-lg font-semibold mb-2">No recent activity</h3>
+            <p class="text-text-secondary text-sm">Activity from generations and downloads will appear here</p>
         </div>
     </section>
 </div>
@@ -697,57 +696,113 @@ function systemResources() {
     }
 }
 
-function presetCard(id, status, progress) {
+function activityFeed() {
     return {
-        id,
-        status,
-        progress,
-        statusText: '',
-        actionText: '',
-        progressText: '',
+        activities: [],
+        loading: true,
+        ws: null,
 
-        init() {
-            this.updateText();
-        },
-
-        updateText() {
-            const statusMap = {
-                'installed': { statusText: 'Installed', actionText: 'Generate', progressText: '' },
-                'available': { statusText: 'Available', actionText: 'Install', progressText: '' },
-                'partial': { statusText: 'Partial', actionText: 'Resume', progressText: 'Downloading...' },
-                'downloading': { statusText: 'Downloading', actionText: 'Pause', progressText: 'Downloading...' }
-            };
-
-            const config = statusMap[this.status] || statusMap['available'];
-            this.statusText = config.statusText;
-            this.actionText = config.actionText;
-            this.progressText = config.progressText;
-        },
-
-        updateProgress(detail) {
-            if (detail.presetId === this.id) {
-                this.progress = detail.progress;
-                this.status = 'downloading';
-                this.updateText();
-            }
-        },
-
-        async handleAction() {
-            if (this.status === 'available') {
-                // Install the preset
-                try {
-                    const response = await fetch(`/api/models/${this.id}/install`, { method: 'POST' });
-                    if (response.ok) {
-                        this.status = 'downloading';
-                        this.updateText();
-                    }
-                } catch (error) {
-                    console.error('Failed to install preset:', error);
+        async loadActivity() {
+            this.loading = true;
+            try {
+                const response = await fetch('/api/activity/recent?limit=5');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.activities = data.activities || [];
                 }
-            } else if (this.status === 'installed') {
-                // Navigate to generate page
-                window.location.href = `/generate?model=${this.id}`;
+            } catch (error) {
+                console.error('Failed to load activity:', error);
+            } finally {
+                this.loading = false;
             }
+
+            // Connect WebSocket for real-time updates
+            this.connectWebSocket();
+        },
+
+        connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/dashboard`;
+
+            try {
+                this.ws = new WebSocket(wsUrl);
+
+                this.ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'new_activity' && data.activity) {
+                            // Add new activity at the beginning
+                            this.activities.unshift(data.activity);
+                            // Keep only 5 items
+                            if (this.activities.length > 5) {
+                                this.activities.pop();
+                            }
+                        } else if (data.type === 'download_progress' && data.preset_id) {
+                            // Update existing download activity or add new one
+                            const existingIdx = this.activities.findIndex(
+                                a => a.type === 'download' && a.id.includes(data.preset_id)
+                            );
+                            if (existingIdx >= 0) {
+                                this.activities[existingIdx].subtitle = `${Math.round(data.data?.progress || 0)}% complete`;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse WebSocket message:', e);
+                    }
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+            } catch (error) {
+                console.error('Failed to connect WebSocket:', error);
+            }
+        },
+
+        async clearActivity() {
+            try {
+                const response = await fetch('/api/activity/clear', { method: 'DELETE' });
+                if (response.ok) {
+                    this.activities = [];
+                }
+            } catch (error) {
+                console.error('Failed to clear activity:', error);
+            }
+        },
+
+        getActivityIconBg(activity) {
+            if (activity.status === 'failed') return 'bg-accent-error/15';
+            if (activity.type === 'download') return 'bg-accent-primary/15';
+            return 'bg-accent-success/15';
+        },
+
+        getActivityIcon(activity) {
+            if (activity.status === 'failed') return '✕';
+            if (activity.type === 'download') return '↓';
+            return '✓';
+        },
+
+        getActivityStatusClass(status) {
+            if (status === 'completed') return 'bg-accent-success/15 text-accent-success';
+            if (status === 'failed') return 'bg-accent-error/15 text-accent-error';
+            if (status === 'started') return 'bg-accent-primary/15 text-accent-primary';
+            return 'bg-accent-info/15 text-accent-info';
+        },
+
+        formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = (now - date) / 1000;
+
+            if (diff < 60) return 'just now';
+            if (diff < 3600) return Math.floor(diff / 60) + ' minutes ago';
+            if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago';
+            return Math.floor(diff / 86400) + ' days ago';
+        },
+
+        capitalize(str) {
+            if (!str) return '';
+            return str.charAt(0).toUpperCase() + str.slice(1);
         }
     }
 }

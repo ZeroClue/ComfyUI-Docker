@@ -109,6 +109,7 @@ FastAPI-based unified interface replacing Preset Manager and Studio.
 - `/generate` - Content generation interface
 - `/models` - Model preset management
 - `/workflows` - Workflow library
+- `/gallery` - Gallery for viewing generated content
 - `/settings` - Settings page
 - `/pro` - Pro features
 
@@ -119,8 +120,8 @@ FastAPI-based unified interface replacing Preset Manager and Studio.
 - ✅ System monitoring (CPU, memory, disk, GPU)
 - ✅ WebSocket real-time updates
 - ✅ Dashboard stats (connected to real data)
-- ✅ Page routes (/generate, /models, /workflows, /settings, /pro)
-- ❌ Gallery view (not implemented)
+- ✅ Page routes (/generate, /models, /workflows, /gallery, /settings, /pro)
+- ✅ Gallery view (implemented 2026-02-19)
 
 ## Preset Management System
 Located in `scripts/preset_manager/` with three core components:
@@ -427,22 +428,30 @@ Major features have design docs in `docs/plans/`:
 
 These documents are gitignored but tracked with `git add -f`.
 
-## Dashboard Known Issues (2026-02-18)
+## Dashboard Known Issues (2026-02-19)
 
 **Models Page:**
-- Category filter may show no results (frontend filters by `type` but API uses `category`)
-- Details button non-functional (sets `showDetails=true` but no modal UI)
-- No visual download progress indicator in queue UI
-- Should default to showing installed models first
+- ✅ Category filter working (caching implemented)
+- ✅ Details button functional (modal added)
+- ✅ Progress bar visible for queued/downloading models
+- ✅ Installed models sorted first
 
 **Generate Page:**
-- Gallery/View All link broken (no `/gallery` route)
+- ✅ Gallery/View All link works (new /gallery route)
 - Queue card UI exists but not connected to ComfyUI
 - Generation progress feedback minimal
 
 **Workflows Page:**
-- Import button non-functional (missing `/api/workflows/import` endpoint)
+- ✅ Import button functional (API endpoints added)
 - May trigger browser network access prompt (expected API calls)
+
+## Performance Optimizations (2026-02-19)
+
+### PresetCache System
+- **60-second TTL cache** for preset API responses to avoid repeated file I/O
+- **Batch installation checks** avoids timeout on large model lists
+- **Cache invalidation** triggered on download complete and preset delete
+- Location: `dashboard/api/presets.py` - `PresetCache` class
 
 ## Session Learnings (2026-02-18)
 

@@ -44,7 +44,8 @@ class DownloadManager:
 
     def __init__(self):
         self.active_downloads: Dict[str, List[DownloadTask]] = {}
-        self.download_queue: asyncio.Queue = asyncio.Queue()
+        self._download_queue: Optional[asyncio.Queue] = None  # Lazy init
+        self._processor_task: Optional[asyncio.Task] = None  # Keep reference
         self.current_download: Optional[str] = None
         self.queue_processor_running: bool = False
         self.base_path = Path(settings.MODEL_BASE_PATH)
@@ -53,6 +54,13 @@ class DownloadManager:
             "base_delay": 5,  # seconds
             "max_delay": 60
         }
+
+    @property
+    def download_queue(self) -> asyncio.Queue:
+        """Lazily initialize queue within async context"""
+        if self._download_queue is None:
+            self._download_queue = asyncio.Queue()
+        return self._download_queue
 
     async def start_download(
         self,
@@ -114,13 +122,14 @@ class DownloadManager:
 
         # Start queue processor if not running
         if not self.queue_processor_running:
-            asyncio.create_task(self._process_queue())
+            self._processor_task = asyncio.create_task(self._process_queue())
 
         return download_id
 
     async def _process_queue(self):
         """Process downloads sequentially from queue"""
         self.queue_processor_running = True
+        print("Download queue processor started")
 
         while True:
             try:
@@ -132,6 +141,7 @@ class DownloadManager:
                     continue
 
                 self.current_download = preset_id
+                print(f"Starting download for preset: {preset_id}")
 
                 # Broadcast queue update
                 await self._broadcast_queue_update()
@@ -177,12 +187,16 @@ class DownloadManager:
                 await self._broadcast_queue_update()
 
             except asyncio.CancelledError:
+                print("Download queue processor cancelled")
                 break
             except Exception as e:
                 print(f"Queue processor error: {e}")
+                import traceback
+                traceback.print_exc()
                 await asyncio.sleep(1)
 
         self.queue_processor_running = False
+        print("Download queue processor stopped")
 
     async def _broadcast_queue_update(self):
         """Broadcast current queue state via WebSocket"""

@@ -126,9 +126,23 @@ class DownloadManager:
 
         # Start queue processor if not running
         if not self.queue_processor_running:
-            self._processor_task = asyncio.create_task(self._process_queue())
-            # Give the processor a moment to start
-            await asyncio.sleep(0)
+            loop = asyncio.get_running_loop()
+            self._processor_task = loop.create_task(self._process_queue())
+
+            # Add a callback to log any exceptions
+            def log_task_exception(task):
+                try:
+                    exc = task.exception()
+                    if exc:
+                        print(f"Download processor task failed: {exc}")
+                        import traceback
+                        traceback.print_exception(type(exc), exc, exc.__traceback__)
+                except asyncio.CancelledError:
+                    print("Download processor task was cancelled")
+                except Exception as e:
+                    print(f"Error getting task exception: {e}")
+
+            self._processor_task.add_done_callback(log_task_exception)
 
         return download_id
 

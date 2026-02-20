@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from ..core import persistence
 
-router = APIRouter(prefix="/activity", tags=["activity"])
+router = APIRouter(tags=["activity"])
 
 
 def get_activity_logger():

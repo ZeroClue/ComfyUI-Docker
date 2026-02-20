@@ -381,8 +381,8 @@ source .runpod/.env && curl -s "https://rest.runpod.io/v1/pods/{pod-id}" -H "Aut
 # Stop a pod
 source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods/{pod-id}/stop" -H "Authorization: Bearer $RUNPOD_API_KEY"
 
-# Terminate a pod
-source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods/{pod-id}/terminate" -H "Authorization: Bearer $RUNPOD_API_KEY"
+# Terminate (delete) a pod
+source .runpod/.env && curl -X DELETE "https://rest.runpod.io/v1/pods/{pod-id}" -H "Authorization: Bearer $RUNPOD_API_KEY"
 ```
 
 # Development & Testing
@@ -489,25 +489,11 @@ These documents are gitignored but tracked with `git add -f`.
 
 ## Dashboard Known Issues (2026-02-20)
 
-**Download Queue:**
-- ✅ FIXED: Queue processor now runs correctly with lazy queue initialization
-- ✅ HF token support for gated models (configure in Settings)
-- Note: Gated HuggingFace models require token (returns 401 without it)
+All major dashboard features working as of 2026-02-20. See Feature Status section for details.
 
-**Models Page:**
-- ✅ Category filter working (caching implemented)
-- ✅ Details button functional (modal added)
-- ✅ Progress bar visible for queued/downloading models
-- ✅ Installed models sorted first
-
-**Generate Page:**
-- ✅ Gallery/View All link works (new /gallery route)
-- Queue card UI exists but not connected to ComfyUI
-- Generation progress feedback minimal
-
-**Workflows Page:**
-- ✅ Import button functional (API endpoints added)
-- May trigger browser network access prompt (expected API calls)
+**Known Limitations:**
+- Generate page queue card not connected to ComfyUI queue (UI only)
+- Gated HuggingFace models require HF token (configure in Settings)
 
 ## Performance Optimizations (2026-02-19)
 
@@ -537,6 +523,7 @@ These documents are gitignored but tracked with `git add -f`.
 - **Download pause bug**: When pausing download, the loop breaks but code continues to set `status="completed"`. Add explicit check for pause/cancel status before marking complete.
 - **Container memory metrics**: `psutil.virtual_memory()` returns host memory in containers. Read from `/sys/fs/cgroup/memory.max` (cgroup v2) or `/sys/fs/cgroup/memory/memory.limit_in_bytes` (cgroup v1) for container limit.
 - **Network volume disk metrics**: `psutil.disk_usage('/workspace')` returns host filesystem size on RunPod network volumes. Use `du -sb /workspace` for actual usage and `RUNPOD_VOLUME_GB` env var for total size.
+- **add_activity() signature**: Only supports `activity_type`, `status`, `title`, `subtitle`, `details`. Does NOT support `link` parameter - will raise TypeError if passed.
 
 ### RunPod Pod Management
 **CRITICAL**: Always verify pod status after stop command:

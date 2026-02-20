@@ -325,6 +325,8 @@ class DownloadManager:
                     "path": t.file_path,
                     "status": t.status,
                     "progress": t.progress,
+                    "downloaded": t.downloaded_bytes,
+                    "total": t.total_bytes,
                     "error": t.error
                 }
                 for t in tasks

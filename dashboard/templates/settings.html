@@ -42,10 +42,13 @@
                             <div class="font-medium text-sm">Theme</div>
                             <div class="text-xs text-text-tertiary">Customize the appearance</div>
                         </div>
-                        <select x-model="settings.theme" class="px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                        <select x-model="settings.theme"
+                                @change="saveSetting('theme', settings.theme)"
+                                class="px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
                             <option value="dark">Dark</option>
                             <option value="darker">Darker</option>
                             <option value="high-contrast">High Contrast</option>
+                            <option value="light">Light</option>
                         </select>
                     </div>
 
@@ -146,6 +149,75 @@
                     <div>
                         <label class="block text-sm font-medium text-text-secondary mb-2">Default Batch Size</label>
                         <input type="number" x-model="settings.defaultBatch" min="1" max="10" class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-md text-sm focus:outline-none focus:border-accent-primary">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Integrations Section -->
+            <section x-show="activeSection === 'integrations'" class="bg-bg-secondary border border-border-subtle rounded-lg p-6" style="display: none;"
+                     x-data="hfTokenManager()"
+                     x-init="init()">
+                <h2 class="text-lg font-semibold mb-4">Integrations</h2>
+
+                <div class="border-b border-border-subtle pb-6">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <label class="text-text-primary font-medium">HuggingFace Token</label>
+                            <p class="text-text-secondary text-sm">Required for downloading gated models</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <template x-if="tokenSet && !editing">
+                                <span class="text-accent-success text-sm">Token configured</span>
+                            </template>
+                            <button x-show="tokenSet && !editing"
+                                    @click="editing = true"
+                                    class="text-text-secondary hover:text-text-primary text-sm">
+                                Change
+                            </button>
+                        </div>
+                    </div>
+
+                    <div x-show="!tokenSet || editing" class="mt-4">
+                        <div class="flex gap-2">
+                            <input type="password"
+                                   x-model="token"
+                                   placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                   class="flex-1 bg-bg-tertiary border border-border-medium rounded-lg px-4 py-2 text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary">
+                            <button @click="validateToken()"
+                                    :disabled="!token || validating"
+                                    class="px-4 py-2 bg-bg-tertiary text-text-primary rounded-lg hover:bg-bg-hover disabled:opacity-50">
+                                <span x-show="!validating">Test</span>
+                                <span x-show="validating">Testing...</span>
+                            </button>
+                        </div>
+
+                        <div x-show="validationResult" class="mt-2">
+                            <p x-show="validationResult?.valid" class="text-accent-success text-sm">
+                                Valid token for user: <span x-text="validationResult?.username"></span>
+                            </p>
+                            <p x-show="validationResult && !validationResult?.valid" class="text-accent-error text-sm">
+                                Invalid token: <span x-text="validationResult?.error"></span>
+                            </p>
+                        </div>
+
+                        <div class="flex justify-between mt-4">
+                            <a href="https://huggingface.co/settings/tokens" target="_blank"
+                               class="text-accent-primary hover:text-accent-primary/80 text-sm">
+                                Get a token
+                            </a>
+                            <div class="flex gap-2">
+                                <button x-show="editing"
+                                        @click="cancelEdit()"
+                                        class="px-4 py-2 bg-bg-tertiary text-text-secondary rounded-lg hover:bg-bg-hover">
+                                    Cancel
+                                </button>
+                                <button @click="saveToken()"
+                                        :disabled="!token"
+                                        class="px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/80 disabled:opacity-50">
+                                    Save Token
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -343,6 +415,7 @@ function settingsPage() {
         settingsSections: [
             { id: 'general', name: 'General', icon: '⚙' },
             { id: 'generation', name: 'Generation', icon: '⚡' },
+            { id: 'integrations', name: 'Integrations', icon: '◇' },
             { id: 'system', name: 'System', icon: '◉' },
             { id: 'paths', name: 'Paths & Storage', icon: '◈' },
             { id: 'about', name: 'About', icon: '◫' }
@@ -409,6 +482,18 @@ function settingsPage() {
             }
         },
 
+        async saveSetting(key, value) {
+            try {
+                await fetch('/api/settings', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, value })
+                });
+            } catch (error) {
+                console.error('Failed to save setting:', error);
+            }
+        },
+
         async saveSettings() {
             this.isSaving = true;
             try {
@@ -460,6 +545,63 @@ function settingsPage() {
                     window.showToast('error', 'Cleanup Failed', 'Could not clear cache');
                 }
             }
+        }
+    }
+}
+
+function hfTokenManager() {
+    return {
+        token: '',
+        tokenSet: false,
+        editing: false,
+        validating: false,
+        validationResult: null,
+
+        async init() {
+            const resp = await fetch('/api/settings');
+            const data = await resp.json();
+            this.tokenSet = data.hf_token_set || false;
+        },
+
+        async validateToken() {
+            if (!this.token) return;
+
+            // First save the token temporarily
+            await fetch('/api/settings/hf-token', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({token: this.token})
+            });
+
+            // Then validate
+            this.validating = true;
+            try {
+                const resp = await fetch('/api/settings/hf-token/validate');
+                this.validationResult = await resp.json();
+            } finally {
+                this.validating = false;
+            }
+        },
+
+        async saveToken() {
+            if (!this.token) return;
+
+            await fetch('/api/settings/hf-token', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({token: this.token})
+            });
+
+            this.tokenSet = true;
+            this.editing = false;
+            this.token = '';
+            window.showToast('success', 'Token Saved', 'HuggingFace token has been saved');
+        },
+
+        cancelEdit() {
+            this.editing = false;
+            this.token = '';
+            this.validationResult = null;
         }
     }
 }

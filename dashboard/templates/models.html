@@ -309,6 +309,69 @@
             Reset Filters
         </button>
     </div>
+
+    <!-- Token Required Modal -->
+    <div x-show="showTokenModal"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="display: none;"
+         @click.self="showTokenModal = false">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+        <!-- Modal Content -->
+        <div class="relative bg-bg-secondary border border-border-medium rounded-lg max-w-md w-full shadow-xl"
+             @click.stop>
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-border-subtle">
+                <h3 class="text-lg font-semibold">Authentication Required</h3>
+                <p class="text-sm text-text-secondary mt-1">This model requires a HuggingFace token to download.</p>
+            </div>
+
+            <!-- Body -->
+            <div class="px-6 py-4">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">HuggingFace Token</label>
+                    <input type="password"
+                           x-model="tokenInput"
+                           placeholder="hf_xxxxxxxxxxxxxxxxxxxx"
+                           class="w-full bg-bg-tertiary border border-border-medium rounded-lg px-4 py-2 text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary">
+                    <p x-show="tokenError" x-text="tokenError" class="text-accent-error text-sm mt-2"></p>
+                </div>
+                <a href="https://huggingface.co/settings/tokens" target="_blank"
+                   class="text-accent-primary text-sm hover:text-accent-primary/80 inline-flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                    </svg>
+                    Get a token from HuggingFace
+                </a>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-border-subtle flex justify-end gap-3">
+                <button @click="showTokenModal = false"
+                        class="btn btn-secondary py-2 px-4 rounded-md text-sm font-medium border border-border-medium hover:bg-bg-hover hover:border-border-strong transition-all">
+                    Cancel
+                </button>
+                <button @click="saveTokenAndRetry()"
+                        :disabled="!tokenInput || tokenSaving"
+                        class="btn btn-primary py-2 px-4 rounded-md text-sm font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span x-show="!tokenSaving">Save & Download</span>
+                    <span x-show="tokenSaving">Saving...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending download for token modal -->
+    <template x-if="pendingDownload">
+        <div class="hidden"></div>
+    </template>
 </div>
 {% endblock %}
 
@@ -331,6 +394,12 @@ function modelsPage() {
         currentProgress: 0,
         currentProgressText: 'Preparing...',
         ws: null,
+        // Token modal state
+        showTokenModal: false,
+        tokenInput: '',
+        tokenError: null,
+        tokenSaving: false,
+        pendingDownload: null,
 
         async initModelsPage() {
             await this.loadModels();
@@ -341,6 +410,50 @@ function modelsPage() {
             window.addEventListener('download-progress', (e) => {
                 this.updateModelProgress(e.detail);
             });
+
+            // Listen for token-required event
+            window.addEventListener('token-required', (e) => {
+                this.pendingDownload = e.detail?.presetId || null;
+                this.showTokenModal = true;
+            });
+        },
+
+        async saveTokenAndRetry() {
+            if (!this.tokenInput) return;
+
+            this.tokenSaving = true;
+            this.tokenError = null;
+
+            try {
+                const resp = await fetch('/api/settings/hf-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: this.tokenInput })
+                });
+
+                if (!resp.ok) {
+                    const data = await resp.json();
+                    this.tokenError = data.detail || 'Failed to save token';
+                    return;
+                }
+
+                // Close modal
+                this.showTokenModal = false;
+                this.tokenInput = '';
+
+                // Retry the pending download if there was one
+                if (this.pendingDownload) {
+                    const presetId = this.pendingDownload;
+                    this.pendingDownload = null;
+                    await fetch(`/api/presets/${presetId}/install`, { method: 'POST' });
+                    window.showToast('success', 'Token Saved', 'Retrying download...');
+                }
+            } catch (error) {
+                console.error('Failed to save token:', error);
+                this.tokenError = 'Failed to save token';
+            } finally {
+                this.tokenSaving = false;
+            }
         },
 
         initWebSocket() {
@@ -611,6 +724,16 @@ function presetCard(model) {
             if (this.model.status === 'available') {
                 try {
                     const response = await fetch(`/api/presets/${this.model.id}/install`, { method: 'POST' });
+                    const data = await response.json();
+
+                    if (data.status === 'token_required') {
+                        // Show token modal
+                        window.dispatchEvent(new CustomEvent('token-required', {
+                            detail: { presetId: this.model.id }
+                        }));
+                        return;
+                    }
+
                     if (response.ok) {
                         this.model.status = 'queued';
                         this.updateText();

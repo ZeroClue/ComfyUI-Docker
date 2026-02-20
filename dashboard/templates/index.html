@@ -89,9 +89,9 @@
                         <div class="flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full bg-accent-primary animate-pulse"></span>
                             <span class="text-sm font-medium" x-text="currentDownload.name || currentDownload.preset_id"></span>
+                            <span class="text-xs text-text-tertiary" x-text="`(${currentDownload.completedFiles || 0}/${currentDownload.totalFiles || 0} files)`"></span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs text-text-tertiary" x-text="currentDownload.file"></span>
                             <button class="btn btn-secondary btn-xs py-1 px-2 rounded text-xs border border-border-medium hover:bg-bg-hover"
                                     @click="pauseDownload(currentDownload.preset_id)"
                                     x-show="currentDownload.status === 'downloading'">
@@ -109,17 +109,60 @@
                         </div>
                     </div>
 
-                    <!-- Progress Bar -->
-                    <div class="progress h-2 bg-bg-tertiary rounded-full overflow-hidden mb-1">
-                        <div class="progress-bar-animated h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full transition-all duration-300"
-                             :style="`width: ${currentDownload.progress || 0}%`"></div>
-                    </div>
+                    <!-- Per-File Progress -->
+                    <template x-if="currentDownload.files && currentDownload.files.length > 0">
+                        <div class="space-y-2 mb-3">
+                            <template x-for="(file, index) in currentDownload.files" :key="file.path">
+                                <div class="bg-bg-tertiary rounded-md p-2">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-1.5 h-1.5 rounded-full"
+                                                  :class="{
+                                                      'bg-accent-success': file.status === 'completed',
+                                                      'bg-accent-primary animate-pulse': file.status === 'downloading',
+                                                      'bg-accent-warning': file.status === 'pending' || file.status === 'paused',
+                                                      'bg-accent-error': file.status === 'failed'
+                                                  }"></span>
+                                            <span class="text-xs truncate max-w-[200px]" x-text="file.path.split('/').pop()"></span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs text-text-tertiary"
+                                                  x-text="file.status === 'downloading' ? `${Math.round(file.progress)}%` : file.status"></span>
+                                            <span class="text-xs text-text-tertiary"
+                                                  x-show="file.status === 'downloading' && file.total > 0"
+                                                  x-text="`${formatBytes(file.downloaded)}/${formatBytes(file.total)}`"></span>
+                                        </div>
+                                    </div>
+                                    <!-- File Progress Bar -->
+                                    <div class="h-1 bg-bg-secondary rounded-full overflow-hidden"
+                                         x-show="file.status === 'downloading' || file.status === 'completed'">
+                                        <div class="h-full rounded-full transition-all duration-300"
+                                             :class="{
+                                                 'bg-accent-success': file.status === 'completed',
+                                                 'bg-gradient-to-r from-accent-primary to-accent-secondary': file.status === 'downloading'
+                                             }"
+                                             :style="`width: ${file.progress || 0}%`"></div>
+                                    </div>
+                                    <!-- Error message -->
+                                    <div x-show="file.status === 'failed'" class="text-xs text-accent-error mt-1" x-text="file.error"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
 
-                    <!-- Progress Stats -->
-                    <div class="flex items-center justify-between text-xs text-text-tertiary">
-                        <span x-text="formatProgress(currentDownload)"></span>
-                        <span x-text="currentDownload.eta ? `ETA: ${currentDownload.eta}` : ''"></span>
-                    </div>
+                    <!-- Overall Progress (fallback if no files data) -->
+                    <template x-if="!currentDownload.files || currentDownload.files.length === 0">
+                        <div>
+                            <div class="progress h-2 bg-bg-tertiary rounded-full overflow-hidden mb-1">
+                                <div class="progress-bar-animated h-full bg-gradient-to-r from-accent-primary to-accent-secondary rounded-full transition-all duration-300"
+                                     :style="`width: ${currentDownload.progress || 0}%`"></div>
+                            </div>
+                            <div class="flex items-center justify-between text-xs text-text-tertiary">
+                                <span x-text="formatProgress(currentDownload)"></span>
+                                <span x-text="currentDownload.eta ? `ETA: ${currentDownload.eta}` : ''"></span>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </template>
 
@@ -877,24 +920,49 @@ function downloadQueue() {
         handleWebSocketMessage(data) {
             if (data.type === 'download_progress') {
                 // Update current download progress
-                this.currentDownload = {
-                    preset_id: data.preset_id,
-                    name: data.preset_id, // Could be enhanced to show friendly name
-                    file: data.data.file,
-                    progress: data.data.progress,
-                    downloaded: data.data.downloaded,
-                    total: data.data.total,
-                    status: data.data.status,
-                    eta: this.calculateETA(data.data)
-                };
+                if (this.currentDownload && this.currentDownload.preset_id === data.preset_id) {
+                    // Update existing download with file info
+                    const fileInfo = data.data;
+                    if (fileInfo && fileInfo.file && this.currentDownload.files) {
+                        const fileIndex = this.currentDownload.files.findIndex(f => f.path === fileInfo.file);
+                        if (fileIndex >= 0) {
+                            this.currentDownload.files[fileIndex] = {
+                                ...this.currentDownload.files[fileIndex],
+                                progress: fileInfo.progress,
+                                downloaded: fileInfo.downloaded,
+                                total: fileInfo.total,
+                                status: fileInfo.status
+                            };
+                        }
+                    }
+                    this.currentDownload.status = data.data.status;
+                } else {
+                    // New download - will be fetched by refreshQueue
+                    this.refreshQueue();
+                }
+            } else if (data.type === 'download_complete') {
+                // Refresh to get updated status
+                this.refreshQueue();
+            } else if (data.type === 'download_failed') {
+                // Update file status if we have it
+                if (this.currentDownload && this.currentDownload.preset_id === data.preset_id) {
+                    this.currentDownload.status = 'failed';
+                    if (data.file && this.currentDownload.files) {
+                        const fileIndex = this.currentDownload.files.findIndex(f => f.path === data.file);
+                        if (fileIndex >= 0) {
+                            this.currentDownload.files[fileIndex].status = 'failed';
+                            this.currentDownload.files[fileIndex].error = data.error;
+                        }
+                    }
+                }
             } else if (data.type === 'queue_updated') {
                 // Update queue state
-                this.currentDownload = data.current ? {
-                    preset_id: data.current,
-                    name: data.current,
-                    progress: 0,
-                    status: 'downloading'
-                } : null;
+                if (data.current) {
+                    // New current download - fetch full details
+                    this.refreshQueue();
+                } else {
+                    this.currentDownload = null;
+                }
 
                 // Update queued items
                 this.queuedDownloads = data.queue.map(preset_id => ({
@@ -916,20 +984,31 @@ function downloadQueue() {
                             preset_id: data.current,
                             name: data.current,
                             progress: 0,
-                            status: 'downloading'
+                            status: 'downloading',
+                            files: [],
+                            completedFiles: 0,
+                            totalFiles: 0
                         };
 
-                        // Get detailed status for current download
+                        // Get detailed status for current download with all files
                         const statusResponse = await fetch(`/api/presets/${data.current}/status`);
                         if (statusResponse.ok) {
                             const statusData = await statusResponse.json();
-                            if (statusData.download_status && statusData.download_status.files) {
+                            if (statusData.download_status) {
+                                this.currentDownload.files = statusData.download_status.files || [];
+                                this.currentDownload.completedFiles = statusData.download_status.completed || 0;
+                                this.currentDownload.totalFiles = statusData.download_status.total_files || 0;
+                                this.currentDownload.status = statusData.download_status.downloading > 0 ? 'downloading' :
+                                                              statusData.download_status.pending > 0 ? 'pending' : 'downloading';
+
+                                // Calculate overall progress
                                 const downloadingFile = statusData.download_status.files.find(
                                     f => f.status === 'downloading'
                                 );
                                 if (downloadingFile) {
-                                    this.currentDownload.file = downloadingFile.path;
                                     this.currentDownload.progress = downloadingFile.progress;
+                                    this.currentDownload.downloaded = downloadingFile.downloaded;
+                                    this.currentDownload.total = downloadingFile.total;
                                 }
                             }
                         }

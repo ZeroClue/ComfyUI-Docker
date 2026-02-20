@@ -143,6 +143,15 @@ class DownloadManager:
                 self.current_download = preset_id
                 print(f"Starting download for preset: {preset_id}")
 
+                # Log download started
+                add_activity(
+                    activity_type="download",
+                    status="started",
+                    title="Model download started",
+                    subtitle=preset_id,
+                    link=f"/models?preset={preset_id}"
+                )
+
                 # Broadcast queue update
                 await self._broadcast_queue_update()
 
@@ -177,7 +186,14 @@ class DownloadManager:
                         break
 
                     if task.status == "failed":
-                        # Max retries exhausted
+                        # Max retries exhausted - log failure
+                        add_activity(
+                            activity_type="download",
+                            status="failed",
+                            title="Model download failed",
+                            subtitle=f"{preset_id}: {task.error}",
+                            link=f"/models?preset={preset_id}"
+                        )
                         await broadcast_download_progress(preset_id, {
                             "type": "download_failed",
                             "preset_id": preset_id,
@@ -190,7 +206,18 @@ class DownloadManager:
                 if preset_id in self.active_downloads:
                     # Check if any task is paused - if so, keep in active_downloads
                     any_paused = any(t.status == "paused" for t in tasks)
-                    if not any_paused:
+                    any_failed = any(t.status == "failed" for t in tasks)
+                    if not any_paused and not any_failed:
+                        # All files completed successfully
+                        add_activity(
+                            activity_type="download",
+                            status="completed",
+                            title="Preset installed",
+                            subtitle=preset_id,
+                            link=f"/models?preset={preset_id}"
+                        )
+                        del self.active_downloads[preset_id]
+                    elif not any_paused:
                         del self.active_downloads[preset_id]
 
                 self.current_download = None
@@ -250,7 +277,15 @@ class DownloadManager:
                     timeout=aiohttp.ClientTimeout(total=settings.DOWNLOAD_TIMEOUT)
                 ) as response:
                     if response.status != 200:
-                        raise Exception(f"HTTP {response.status}")
+                        # Provide helpful error messages for common HTTP errors
+                        error_msg = f"HTTP {response.status}"
+                        if response.status == 401:
+                            error_msg = "HTTP 401 - Authentication required. Check your HuggingFace token."
+                        elif response.status == 403:
+                            error_msg = "HTTP 403 - Access denied. You may need to accept the license agreement on HuggingFace."
+                        elif response.status == 404:
+                            error_msg = "HTTP 404 - File not found. The URL may be incorrect."
+                        raise Exception(error_msg)
 
                     # Get total file size
                     task.total_bytes = int(response.headers.get('Content-Length', 0))

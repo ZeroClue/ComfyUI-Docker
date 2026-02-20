@@ -131,28 +131,133 @@ async def get_resource_usage() -> ResourceUsage:
     # CPU usage
     cpu_percent = psutil.cpu_percent(interval=1)
 
-    # Memory usage
-    memory = psutil.virtual_memory()
-    memory_info = {
-        "total": memory.total,
-        "used": memory.used,
-        "available": memory.available,
-        "percent": memory.percent
-    }
+    # Memory usage - try to get container limit, fall back to host memory
+    memory_info = {}
+    try:
+        # Try cgroup v2 first (modern containers)
+        cgroup_limit_path = '/sys/fs/cgroup/memory.max'
+        cgroup_usage_path = '/sys/fs/cgroup/memory.current'
 
-    # Disk usage - prefer /workspace (network volume) if available
+        if Path(cgroup_limit_path).exists():
+            with open(cgroup_limit_path, 'r') as f:
+                limit_str = f.read().strip()
+                # "max" means no limit, fall back to host memory
+                if limit_str != 'max':
+                    total = int(limit_str)
+                else:
+                    memory = psutil.virtual_memory()
+                    total = memory.total
+
+            with open(cgroup_usage_path, 'r') as f:
+                used = int(f.read().strip())
+
+            available = max(0, total - used)
+            percent = (used / total * 100) if total > 0 else 0
+            memory_info = {
+                "total": total,
+                "used": used,
+                "available": available,
+                "percent": round(percent, 1)
+            }
+        else:
+            # Try cgroup v1
+            cgroup_v1_limit = '/sys/fs/cgroup/memory/memory.limit_in_bytes'
+            cgroup_v1_usage = '/sys/fs/cgroup/memory/memory.usage_in_bytes'
+
+            if Path(cgroup_v1_limit).exists():
+                with open(cgroup_v1_limit, 'r') as f:
+                    total = int(f.read().strip())
+
+                with open(cgroup_v1_usage, 'r') as f:
+                    used = int(f.read().strip())
+
+                # If limit is very large (>1TB), it's probably the host memory
+                if total > 1024**4:
+                    memory = psutil.virtual_memory()
+                    total = memory.total
+                    used = memory.used
+
+                available = max(0, total - used)
+                percent = (used / total * 100) if total > 0 else 0
+                memory_info = {
+                    "total": total,
+                    "used": used,
+                    "available": available,
+                    "percent": round(percent, 1)
+                }
+            else:
+                raise FileNotFoundError("No cgroup memory files")
+    except Exception:
+        # Fallback to psutil (shows host memory)
+        memory = psutil.virtual_memory()
+        memory_info = {
+            "total": memory.total,
+            "used": memory.used,
+            "available": memory.available,
+            "percent": memory.percent
+        }
+
+    # Disk usage - for network volumes, calculate actual usage with du
+    # Network volumes on RunPod show host filesystem size, not volume quota
     workspace_path = '/workspace'
+    disk_info = {"path": '/'}
+
     if Path(workspace_path).exists():
-        disk = psutil.disk_usage(workspace_path)
+        import subprocess
+        try:
+            # Get actual used space in /workspace
+            result = subprocess.run(
+                ['du', '-sb', workspace_path],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                used_bytes = int(result.stdout.split()[0])
+                # Try to get volume size from environment or default to 100GB
+                import os
+                volume_gb = int(os.environ.get('RUNPOD_VOLUME_GB', 100))
+                total_bytes = volume_gb * 1024 * 1024 * 1024
+                free_bytes = max(0, total_bytes - used_bytes)
+                percent = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+
+                disk_info = {
+                    "total": total_bytes,
+                    "used": used_bytes,
+                    "free": free_bytes,
+                    "percent": round(percent, 1),
+                    "path": workspace_path
+                }
+            else:
+                # Fallback to psutil if du fails
+                disk = psutil.disk_usage(workspace_path)
+                disk_info = {
+                    "total": disk.total,
+                    "used": disk.used,
+                    "free": disk.free,
+                    "percent": disk.percent,
+                    "path": workspace_path
+                }
+        except Exception as e:
+            # Fallback to psutil
+            disk = psutil.disk_usage(workspace_path)
+            disk_info = {
+                "total": disk.total,
+                "used": disk.used,
+                "free": disk.free,
+                "percent": disk.percent,
+                "path": workspace_path,
+                "error": str(e)
+            }
     else:
         disk = psutil.disk_usage('/')
-    disk_info = {
-        "total": disk.total,
-        "used": disk.used,
-        "free": disk.free,
-        "percent": disk.percent,
-        "path": workspace_path if Path(workspace_path).exists() else '/'
-    }
+        disk_info = {
+            "total": disk.total,
+            "used": disk.used,
+            "free": disk.free,
+            "percent": disk.percent,
+            "path": '/'
+        }
 
     # GPU information (if available)
     gpu_info = None

@@ -6,6 +6,7 @@ Handles preset listing, installation, and status checking
 import asyncio
 import aiohttp
 import time
+from datetime import datetime
 from typing import List, Dict, Optional, Any
 from pathlib import Path
 
@@ -301,6 +302,80 @@ async def download_preset(
 async def get_queue_status():
     """Get current download queue status"""
     return download_manager.get_queue_status()
+
+
+# Registry sync endpoints
+@router.get("/registry/sync")
+async def sync_registry():
+    """
+    Sync preset registry from remote source
+
+    Fetches the latest registry.json from GitHub and updates local cache
+    """
+    registry_url = "https://raw.githubusercontent.com/zeroclue/comfyui-presets/main/registry.json"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                registry_url,
+                timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
+                if response.status != 200:
+                    raise HTTPException(
+                        status_code=response.status,
+                        detail=f"Registry fetch failed with status {response.status}"
+                    )
+
+                registry = await response.json()
+
+        # Update local cache
+        preset_cache.set_config({"registry": registry})
+
+        return {
+            "status": "synced",
+            "timestamp": datetime.utcnow().isoformat(),
+            "presets_count": registry.get("stats", {}).get("total", 0)
+        }
+
+    except aiohttp.ClientError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to fetch registry: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error during sync: {str(e)}"
+        )
+
+
+@router.get("/registry/status")
+async def registry_status():
+    """
+    Get current registry status
+
+    Returns version, timestamp, and preset counts from cached registry
+    """
+    config = preset_cache.get_config()
+
+    # Check if we have a cached registry
+    if config and "registry" in config:
+        registry = config["registry"]
+        stats = registry.get("stats", {})
+
+        return {
+            "status": "loaded",
+            "version": registry.get("version"),
+            "generated_at": registry.get("generated_at"),
+            "total_presets": stats.get("total", 0),
+            "categories": stats.get("by_category", {}),
+            "last_sync": preset_cache._config_timestamp if preset_cache._config_timestamp else None
+        }
+
+    return {
+        "status": "not_loaded",
+        "message": "Registry not cached. Call /registry/sync to fetch."
+    }
 
 
 @router.get("/{preset_id}/status")

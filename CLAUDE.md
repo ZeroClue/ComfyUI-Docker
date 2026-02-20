@@ -160,12 +160,16 @@ All sections use real API data (no mockups):
 - ✅ Model listing/validation with installation status
 - ✅ Workflow execution via ComfyUI API
 - ✅ System monitoring (CPU, memory, disk, GPU)
+- ✅ System metrics: Container-aware memory (cgroups), workspace disk usage (du)
 - ✅ WebSocket real-time updates
 - ✅ Dashboard stats (connected to real data)
 - ✅ Page routes (/generate, /models, /workflows, /gallery, /settings, /pro)
 - ✅ Gallery view (implemented 2026-02-19)
 - ✅ Persistence layer - SQLite database for settings, activity, history (2026-02-20)
 - ✅ HF token support for gated model downloads (2026-02-20)
+- ✅ Per-file download progress display (2026-02-20)
+- ✅ Download pause/resume functionality (2026-02-20)
+- ✅ HTTP error messages (401 auth, 403 license, 404 not found) (2026-02-20)
 
 ## Preset Management System
 Located in `scripts/preset_manager/` with three core components:
@@ -530,6 +534,9 @@ These documents are gitignored but tracked with `git add -f`.
 - **Runtime imports for globals**: Persistence globals (`settings_manager`, `activity_logger`) are None at module load time. Import the module (`from ..core import persistence`) and access the attribute at runtime (`persistence.settings_manager`), not the variable directly.
 - **FastAPI router prefixes**: Avoid duplicate prefixes. If router has `prefix="/activity"` and `include_router()` also has `prefix="/activity"`, the route becomes `/api/activity/activity/recent`. Only define prefix in one place.
 - **Asyncio.Queue lazy init**: Create queues inside async context, not at class instantiation time (no event loop yet). Use property with lazy initialization.
+- **Download pause bug**: When pausing download, the loop breaks but code continues to set `status="completed"`. Add explicit check for pause/cancel status before marking complete.
+- **Container memory metrics**: `psutil.virtual_memory()` returns host memory in containers. Read from `/sys/fs/cgroup/memory.max` (cgroup v2) or `/sys/fs/cgroup/memory/memory.limit_in_bytes` (cgroup v1) for container limit.
+- **Network volume disk metrics**: `psutil.disk_usage('/workspace')` returns host filesystem size on RunPod network volumes. Use `du -sb /workspace` for actual usage and `RUNPOD_VOLUME_GB` env var for total size.
 
 ### RunPod Pod Management
 **CRITICAL**: Always verify pod status after stop command:

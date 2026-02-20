@@ -74,6 +74,38 @@ Apps are baked into container image at `/app/`. Models live on network volume at
 - Follows 12-factor app principles
 - Native RunPod architecture alignment
 
+## Persistence Layer
+
+SQLite database at `/workspace/data/dashboard.db` provides persistent storage across pod restarts.
+
+**Database Tables:**
+- `settings`: Key-value store for user preferences (theme, HF token, retention days)
+- `activity`: Activity log with 30-day auto-cleanup (generations, downloads, errors)
+- `download_history`: Permanent record of download operations
+
+**Key Files:**
+- `dashboard/core/database.py`: SQLite connection, schema, query helpers
+- `dashboard/core/persistence.py`: SettingsManager, ActivityLogger, DownloadHistory classes
+
+**CRITICAL Import Pattern:**
+Persistence globals (`settings_manager`, `activity_logger`) are initialized at startup. Import the module, not the variable:
+```python
+# WRONG - binds to None at import time
+from ..core.persistence import settings_manager
+
+# CORRECT - accesses runtime value
+from ..core import persistence
+persistence.settings_manager.get("key")
+```
+
+**API Endpoints:**
+- `GET /api/settings` - Get settings (HF token masked)
+- `PATCH /api/settings` - Update setting
+- `POST /api/settings/hf-token` - Save HF token
+- `POST /api/settings/hf-token/validate` - Validate token against HuggingFace API
+- `GET /api/activity/recent` - Get activity log
+- `POST /api/activity/clear` - Clear activity history
+
 ## Unified Dashboard
 FastAPI-based unified interface replacing Preset Manager and Studio.
 
@@ -132,6 +164,8 @@ All sections use real API data (no mockups):
 - ✅ Dashboard stats (connected to real data)
 - ✅ Page routes (/generate, /models, /workflows, /gallery, /settings, /pro)
 - ✅ Gallery view (implemented 2026-02-19)
+- ✅ Persistence layer - SQLite database for settings, activity, history (2026-02-20)
+- ✅ HF token support for gated model downloads (2026-02-20)
 
 ## Preset Management System
 Located in `scripts/preset_manager/` with three core components:
@@ -224,8 +258,11 @@ more free space. Successful builds typically take 25-30 minutes.
 - `docker-bake.hcl`: Build matrix configuration for all variants
 - `scripts/start.sh`: Container entrypoint and service orchestration
 - `dashboard/main.py`: FastAPI application entry point for Unified Dashboard
-- `dashboard/api/`: REST API endpoints (workflows.py, models.py, presets.py, system.py)
+- `dashboard/api/`: REST API endpoints (workflows.py, models.py, presets.py, system.py, settings.py, activity.py)
 - `dashboard/core/comfyui_client.py`: ComfyUI API integration for workflow execution
+- `dashboard/core/database.py`: SQLite database connection and schema
+- `dashboard/core/persistence.py`: SettingsManager, ActivityLogger, DownloadHistory classes
+- `dashboard/core/downloader.py`: Background download manager with HF token support
 - `scripts/preset_manager/core.py`: Main preset management logic and ModelManager class
 - `config/presets.yaml`: Central preset configuration (currently 56 presets)
 - `scripts/preset_updater.py`: GitHub-based preset updating system
@@ -242,6 +279,10 @@ more free space. Successful builds typically take 25-30 minutes.
 - `ACCESS_PASSWORD`: Password for web interfaces (code-server, Jupyter, dashboard)
 - `ENABLE_CODE_SERVER`: Enable/disable VS Code server (default: true)
 - `TIME_ZONE`: Container timezone (default: Etc/UTC)
+
+**User Settings** (configured via Settings page, stored in SQLite):
+- `HF Token`: HuggingFace token for downloading gated models (configure at `/settings`)
+- `Theme`: Dark/light theme preference
 
 ## RunPod Deployment
 
@@ -442,12 +483,12 @@ Major features have design docs in `docs/plans/`:
 
 These documents are gitignored but tracked with `git add -f`.
 
-## Dashboard Known Issues (2026-02-19)
+## Dashboard Known Issues (2026-02-20)
 
 **Download Queue:**
-- Downloads are queued but not executing (queue processor not running)
-- Likely issue: asyncio.create_task() for _process_queue() not executing properly
-- Needs investigation in `dashboard/core/downloader.py`
+- ✅ FIXED: Queue processor now runs correctly with lazy queue initialization
+- ✅ HF token support for gated models (configure in Settings)
+- Note: Gated HuggingFace models require token (returns 401 without it)
 
 **Models Page:**
 - ✅ Category filter working (caching implemented)
@@ -484,6 +525,11 @@ These documents are gitignored but tracked with `git add -f`.
 - **FastAPI route ordering**: Literal routes must come BEFORE parameterized routes. `/queue/status` must be defined before `/{preset_id}/status` or FastAPI matches `preset_id="queue"`
 - **psutil.version_info**: It's a tuple, not namedtuple. Use `sys.version_info` for Python version
 - **activity.py current**: `get_queue_status()` returns `current` as string (preset_id), not dict with properties
+
+### Bug Fixes Applied (2026-02-20)
+- **Runtime imports for globals**: Persistence globals (`settings_manager`, `activity_logger`) are None at module load time. Import the module (`from ..core import persistence`) and access the attribute at runtime (`persistence.settings_manager`), not the variable directly.
+- **FastAPI router prefixes**: Avoid duplicate prefixes. If router has `prefix="/activity"` and `include_router()` also has `prefix="/activity"`, the route becomes `/api/activity/activity/recent`. Only define prefix in one place.
+- **Asyncio.Queue lazy init**: Create queues inside async context, not at class instantiation time (no event loop yet). Use property with lazy initialization.
 
 ### RunPod Pod Management
 **CRITICAL**: Always verify pod status after stop command:

@@ -225,10 +225,18 @@ class DownloadManager:
         # Create parent directories
         full_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Prepare headers with HF token if available
+        headers = {}
+        from .persistence import settings_manager
+        if settings_manager and settings_manager.has_hf_token():
+            token = settings_manager.get("hf_token")
+            headers["Authorization"] = f"Bearer {token}"
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     task.file_url,
+                    headers=headers,
                     timeout=aiohttp.ClientTimeout(total=settings.DOWNLOAD_TIMEOUT)
                 ) as response:
                     if response.status != 200:
@@ -284,6 +292,9 @@ class DownloadManager:
             })
 
         except Exception as e:
+            # Log to console for debugging
+            print(f"Download failed for {task.file_path}: {e}")
+
             task.status = "failed"
             task.error = str(e)
 

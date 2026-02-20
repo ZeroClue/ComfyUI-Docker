@@ -29,6 +29,12 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager for startup/shutdown events"""
     # Startup
     print("Starting ComfyUI Unified Dashboard...")
+
+    # Initialize database and persistence
+    from .core.persistence import init_persistence
+    init_persistence()
+    print("Database initialized")
+
     print(f"Dashboard URL: http://localhost:{settings.DASHBOARD_PORT}")
     print(f"ComfyUI API: http://localhost:{settings.COMFYUI_PORT}")
 

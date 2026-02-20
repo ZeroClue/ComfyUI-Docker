@@ -112,20 +112,88 @@ comfyui_client = ComfyUIClient(base_url=f"http://localhost:{settings.COMFYUI_POR
 
 
 async def get_presets_from_config() -> Dict:
-    """Load presets from configuration file with caching"""
-    import yaml
+    """Load presets from configuration file with caching
 
-    # Check cache first
+    Supports both old monolithic YAML and new registry format:
+    1. Try new registry.json format first (loads individual preset.yaml files)
+    2. Fallback to old monolithic presets.yaml
+    """
+    import yaml
+    import json
+
+    # Check cache first - return if cached and has presets
     cached = preset_cache.get_config()
-    if cached:
+    if cached and "presets" in cached:
         return cached
 
+    # Try new registry format first
+    registry_path = Path(settings.PRESET_CONFIG_PATH).parent / "registry.json"
+    if registry_path.exists():
+        try:
+            with open(registry_path, 'r') as f:
+                registry = json.load(f)
+
+            # Convert registry to expected format
+            config = {
+                "metadata": {
+                    "version": registry.get("version", "1.0.0"),
+                    "source": "registry",
+                    "generated_at": registry.get("generated_at", ""),
+                    "schema_version": registry.get("schema_version", "1.0")
+                },
+                "categories": registry.get("categories", {
+                    "Video Generation": {"type": "video", "description": "Video generation models"},
+                    "Image Generation": {"type": "image", "description": "Image generation models"},
+                    "Audio Generation": {"type": "audio", "description": "Audio generation models"}
+                }),
+                "presets": {}
+            }
+
+            # Load each preset file referenced in registry
+            config_dir = Path(settings.PRESET_CONFIG_PATH).parent
+            for preset_id, preset_meta in registry.get("presets", {}).items():
+                preset_path = preset_meta.get("path")
+                if preset_path:
+                    # Resolve path relative to config directory
+                    full_path = config_dir / preset_path
+                    if full_path.exists():
+                        try:
+                            with open(full_path, 'r') as pf:
+                                preset_data = yaml.safe_load(pf)
+                                if preset_data:
+                                    preset_data["installed"] = False  # Will be checked separately
+                                    config["presets"][preset_id] = preset_data
+                        except (yaml.YAMLError, IOError) as e:
+                            # Log warning but continue loading other presets
+                            print(f"Warning: Failed to load preset {preset_id} from {full_path}: {e}")
+                            continue
+
+            # Only cache if we successfully loaded some presets
+            if config["presets"]:
+                preset_cache.set_config(config)
+                return config
+
+            # If registry exists but no presets loaded, fall through to old format
+
+        except (json.JSONDecodeError, IOError) as e:
+            # If registry parsing fails, fall through to old format
+            print(f"Warning: Failed to parse registry.json: {e}")
+
+    # Fallback to old monolithic format
     config_path = Path(settings.PRESET_CONFIG_PATH)
     if not config_path.exists():
         raise HTTPException(status_code=404, detail="Preset configuration not found")
 
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
+
+    # Ensure config has expected structure
+    if "presets" not in config:
+        config["presets"] = {}
+    if "categories" not in config:
+        config["categories"] = {}
+    if "metadata" not in config:
+        config["metadata"] = {"source": "monolithic"}
 
     # Cache the result
     preset_cache.set_config(config)

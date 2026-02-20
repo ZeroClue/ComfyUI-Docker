@@ -162,6 +162,20 @@ async def gallery_page(request: Request):
     )
 
 
+@app.get("/storage", response_class=HTMLResponse)
+async def storage_page(request: Request):
+    """Render storage management interface"""
+    return templates.TemplateResponse(
+        "storage.html",
+        {
+            "request": request,
+            "title": "Storage Management - ComfyUI Dashboard",
+            "comfyui_url": f"http://localhost:{settings.COMFYUI_PORT}",
+            "api_base": "/api"
+        }
+    )
+
+
 @app.get("/pro", response_class=HTMLResponse)
 async def pro_page(request: Request):
     """Render pro/features interface"""

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Storage Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-6">Storage Management</h1>
+
+    <!-- Disk Usage -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <h2 class="text-lg font-semibold mb-4">Disk Usage</h2>
+        <div class="mb-4">
+            <div class="flex justify-between mb-1">
+                <span class="text-sm text-gray-600 dark:text-gray-400">Used</span>
+                <span class="text-sm font-medium" id="disk-used">--</span>
+            </div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+                <div class="bg-blue-600 h-4 rounded-full transition-all duration-300" id="disk-bar" style="width: 0%"></div>
+            </div>
+            <div class="flex justify-between mt-1">
+                <span class="text-xs text-gray-500" id="disk-percent">0%</span>
+                <span class="text-xs text-gray-500" id="disk-total">-- total</span>
+            </div>
+        </div>
+
+        <!-- By Category -->
+        <h3 class="text-md font-medium mb-2 mt-4">By Category</h3>
+        <div class="space-y-2" id="category-breakdown">
+            <div class="flex justify-between items-center">
+                <span class="text-sm">Video Models</span>
+                <span class="text-sm text-gray-500" id="video-size">--</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-sm">Image Models</span>
+                <span class="text-sm text-gray-500" id="image-size">--</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-sm">Audio Models</span>
+                <span class="text-sm text-gray-500" id="audio-size">--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cleanup Suggestions -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-lg font-semibold mb-4">Cleanup Suggestions</h2>
+        <div id="cleanup-suggestions" class="space-y-4">
+            <p class="text-gray-500 text-sm">Analyzing storage...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadStorageData() {
+    try {
+        const resp = await fetch('/api/system/resources');
+        const data = await resp.json();
+
+        // Update disk usage
+        if (data.disk) {
+            document.getElementById('disk-used').textContent = data.disk.used_formatted || '--';
+            document.getElementById('disk-total').textContent = (data.disk.total_formatted || '--') + ' total';
+            document.getElementById('disk-percent').textContent = (data.disk.percent || 0) + '%';
+            document.getElementById('disk-bar').style.width = (data.disk.percent || 0) + '%';
+        }
+    } catch (e) {
+        console.error('Failed to load storage data:', e);
+    }
+}
+
+loadStorageData();
+setInterval(loadStorageData, 30000);
+</script>
+{% endblock %}

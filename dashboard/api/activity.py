@@ -1,100 +1,61 @@
 """
-Activity feed API endpoints
-Combines generation history and download events into unified feed
+Activity API endpoints - persisted to database
 """
 
-from typing import List, Dict, Optional
-from datetime import datetime
-from collections import deque
-from pydantic import BaseModel
-import uuid
-
 from fastapi import APIRouter
+from typing import Optional, List
+from pydantic import BaseModel
 
-router = APIRouter()
+from ..core.persistence import activity_logger
 
-# In-memory activity store (max 50 items)
-activity_store: deque = deque(maxlen=50)
+router = APIRouter(prefix="/activity", tags=["activity"])
 
 
 class ActivityItem(BaseModel):
-    """Single activity item"""
-    id: str
-    type: str  # generation, download
-    status: str  # completed, failed, started
-    title: str
-    subtitle: str
-    timestamp: str
-    link: str
+    id: int
+    type: str
+    status: str
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    details: Optional[dict] = None
+    created_at: str
 
 
 class ActivityResponse(BaseModel):
-    """Response for activity list"""
     activities: List[ActivityItem]
+    total: int
 
 
 def add_activity(
     activity_type: str,
     status: str,
-    title: str,
-    subtitle: str,
-    link: str = "#"
-) -> ActivityItem:
-    """Add a new activity to the store"""
-    activity = ActivityItem(
-        id=f"{activity_type}_{uuid.uuid4().hex[:8]}",
-        type=activity_type,
-        status=status,
-        title=title,
-        subtitle=subtitle,
-        timestamp=datetime.utcnow().isoformat() + "Z",
-        link=link
-    )
-    activity_store.appendleft(activity)
-    return activity
-
-
-def get_activities(limit: int = 10) -> List[ActivityItem]:
-    """Get recent activities"""
-    return list(activity_store)[:limit]
-
-
-def clear_activities():
-    """Clear all activities"""
-    activity_store.clear()
+    title: Optional[str] = None,
+    subtitle: Optional[str] = None,
+    details: Optional[dict] = None
+):
+    """Add an activity to the log (used by other modules)"""
+    if activity_logger:
+        activity_logger.log(
+            activity_type=activity_type,
+            status=status,
+            title=title,
+            subtitle=subtitle,
+            details=details
+        )
 
 
 @router.get("/recent", response_model=ActivityResponse)
-async def get_recent_activity(limit: int = 10):
-    """Get recent activity feed combining generations and downloads"""
-    from .presets import download_manager
-
-    activities = list(activity_store)
-
-    # Add current download as activity if active
-    queue_status = download_manager.get_queue_status()
-    current = queue_status.get("current")
-    if current:
-        # current is the preset_id string, not a dict
-        preset_id = current if isinstance(current, str) else current.get('preset_id', 'unknown')
-        dl_activity = ActivityItem(
-            id=f"dl_{preset_id}",
-            type="download",
-            status="started",
-            title=f"Downloading {preset_id}",
-            subtitle="Download in progress",
-            timestamp=datetime.utcnow().isoformat() + "Z",
-            link=f"/models?preset={preset_id}"
-        )
-        # Insert at beginning if not already there
-        if not activities or activities[0].id != dl_activity.id:
-            activities.insert(0, dl_activity)
-
-    return ActivityResponse(activities=activities[:limit])
+async def get_recent_activity(limit: int = 20, activity_type: Optional[str] = None):
+    """Get recent activity from database"""
+    activities = activity_logger.get_recent(limit=limit, activity_type=activity_type)
+    return ActivityResponse(
+        activities=[ActivityItem(**a) for a in activities],
+        total=len(activities)
+    )
 
 
-@router.delete("/clear")
-async def clear_activity_history():
+@router.post("/clear")
+async def clear_activity():
     """Clear all activity history"""
-    clear_activities()
-    return {"status": "success", "message": "Activity history cleared"}
+    count = activity_logger.clear()
+    return {"status": "ok", "deleted": count}

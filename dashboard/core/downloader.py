@@ -171,8 +171,7 @@ class DownloadManager:
                     activity_type="download",
                     status="started",
                     title="Model download started",
-                    subtitle=preset_id,
-                    link=f"/models?preset={preset_id}"
+                    subtitle=preset_id
                 )
 
                 # Broadcast queue update
@@ -214,8 +213,7 @@ class DownloadManager:
                             activity_type="download",
                             status="failed",
                             title="Model download failed",
-                            subtitle=f"{preset_id}: {task.error}",
-                            link=f"/models?preset={preset_id}"
+                            subtitle=f"{preset_id}: {task.error}"
                         )
                         await broadcast_download_progress(preset_id, {
                             "type": "download_failed",
@@ -236,8 +234,7 @@ class DownloadManager:
                             activity_type="download",
                             status="completed",
                             title="Preset installed",
-                            subtitle=preset_id,
-                            link=f"/models?preset={preset_id}"
+                            subtitle=preset_id
                         )
                         del self.active_downloads[preset_id]
                     elif not any_paused:
@@ -362,8 +359,7 @@ class DownloadManager:
                 activity_type="download",
                 status="completed",
                 title="Model download completed",
-                subtitle=task.preset_id,
-                link=f"/models?preset={task.preset_id}"
+                subtitle=task.preset_id
             )
 
             # Broadcast completion

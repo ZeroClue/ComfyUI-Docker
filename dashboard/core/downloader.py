@@ -84,10 +84,14 @@ class DownloadManager:
         if preset_id in self.active_downloads:
             return f"Download already active for preset {preset_id}"
 
-        # Check if already in queue
-        for item in list(self.download_queue._queue):
-            if isinstance(item, tuple) and item[0] == preset_id:
-                return f"Preset {preset_id} is already in download queue"
+        # Check if already in queue (safely access internal queue)
+        try:
+            if hasattr(self.download_queue, '_queue'):
+                for item in list(self.download_queue._queue):
+                    if isinstance(item, tuple) and item[0] == preset_id:
+                        return f"Preset {preset_id} is already in download queue"
+        except Exception:
+            pass  # If we can't check the queue, just proceed
 
         # Create download tasks
         tasks = []
@@ -123,13 +127,18 @@ class DownloadManager:
         # Start queue processor if not running
         if not self.queue_processor_running:
             self._processor_task = asyncio.create_task(self._process_queue())
+            # Give the processor a moment to start
+            await asyncio.sleep(0)
 
         return download_id
 
     async def _process_queue(self):
         """Process downloads sequentially from queue"""
         self.queue_processor_running = True
-        print("Download queue processor started")
+        print("=" * 50)
+        print("Download queue processor STARTED")
+        print(f"Queue size at start: {self.download_queue.qsize()}")
+        print("=" * 50)
 
         while True:
             try:

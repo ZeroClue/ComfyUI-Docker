@@ -480,6 +480,7 @@ function modelsPage() {
         handleWebSocketMessage(data) {
             if (data.type === 'download_progress') {
                 const presetId = data.preset_id || data.presetId;
+                const status = data.data?.status || data.status || 'downloading';
 
                 // Update current download progress
                 if (presetId === this.downloadQueue.current) {
@@ -491,13 +492,13 @@ function modelsPage() {
                 const model = this.models.find(m => m.id === presetId);
                 if (model) {
                     model.progress = data.data?.progress || data.progress || 0;
-                    model.status = 'downloading';
+                    model.status = status;
                     // Dispatch custom event for the card
                     window.dispatchEvent(new CustomEvent('download-progress', {
                         detail: {
                             presetId: presetId,
                             progress: model.progress,
-                            status: 'downloading'
+                            status: status
                         }
                     }));
                 }

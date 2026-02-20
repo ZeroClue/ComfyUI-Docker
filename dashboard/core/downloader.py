@@ -148,7 +148,7 @@ class DownloadManager:
 
                 # Download files sequentially within preset
                 for task in tasks:
-                    if task.status == "cancelled":
+                    if task.status in ("cancelled", "paused"):
                         continue
 
                     retry_count = 0
@@ -156,6 +156,9 @@ class DownloadManager:
                         await self._download_file(task)
 
                         if task.status == "completed":
+                            break
+                        elif task.status == "paused":
+                            # Stop processing this preset when paused
                             break
                         elif task.status == "failed":
                             retry_count += 1
@@ -169,6 +172,10 @@ class DownloadManager:
                                 await asyncio.sleep(delay)
                                 task.status = "downloading"
 
+                    # If paused, stop processing this preset entirely
+                    if task.status == "paused":
+                        break
+
                     if task.status == "failed":
                         # Max retries exhausted
                         await broadcast_download_progress(preset_id, {
@@ -179,9 +186,12 @@ class DownloadManager:
                             "retry_count": self.retry_config["max_retries"]
                         })
 
-                # Mark preset complete
+                # Mark preset complete only if not paused
                 if preset_id in self.active_downloads:
-                    del self.active_downloads[preset_id]
+                    # Check if any task is paused - if so, keep in active_downloads
+                    any_paused = any(t.status == "paused" for t in tasks)
+                    if not any_paused:
+                        del self.active_downloads[preset_id]
 
                 self.current_download = None
                 await self._broadcast_queue_update()
@@ -256,7 +266,10 @@ class DownloadManager:
                             task.downloaded_bytes += len(chunk)
 
                             if task.total_bytes > 0:
-                                task.progress = (task.downloaded_bytes / task.total_bytes) * 100
+                                task.progress = min((task.downloaded_bytes / task.total_bytes) * 100, 100.0)
+                            else:
+                                # Unknown total - show downloaded bytes instead of percentage
+                                task.progress = -1  # Signal unknown progress
 
                             # Broadcast progress
                             await broadcast_download_progress(task.preset_id, {
@@ -266,6 +279,17 @@ class DownloadManager:
                                 "total": task.total_bytes,
                                 "status": task.status
                             })
+
+            # Check if we exited due to pause/cancel
+            if task.status in ("paused", "cancelled"):
+                await broadcast_download_progress(task.preset_id, {
+                    "file": task.file_path,
+                    "progress": task.progress,
+                    "downloaded": task.downloaded_bytes,
+                    "total": task.total_bytes,
+                    "status": task.status
+                })
+                return  # Exit without marking as completed
 
             task.status = "completed"
             task.completed_at = datetime.utcnow()

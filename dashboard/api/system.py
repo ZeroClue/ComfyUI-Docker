@@ -4,6 +4,7 @@ Handles system monitoring, resource usage, and service status
 """
 
 from typing import Dict, List, Optional
+from pathlib import Path
 import shutil
 import sys
 import psutil
@@ -139,13 +140,18 @@ async def get_resource_usage() -> ResourceUsage:
         "percent": memory.percent
     }
 
-    # Disk usage
-    disk = psutil.disk_usage('/')
+    # Disk usage - prefer /workspace (network volume) if available
+    workspace_path = '/workspace'
+    if Path(workspace_path).exists():
+        disk = psutil.disk_usage(workspace_path)
+    else:
+        disk = psutil.disk_usage('/')
     disk_info = {
         "total": disk.total,
         "used": disk.used,
         "free": disk.free,
-        "percent": disk.percent
+        "percent": disk.percent,
+        "path": workspace_path if Path(workspace_path).exists() else '/'
     }
 
     # GPU information (if available)

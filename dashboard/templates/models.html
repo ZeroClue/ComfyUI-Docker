@@ -146,6 +146,14 @@
                     <div class="text-sm font-medium text-accent-primary" x-text="model.size"></div>
                 </div>
 
+                <!-- VRAM Requirements -->
+                <div x-show="model.vram_gb" class="flex items-center gap-2 text-sm text-text-tertiary mb-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    <span x-text="`${model.vram_gb}GB VRAM recommended`"></span>
+                </div>
+
                 <!-- Description -->
                 <div class="text-text-secondary text-sm leading-relaxed mb-3 min-h-10" x-text="model.description"></div>
 
@@ -262,6 +270,10 @@
                                 <div>
                                     <span class="text-text-secondary">Type:</span>
                                     <span class="ml-2 capitalize" x-text="model.type"></span>
+                                </div>
+                                <div x-show="model.vram_gb">
+                                    <span class="text-text-secondary">VRAM:</span>
+                                    <span class="ml-2 font-medium" x-text="`${model.vram_gb}GB recommended`"></span>
                                 </div>
                             </div>
 
@@ -569,7 +581,8 @@ function modelsPage() {
                         type: preset.type,
                         status: preset.installed ? 'installed' : 'available',
                         progress: preset.installed ? 100 : 0,
-                        tags: preset.tags || []
+                        tags: preset.tags || [],
+                        vram_gb: preset.requirements?.vram_gb || null
                     }));
                     this.calculateCounts();
                 }

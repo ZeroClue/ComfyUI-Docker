@@ -7,9 +7,14 @@ from pydantic import BaseModel
 from typing import Optional
 import httpx
 
-from ..core.persistence import settings_manager
+from ..core import persistence
 
 router = APIRouter(prefix="/settings", tags=["settings"])
+
+
+def get_settings_manager():
+    """Get settings manager at runtime (after init_persistence has run)"""
+    return persistence.settings_manager
 
 
 class SettingsUpdate(BaseModel):
@@ -31,9 +36,9 @@ class SettingsResponse(BaseModel):
 async def get_settings():
     """Get current settings (token masked)"""
     return SettingsResponse(
-        theme=settings_manager.get("theme") or "dark",
-        hf_token_set=settings_manager.has_hf_token(),
-        activity_retention_days=int(settings_manager.get("activity_retention_days") or "30")
+        theme=get_settings_manager().get("theme") or "dark",
+        hf_token_set=get_settings_manager().has_hf_token(),
+        activity_retention_days=int(get_settings_manager().get("activity_retention_days") or "30")
     )
 
 
@@ -44,7 +49,7 @@ async def update_setting(update: SettingsUpdate):
     if update.key not in valid_keys:
         raise HTTPException(400, f"Invalid setting key: {update.key}")
 
-    settings_manager.set(update.key, update.value)
+    get_settings_manager().set(update.key, update.value)
     return {"status": "ok", "key": update.key}
 
 
@@ -59,14 +64,14 @@ async def set_hf_token(data: HFTokenUpdate):
     if not token.startswith("hf_"):
         raise HTTPException(400, "Invalid token format. Token should start with 'hf_'")
 
-    settings_manager.set("hf_token", token)
+    get_settings_manager().set("hf_token", token)
     return {"status": "ok", "message": "Token saved"}
 
 
 @router.post("/hf-token/validate")
 async def validate_hf_token():
     """Validate the current HF token"""
-    token = settings_manager.get("hf_token")
+    token = get_settings_manager().get("hf_token")
     if not token:
         return {"valid": False, "error": "No token configured"}
 
@@ -89,5 +94,5 @@ async def validate_hf_token():
 @router.delete("/hf-token")
 async def delete_hf_token():
     """Delete the HF token"""
-    settings_manager.delete("hf_token")
+    get_settings_manager().delete("hf_token")
     return {"status": "ok", "message": "Token deleted"}

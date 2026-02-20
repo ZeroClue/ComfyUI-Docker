@@ -6,9 +6,14 @@ from fastapi import APIRouter
 from typing import Optional, List
 from pydantic import BaseModel
 
-from ..core.persistence import activity_logger
+from ..core import persistence
 
 router = APIRouter(prefix="/activity", tags=["activity"])
+
+
+def get_activity_logger():
+    """Get activity logger at runtime (after init_persistence has run)"""
+    return persistence.activity_logger
 
 
 class ActivityItem(BaseModel):
@@ -34,8 +39,8 @@ def add_activity(
     details: Optional[dict] = None
 ):
     """Add an activity to the log (used by other modules)"""
-    if activity_logger:
-        activity_logger.log(
+    if get_activity_logger():
+        get_activity_logger().log(
             activity_type=activity_type,
             status=status,
             title=title,
@@ -47,7 +52,7 @@ def add_activity(
 @router.get("/recent", response_model=ActivityResponse)
 async def get_recent_activity(limit: int = 20, activity_type: Optional[str] = None):
     """Get recent activity from database"""
-    activities = activity_logger.get_recent(limit=limit, activity_type=activity_type)
+    activities = get_activity_logger().get_recent(limit=limit, activity_type=activity_type)
     return ActivityResponse(
         activities=[ActivityItem(**a) for a in activities],
         total=len(activities)
@@ -57,5 +62,5 @@ async def get_recent_activity(limit: int = 20, activity_type: Optional[str] = No
 @router.post("/clear")
 async def clear_activity():
     """Clear all activity history"""
-    count = activity_logger.clear()
+    count = get_activity_logger().clear()
     return {"status": "ok", "deleted": count}

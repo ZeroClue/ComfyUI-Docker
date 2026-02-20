@@ -227,9 +227,9 @@ class DownloadManager:
 
         # Prepare headers with HF token if available
         headers = {}
-        from .persistence import settings_manager
-        if settings_manager and settings_manager.has_hf_token():
-            token = settings_manager.get("hf_token")
+        from . import persistence
+        if persistence.settings_manager and persistence.settings_manager.has_hf_token():
+            token = persistence.settings_manager.get("hf_token")
             headers["Authorization"] = f"Bearer {token}"
 
         try:

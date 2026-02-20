@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from ..core.config import settings
 from ..core.downloader import DownloadManager
 from ..core.comfyui_client import ComfyUIClient
-from ..core.persistence import settings_manager
+from ..core import persistence
 
 
 # Cache for preset configuration and installation status
@@ -440,7 +440,7 @@ async def install_preset(preset_id: str, force: bool = False):
         "huggingface.co" in f.get("url", "")
         for f in preset_data.get("files", [])
     )
-    if has_hf_urls and not settings_manager.has_hf_token():
+    if has_hf_urls and not persistence.settings_manager.has_hf_token():
         return {
             "preset_id": preset_id,
             "status": "token_required",

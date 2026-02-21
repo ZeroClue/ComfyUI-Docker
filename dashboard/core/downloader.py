@@ -16,6 +16,46 @@ from .websocket import broadcast_download_progress
 from ..api.activity import add_activity
 
 
+def calculate_sha256(file_path: Path) -> str:
+    """Calculate SHA256 hash of a file
+
+    Args:
+        file_path: Path to the file to hash
+
+    Returns:
+        Hexadecimal SHA256 hash string
+    """
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256_hash.update(chunk)
+    return sha256_hash.hexdigest()
+
+
+def parse_checksum(checksum: str) -> tuple[str, str]:
+    """Parse checksum string into algorithm and hash
+
+    Args:
+        checksum: Checksum string in format "algorithm:hash" (e.g., "sha256:abc123...")
+
+    Returns:
+        Tuple of (algorithm, hash)
+
+    Raises:
+        ValueError: If checksum format is invalid or algorithm is unsupported
+    """
+    if ':' not in checksum:
+        raise ValueError(f"Invalid checksum format: expected 'algorithm:hash', got '{checksum}'")
+
+    algorithm, hash_value = checksum.split(':', 1)
+    algorithm = algorithm.lower()
+
+    if algorithm != 'sha256':
+        raise ValueError(f"Unsupported checksum algorithm: {algorithm}. Only sha256 is supported.")
+
+    return algorithm, hash_value
+
+
 class DownloadTask:
     """Represents a single download task"""
 
@@ -24,12 +64,14 @@ class DownloadTask:
         preset_id: str,
         file_url: str,
         file_path: str,
-        file_size: Optional[str] = None
+        file_size: Optional[str] = None,
+        checksum: Optional[str] = None
     ):
         self.preset_id = preset_id
         self.file_url = file_url
         self.file_path = file_path
         self.file_size = file_size
+        self.checksum = checksum  # Expected checksum in format "sha256:abc123..."
         self.status = "pending"
         self.progress = 0.0
         self.downloaded_bytes = 0
@@ -37,6 +79,7 @@ class DownloadTask:
         self.error = None
         self.started_at = None
         self.completed_at = None
+        self.checksum_verified = None  # True if verified, False if failed, None if not checked
 
 
 class DownloadManager:
@@ -99,6 +142,7 @@ class DownloadManager:
             file_path = file_info.get('path', '')
             file_url = file_info.get('url', '')
             file_size = file_info.get('size', 'Unknown')
+            file_checksum = file_info.get('checksum')  # Optional checksum
 
             if not file_url:
                 continue
@@ -112,7 +156,8 @@ class DownloadManager:
                 preset_id=preset_id,
                 file_url=file_url,
                 file_path=file_path,
-                file_size=file_size
+                file_size=file_size,
+                checksum=file_checksum
             )
             tasks.append(task)
 
@@ -346,6 +391,46 @@ class DownloadManager:
                 })
                 return  # Exit without marking as completed
 
+            # Verify checksum if provided
+            if task.checksum:
+                try:
+                    algorithm, expected_hash = parse_checksum(task.checksum)
+
+                    # Broadcast verifying status
+                    await broadcast_download_progress(task.preset_id, {
+                        "file": task.file_path,
+                        "progress": 100.0,
+                        "status": "verifying",
+                        "message": "Verifying file integrity..."
+                    })
+
+                    # Calculate hash of downloaded file
+                    actual_hash = calculate_sha256(full_path)
+
+                    if actual_hash != expected_hash:
+                        # Checksum mismatch - delete file and raise error
+                        error_msg = f"Checksum verification failed: expected {expected_hash[:16}..., got {actual_hash[:16]}..."
+                        print(f"Checksum mismatch for {task.file_path}: {error_msg}")
+
+                        # Delete corrupted file
+                        if full_path.exists():
+                            full_path.unlink()
+
+                        task.checksum_verified = False
+                        raise Exception(error_msg)
+
+                    # Checksum verified successfully
+                    task.checksum_verified = True
+                    print(f"Checksum verified for {task.file_path}: {algorithm}:{actual_hash[:16]}...")
+
+                except ValueError as e:
+                    # Invalid checksum format - log warning but don't fail download
+                    print(f"Warning: Invalid checksum format for {task.file_path}: {e}")
+                    task.checksum_verified = None
+            else:
+                # No checksum provided - skip verification
+                task.checksum_verified = None
+
             task.status = "completed"
             task.completed_at = datetime.utcnow()
             task.progress = 100.0
@@ -405,7 +490,9 @@ class DownloadManager:
                     "progress": t.progress,
                     "downloaded": t.downloaded_bytes,
                     "total": t.total_bytes,
-                    "error": t.error
+                    "error": t.error,
+                    "checksum": t.checksum,
+                    "checksum_verified": t.checksum_verified
                 }
                 for t in tasks
             ]

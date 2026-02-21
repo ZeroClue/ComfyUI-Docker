@@ -25,6 +25,18 @@ class WorkflowMetadata:
 class WorkflowScanner:
     """Scans workflow files and extracts metadata."""
 
+    # Model directories to search (in order)
+    MODEL_DIRECTORIES = [
+        "checkpoints",
+        "diffusion_models",
+        "text_encoders",
+        "vae",
+        "loras",
+        "clip_vision",
+        "controlnet",
+        "upscale_models",
+    ]
+
     # Node types that indicate input type
     INPUT_NODES = {
         "CLIPTextEncode": "text",
@@ -191,6 +203,31 @@ class WorkflowScanner:
                 models.extend(self._extract_models_from_widgets(node_data))
 
         return list(set(models))
+
+    def check_model_availability(self, model_filename: str) -> Dict[str, Any]:
+        """Check if a model is installed and return its info."""
+        for model_type in self.MODEL_DIRECTORIES:
+            path = self.base_path.parent / "models" / model_type / model_filename
+            if path.exists():
+                return {
+                    "name": model_filename,
+                    "installed": True,
+                    "type": model_type,
+                    "path": str(path),
+                }
+
+        # Not found - infer type from filename
+        inferred_type = self._infer_model_type(model_filename)
+        return {
+            "name": model_filename,
+            "installed": False,
+            "type": inferred_type,
+            "path": None,
+        }
+
+    def check_workflow_models(self, required_models: List[str]) -> List[Dict[str, Any]]:
+        """Check availability for all required models."""
+        return [self.check_model_availability(model) for model in required_models]
 
 
 __all__ = ["WorkflowScanner", "WorkflowMetadata"]

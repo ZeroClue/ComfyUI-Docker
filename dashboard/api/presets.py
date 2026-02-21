@@ -394,7 +394,9 @@ async def sync_registry():
                         detail=f"Registry fetch failed with status {response.status}"
                     )
 
-                registry = await response.json()
+                # GitHub raw URLs return text/plain, so use text() and parse manually
+                text = await response.text()
+                registry = json.loads(text)
 
         # Update local cache
         preset_cache.set_config({"registry": registry})

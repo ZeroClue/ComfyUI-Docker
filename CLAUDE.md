@@ -577,6 +577,27 @@ All major dashboard features working as of 2026-02-20. See Feature Status sectio
 - **GitHub raw content-type**: GitHub raw URLs return `text/plain; charset=utf-8` instead of `application/json`. Use `response.text()` + `json.loads()` instead of `response.json()`.
 - **Alpine.js variable initialization**: Variables used in templates (modelCount, gpuUsage, memoryUsage, unreadCount) must be declared in dashboardApp() with initial values and fetched via API in fetchSidebarStats().
 - **Favicon 404**: Add favicon.ico to dashboard/static/ to prevent console errors.
+- **Lazy initialization for settings-dependent services**: Services like WorkflowScanner that need settings values at init time should use lazy initialization via getter functions. Module-level initialization can happen before settings are loaded, causing path resolution failures.
+  ```python
+  # WRONG - settings.WORKFLOW_BASE_PATH may not be set yet
+  _workflow_scanner = WorkflowScanner(Path(settings.WORKFLOW_BASE_PATH))
+
+  # CORRECT - lazy initialization
+  _workflow_scanner = None
+  def get_workflow_scanner():
+      global _workflow_scanner
+      if _workflow_scanner is None:
+          _workflow_scanner = WorkflowScanner(Path(settings.WORKFLOW_BASE_PATH))
+      return _workflow_scanner
+  ```
+- **Alpine.js null safety**: Use optional chaining (`?.`) and nullish coalescing (`||`) when accessing potentially null objects in templates:
+  ```html
+  <!-- WRONG - crashes if intentResult is null -->
+  <span x-text="intentResult.matched_keyword"></span>
+
+  <!-- CORRECT - safe null handling -->
+  <span x-text="intentResult?.matched_keyword || ''"></span>
+  ```
 
 ### 2026-02-20
 - **Runtime imports for globals**: Persistence globals (`settings_manager`, `activity_logger`) are None at module load time. Import the module (`from ..core import persistence`) and access the attribute at runtime (`persistence.settings_manager`), not the variable directly.

@@ -131,12 +131,23 @@ class WorkflowScanner:
         for node_data in (nodes.values() if isinstance(nodes, dict) else nodes):
             if isinstance(node_data, dict):
                 inputs = node_data.get("inputs", {})
-                for key, value in inputs.items():
-                    if isinstance(value, str) and any(
-                        ext in value.lower()
-                        for ext in [".safetensors", ".pt", ".pth", ".bin", ".ckpt"]
-                    ):
-                        models.append(value)
+                # Handle both dict (API format) and list (UI format) for inputs
+                if isinstance(inputs, dict):
+                    for key, value in inputs.items():
+                        if isinstance(value, str) and any(
+                            ext in value.lower()
+                            for ext in [".safetensors", ".pt", ".pth", ".bin", ".ckpt"]
+                        ):
+                            models.append(value)
+                elif isinstance(inputs, list):
+                    for input_item in inputs:
+                        if isinstance(input_item, dict):
+                            value = input_item.get("value", "")
+                            if isinstance(value, str) and any(
+                                ext in value.lower()
+                                for ext in [".safetensors", ".pt", ".pth", ".bin", ".ckpt"]
+                            ):
+                                models.append(value)
 
         return list(set(models))
 

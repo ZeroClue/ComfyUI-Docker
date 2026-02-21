@@ -67,6 +67,32 @@ def generate_request_preset_url(model_name: str, model_type: str, workflow_id: s
     return f"{GITHUB_ISSUE_URL}?{urlencode(params)}"
 
 
+def enrich_model_with_actions(model: Dict, workflow_id: str, registry: Dict) -> Dict:
+    """Add preset info and action URLs to a model entry."""
+    result = model.copy()
+
+    if model["installed"]:
+        result["preset"] = None
+        result["actions"] = None
+        return result
+
+    # Check for preset
+    preset = find_preset_for_model(model["name"], registry)
+    result["preset"] = preset
+
+    # Generate actions
+    actions = {
+        "install": f"/api/presets/{preset['id']}/install" if preset else None,
+        "manual_path": f"/workspace/models/{model['type']}/",
+        "request_preset_url": generate_request_preset_url(
+            model["name"], model["type"], workflow_id
+        ),
+    }
+    result["actions"] = actions
+
+    return result
+
+
 from ..core.intent_matcher import IntentMatcher
 from ..core.comfyui_client import ComfyUIClient
 
@@ -143,13 +169,24 @@ async def get_synced_workflows(
     output_type: Optional[str] = Query(None, description="Filter by output type"),
 ) -> WorkflowSyncedResponse:
     """
-    List all synced workflows with metadata.
+    List all synced workflows with metadata and model availability.
 
     - **category**: Filter by workflow category
     - **input_type**: Filter by input type (text, image, audio, video)
     - **output_type**: Filter by output type (image, video, audio)
     """
     workflows = get_workflow_scanner().scan_all()
+
+    # Load preset registry for matching
+    registry = load_preset_registry()
+
+    # Enrich workflows with model actions
+    for workflow in workflows:
+        if "models" in workflow:
+            workflow["models"] = [
+                enrich_model_with_actions(model, workflow["id"], registry)
+                for model in workflow["models"]
+            ]
 
     # Apply filters
     if category:

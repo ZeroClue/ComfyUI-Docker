@@ -145,6 +145,9 @@ All sections use real API data (no mockups):
 - `/api/system/status` - System health check
 - `/api/system/resources` - CPU, memory, disk, GPU usage
 - `/api/generate` - Content generation endpoint
+- `/api/presets/recommendations` - Filter presets by GPU VRAM compatibility
+- `/api/presets/updates` - Check for preset version updates
+- `/api/presets/registry/sync` - Sync from remote registry.json
 
 **Page Routes**:
 - `/` - Home dashboard
@@ -216,6 +219,11 @@ Each preset contains complete model definitions with URLs, sizes, file paths, an
 - `/proxy/`: Nginx reverse proxy for service routing
 - `/workspace/models/`: Target model storage directory (network volume)
 - `/scripts/preset_manager/templates/`: Web UI templates
+
+## Static Assets
+- **Favicon**: `dashboard/static/favicon.png` (ZeroClue logo)
+- **Screenshots**: `docs/screenshots/unified-dashboard/` and `docs/screenshots/legacy/`
+- Linked in `base.html` with proper icon declarations
 
 ## Core Services Architecture
 **Container orchestration via `scripts/start.sh`:**
@@ -538,6 +546,13 @@ All major dashboard features working as of 2026-02-20. See Feature Status sectio
 - **FastAPI route ordering**: Literal routes must come BEFORE parameterized routes. `/queue/status` must be defined before `/{preset_id}/status` or FastAPI matches `preset_id="queue"`
 - **psutil.version_info**: It's a tuple, not namedtuple. Use `sys.version_info` for Python version
 - **activity.py current**: `get_queue_status()` returns `current` as string (preset_id), not dict with properties
+
+### Code Quality Fixes (2026-02-21)
+- **Subprocess security**: Always use `shutil.which()` to resolve executable paths before `subprocess.run()` - prevents shell injection
+- **Semantic versioning**: Use `packaging.version.parse()` for version comparisons, not string comparison
+- **SHA256 chunk size**: Use 1MB chunks (not 8KB) for hashing large model files - significantly faster
+- **SHA256 validation**: Validate hash format is 64 hex characters before comparison
+- **Constant extraction**: Extract repeated URLs to module-level constants (e.g., `REMOTE_REGISTRY_URL`)
 
 ### Bug Fixes Applied (2026-02-20)
 - **Runtime imports for globals**: Persistence globals (`settings_manager`, `activity_logger`) are None at module load time. Import the module (`from ..core import persistence`) and access the attribute at runtime (`persistence.settings_manager`), not the variable directly.

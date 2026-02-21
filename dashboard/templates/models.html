@@ -835,7 +835,7 @@ function presetCard(model) {
                     window.showToast('error', 'Queue Failed', 'Could not queue preset for download');
                 }
             } else if (this.model.status === 'installed') {
-                window.location.href = `/generate?model=${this.model.id}`;
+                window.location.href = `/generate?workflow=${this.model.id}`;
             } else if (this.model.status === 'queued') {
                 // Already in queue, show info
                 window.showToast('info', 'In Queue', `${this.model.name} is waiting to download`);

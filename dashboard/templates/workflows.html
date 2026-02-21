@@ -109,6 +109,19 @@
                         </div>
                         <span x-text="workflow.runs + ' runs'"></span>
                     </div>
+
+                    <!-- Actions -->
+                    <div class="flex gap-2 mt-3 pt-3 border-t border-border-subtle">
+                        <button class="btn btn-secondary flex-1 py-1.5 px-3 rounded-md text-xs font-medium border border-border-medium hover:bg-bg-hover transition-all"
+                                @click.stop="openWorkflow(workflow)">
+                            Details
+                        </button>
+                        <a :href="`/generate?workflow=${workflow.id}`"
+                           class="btn btn-primary flex-1 py-1.5 px-3 rounded-md text-xs font-medium bg-accent-primary text-text-inverse shadow-glow hover:bg-orange-600 transition-all text-center"
+                           @click.stop>
+                            Generate
+                        </a>
+                    </div>
                 </div>
             </div>
         </template>

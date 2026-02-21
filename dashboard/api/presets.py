@@ -5,6 +5,7 @@ Handles preset listing, installation, and status checking
 
 import asyncio
 import aiohttp
+import json
 import time
 from datetime import datetime
 from typing import List, Dict, Optional, Any

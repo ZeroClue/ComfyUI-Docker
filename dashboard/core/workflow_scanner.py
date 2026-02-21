@@ -121,6 +121,23 @@ class WorkflowScanner:
             return parts[0]
         return "general"
 
+    def _extract_models_from_widgets(self, node: Dict) -> List[str]:
+        """Extract model filenames from widgets_values array."""
+        models = []
+        widgets_values = node.get("widgets_values", [])
+
+        if not isinstance(widgets_values, list):
+            return models
+
+        for value in widgets_values:
+            if isinstance(value, str) and any(
+                ext in value.lower()
+                for ext in [".safetensors", ".pt", ".pth", ".bin", ".ckpt"]
+            ):
+                models.append(value)
+
+        return models
+
     def _extract_required_models(self, data: Dict) -> List[str]:
         """Extract required model filenames from workflow."""
         models = []
@@ -148,6 +165,9 @@ class WorkflowScanner:
                                 for ext in [".safetensors", ".pt", ".pth", ".bin", ".ckpt"]
                             ):
                                 models.append(value)
+
+                # Also check widgets_values for packed/composite nodes
+                models.extend(self._extract_models_from_widgets(node_data))
 
         return list(set(models))
 

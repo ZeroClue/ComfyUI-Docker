@@ -71,6 +71,7 @@ preset_cache = PresetCache(ttl_seconds=60)
 remote_registry_cache: Optional[Dict] = None
 remote_registry_timestamp: float = 0
 REMOTE_REGISTRY_TTL = 300  # 5 minutes
+REMOTE_REGISTRY_URL = "https://raw.githubusercontent.com/zeroclue/comfyui-presets/main/registry.json"
 
 
 async def get_remote_registry() -> Optional[Dict]:
@@ -85,12 +86,10 @@ async def get_remote_registry() -> Optional[Dict]:
     if remote_registry_cache and (time.time() - remote_registry_timestamp) < REMOTE_REGISTRY_TTL:
         return remote_registry_cache
 
-    registry_url = "https://raw.githubusercontent.com/zeroclue/comfyui-presets/main/registry.json"
-
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                registry_url,
+                REMOTE_REGISTRY_URL,
                 timeout=aiohttp.ClientTimeout(total=10)
             ) as response:
                 if response.status == 200:
@@ -108,28 +107,16 @@ def compare_versions(local: Optional[str], remote: Optional[str]) -> bool:
     """Compare version strings to check if remote is newer
 
     Returns True if remote version is newer than local.
-    Handles None values gracefully.
+    Handles None values gracefully. Supports semantic versioning with pre-release tags.
     """
     if not local or not remote:
         return False
 
     try:
-        local_parts = [int(x) for x in local.split('.')]
-        remote_parts = [int(x) for x in remote.split('.')]
-
-        # Pad to same length
-        while len(local_parts) < len(remote_parts):
-            local_parts.append(0)
-        while len(remote_parts) < len(local_parts):
-            remote_parts.append(0)
-
-        for l, r in zip(local_parts, remote_parts):
-            if r > l:
-                return True
-            if r < l:
-                return False
-        return False  # Equal versions
-    except (ValueError, AttributeError):
+        from packaging.version import parse as parse_version
+        return parse_version(remote) > parse_version(local)
+    except Exception as e:
+        print(f"Warning: Version comparison failed for {local} vs {remote}: {e}")
         return False
 
 
@@ -203,10 +190,16 @@ def get_gpu_vram() -> Optional[GPUSpecs]:
     Returns GPUSpecs if GPU is available, None otherwise.
     """
     import subprocess
+    import shutil
+
+    # Use shutil.which for secure path resolution
+    nvidia_smi_path = shutil.which('nvidia-smi')
+    if not nvidia_smi_path:
+        return None
 
     try:
         result = subprocess.run(
-            ['nvidia-smi', '--query-gpu=name,memory.total', '--format=csv,noheader,nounits'],
+            [nvidia_smi_path, '--query-gpu=name,memory.total', '--format=csv,noheader,nounits'],
             capture_output=True,
             text=True,
             timeout=5
@@ -225,8 +218,8 @@ def get_gpu_vram() -> Optional[GPUSpecs]:
                         vram_mb=vram_mb,
                         vram_gb=round(vram_mb / 1024, 1)
                     )
-    except Exception:
-        pass
+    except (subprocess.TimeoutExpired, ValueError, IndexError) as e:
+        print(f"Warning: Failed to query GPU info: {e}")
 
     return None
 
@@ -498,12 +491,10 @@ async def sync_registry():
 
     Fetches the latest registry.json from GitHub and updates local cache
     """
-    registry_url = "https://raw.githubusercontent.com/zeroclue/comfyui-presets/main/registry.json"
-
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                registry_url,
+                REMOTE_REGISTRY_URL,
                 timeout=aiohttp.ClientTimeout(total=30)
             ) as response:
                 if response.status != 200:

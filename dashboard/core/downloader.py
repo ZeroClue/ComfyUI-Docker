@@ -6,6 +6,7 @@ Handles concurrent downloads with progress tracking and WebSocket updates
 import asyncio
 import aiohttp
 import hashlib
+import re
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
@@ -14,6 +15,9 @@ from urllib.parse import urlparse
 from .config import settings
 from .websocket import broadcast_download_progress
 from ..api.activity import add_activity
+
+# Larger chunk size for multi-GB model files (1MB)
+HASH_CHUNK_SIZE = 1024 * 1024
 
 
 def calculate_sha256(file_path: Path) -> str:
@@ -27,7 +31,7 @@ def calculate_sha256(file_path: Path) -> str:
     """
     sha256_hash = hashlib.sha256()
     with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
+        for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b""):
             sha256_hash.update(chunk)
     return sha256_hash.hexdigest()
 
@@ -53,7 +57,11 @@ def parse_checksum(checksum: str) -> tuple[str, str]:
     if algorithm != 'sha256':
         raise ValueError(f"Unsupported checksum algorithm: {algorithm}. Only sha256 is supported.")
 
-    return algorithm, hash_value
+    # Validate SHA256 hash format (64 hex characters)
+    if not re.match(r'^[a-fA-F0-9]{64}$', hash_value):
+        raise ValueError(f"Invalid SHA256 hash format: expected 64 hex characters, got {len(hash_value)} chars")
+
+    return algorithm, hash_value.lower()
 
 
 class DownloadTask:
@@ -409,7 +417,7 @@ class DownloadManager:
 
                     if actual_hash != expected_hash:
                         # Checksum mismatch - delete file and raise error
-                        error_msg = f"Checksum verification failed: expected {expected_hash[:16}..., got {actual_hash[:16]}..."
+                        error_msg = f"Checksum verification failed: expected {expected_hash[:16]}..., got {actual_hash[:16]}..."
                         print(f"Checksum mismatch for {task.file_path}: {error_msg}")
 
                         # Delete corrupted file

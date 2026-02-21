@@ -174,6 +174,24 @@ All sections use real API data (no mockups):
 - ✅ Download pause/resume functionality (2026-02-20)
 - ✅ HTTP error messages (401 auth, 403 license, 404 not found) (2026-02-20)
 
+## Generate Page Redesign (2026-02-21)
+
+Redesigned as all-in-one workflow consumer with:
+- **Workflow-First UI**: Card-based browser with metadata
+- **Intent-Based Entry**: Pattern-matched shortcuts
+- **Real-Time Progress**: Hybrid WebSocket + REST polling
+- **Optional LLM**: Prompt enhancement via local models (Phi-3, Qwen, Llama)
+
+**New Backend Components:**
+- `dashboard/core/workflow_scanner.py`: Scan workflows, extract metadata
+- `dashboard/core/intent_matcher.py`: Pattern-match intent to workflows
+- `dashboard/core/generation_manager.py`: Track generations, WebSocket broadcast
+- `dashboard/core/llm_service.py`: Optional LLM for prompt enhancement
+- `dashboard/api/generate.py`: Generate API endpoints
+- `dashboard/api/llm.py`: LLM management endpoints
+
+**Design Docs:** `docs/plans/2026-02-21-generate-page-*.md`
+
 ## Preset Management System
 Located in `scripts/preset_manager/` with three core components:
 
@@ -402,6 +420,20 @@ Example: https://8myhxhyx0ojmq4-8082.proxy.runpod.net/
 
 ## RunPod Pod Management
 
+**GraphQL API** (preferred for queries):
+```bash
+# Query network volumes
+source .runpod/.env && curl -s "https://api.runpod.io/graphql" \
+  -H "Authorization: Bearer $RUNPOD_API_KEY" \
+  -d '{"query": "{ myself { networkVolumes { id name size dataCenter { id } } } }"}'
+
+# Query available GPUs
+source .runpod/.env && curl -s "https://api.runpod.io/graphql" \
+  -H "Authorization: Bearer $RUNPOD_API_KEY" \
+  -d '{"query": "{ gpuTypes { id displayName memoryInGb } }"}'
+```
+
+**REST API** (for pod creation/deletion):
 ```bash
 # List all pods
 source .runpod/.env && curl -s "https://rest.runpod.io/v1/pods" -H "Authorization: Bearer $RUNPOD_API_KEY"
@@ -534,27 +566,19 @@ All major dashboard features working as of 2026-02-20. See Feature Status sectio
 - **Cache invalidation** triggered on download complete and preset delete
 - Location: `dashboard/api/presets.py` - `PresetCache` class
 
-## Session Learnings (2026-02-18)
+## Bug Fixes & Learnings (Consolidated)
 
-### Bug Fixes Applied
-- **psutil.uname()**: Use `.sysname` not `.system` (posix.uname_result has no 'system' attribute)
-- **WebSocket endpoint**: Dashboard templates expect `/ws/dashboard`, not just `/ws`
-- **Dashboard port**: Internal port 8000, external 8082 (via nginx)
-- **Pydantic validation**: Preset `files` and `categories` need `Dict[str, Any]` not `Dict[str, str]` (preset YAML has boolean `optional: false` and nested category objects)
-
-### Bug Fixes Applied (2026-02-19)
-- **FastAPI route ordering**: Literal routes must come BEFORE parameterized routes. `/queue/status` must be defined before `/{preset_id}/status` or FastAPI matches `preset_id="queue"`
-- **psutil.version_info**: It's a tuple, not namedtuple. Use `sys.version_info` for Python version
-- **activity.py current**: `get_queue_status()` returns `current` as string (preset_id), not dict with properties
-
-### Code Quality Fixes (2026-02-21)
+### 2026-02-21
 - **Subprocess security**: Always use `shutil.which()` to resolve executable paths before `subprocess.run()` - prevents shell injection
 - **Semantic versioning**: Use `packaging.version.parse()` for version comparisons, not string comparison
 - **SHA256 chunk size**: Use 1MB chunks (not 8KB) for hashing large model files - significantly faster
 - **SHA256 validation**: Validate hash format is 64 hex characters before comparison
 - **Constant extraction**: Extract repeated URLs to module-level constants (e.g., `REMOTE_REGISTRY_URL`)
+- **GitHub raw content-type**: GitHub raw URLs return `text/plain; charset=utf-8` instead of `application/json`. Use `response.text()` + `json.loads()` instead of `response.json()`.
+- **Alpine.js variable initialization**: Variables used in templates (modelCount, gpuUsage, memoryUsage, unreadCount) must be declared in dashboardApp() with initial values and fetched via API in fetchSidebarStats().
+- **Favicon 404**: Add favicon.ico to dashboard/static/ to prevent console errors.
 
-### Bug Fixes Applied (2026-02-20)
+### 2026-02-20
 - **Runtime imports for globals**: Persistence globals (`settings_manager`, `activity_logger`) are None at module load time. Import the module (`from ..core import persistence`) and access the attribute at runtime (`persistence.settings_manager`), not the variable directly.
 - **FastAPI router prefixes**: Avoid duplicate prefixes. If router has `prefix="/activity"` and `include_router()` also has `prefix="/activity"`, the route becomes `/api/activity/activity/recent`. Only define prefix in one place.
 - **Asyncio.Queue lazy init**: Create queues inside async context, not at class instantiation time (no event loop yet). Use property with lazy initialization.
@@ -563,10 +587,16 @@ All major dashboard features working as of 2026-02-20. See Feature Status sectio
 - **Network volume disk metrics**: `psutil.disk_usage('/workspace')` returns host filesystem size on RunPod network volumes. Use `du -sb /workspace` for actual usage and `RUNPOD_VOLUME_GB` env var for total size.
 - **add_activity() signature**: Only supports `activity_type`, `status`, `title`, `subtitle`, `details`. Does NOT support `link` parameter - will raise TypeError if passed.
 
-### Bug Fixes Applied (2026-02-21)
-- **GitHub raw content-type**: GitHub raw URLs return `text/plain; charset=utf-8` instead of `application/json`. Use `response.text()` + `json.loads()` instead of `response.json()`.
-- **Alpine.js variable initialization**: Variables used in templates (modelCount, gpuUsage, memoryUsage, unreadCount) must be declared in dashboardApp() with initial values and fetched via API in fetchSidebarStats().
-- **Favicon 404**: Add favicon.ico to dashboard/static/ to prevent console errors.
+### 2026-02-19
+- **FastAPI route ordering**: Literal routes must come BEFORE parameterized routes. `/queue/status` must be defined before `/{preset_id}/status` or FastAPI matches `preset_id="queue"`
+- **psutil.version_info**: It's a tuple, not namedtuple. Use `sys.version_info` for Python version
+- **activity.py current**: `get_queue_status()` returns `current` as string (preset_id), not dict with properties
+
+### 2026-02-18
+- **psutil.uname()**: Use `.sysname` not `.system` (posix.uname_result has no 'system' attribute)
+- **WebSocket endpoint**: Dashboard templates expect `/ws/dashboard`, not just `/ws`
+- **Dashboard port**: Internal port 8000, external 8082 (via nginx)
+- **Pydantic validation**: Preset `files` and `categories` need `Dict[str, Any]` not `Dict[str, str]` (preset YAML has boolean `optional: false` and nested category objects)
 
 ### RunPod Pod Management
 **CRITICAL**: Always verify pod status after stop command:

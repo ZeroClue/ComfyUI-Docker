@@ -58,9 +58,25 @@ class GenerationStartResponse(BaseModel):
 
 # Initialize router and services
 router = APIRouter()
-workflow_scanner = WorkflowScanner(Path(settings.WORKFLOW_BASE_PATH))
 intent_matcher = IntentMatcher()
-comfyui_client = ComfyUIClient(base_url=f"http://localhost:{settings.COMFYUI_PORT}")
+
+# Lazy initialization to avoid issues with settings not being loaded at import time
+_workflow_scanner = None
+_comfyui_client = None
+
+
+def get_workflow_scanner():
+    global _workflow_scanner
+    if _workflow_scanner is None:
+        _workflow_scanner = WorkflowScanner(Path(settings.WORKFLOW_BASE_PATH))
+    return _workflow_scanner
+
+
+def get_comfyui_client():
+    global _comfyui_client
+    if _comfyui_client is None:
+        _comfyui_client = ComfyUIClient(base_url=f"http://localhost:{settings.COMFYUI_PORT}")
+    return _comfyui_client
 
 
 @router.get("/workflows/synced", response_model=WorkflowSyncedResponse)
@@ -76,7 +92,7 @@ async def get_synced_workflows(
     - **input_type**: Filter by input type (text, image, audio, video)
     - **output_type**: Filter by output type (image, video, audio)
     """
-    workflows = workflow_scanner.scan_all()
+    workflows = get_workflow_scanner().scan_all()
 
     # Apply filters
     if category:
@@ -106,7 +122,7 @@ async def get_workflow_compatibility(workflow_id: str) -> Dict[str, Any]:
 
     Returns which required models are installed and which are missing.
     """
-    workflows = workflow_scanner.scan_all()
+    workflows = get_workflow_scanner().scan_all()
 
     workflow = next((w for w in workflows if w["id"] == workflow_id), None)
     if not workflow:
@@ -158,7 +174,7 @@ async def start_generation(
     - **input_image**: Base64 encoded input image for I2V/I2I
     """
     # Find the workflow
-    workflows = workflow_scanner.scan_all()
+    workflows = get_workflow_scanner().scan_all()
     workflow = next((w for w in workflows if w["id"] == request.workflow_id), None)
 
     if not workflow:
@@ -172,10 +188,10 @@ async def start_generation(
             workflow_data = json.load(f)
 
         # Inject prompt into workflow
-        workflow_data = comfyui_client.inject_prompt(workflow_data, request.prompt)
+        workflow_data = get_comfyui_client().inject_prompt(workflow_data, request.prompt)
 
         # Queue the workflow
-        result = await comfyui_client.queue_workflow(workflow_data)
+        result = await get_comfyui_client().queue_workflow(workflow_data)
 
         return GenerationStartResponse(
             status="queued",
@@ -202,7 +218,7 @@ async def pause_generation(prompt_id: str) -> Dict[str, str]:
 async def cancel_generation(prompt_id: str) -> Dict[str, str]:
     """Cancel a generation."""
     try:
-        await comfyui_client.interrupt_execution()
+        await get_comfyui_client().interrupt_execution()
         return {"status": "cancelled", "prompt_id": prompt_id, "message": "Generation cancelled"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to cancel: {str(e)}")

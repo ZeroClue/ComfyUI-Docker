@@ -53,10 +53,10 @@
             <!-- Intent Match Result -->
             <div x-show="intentResult && intentResult.matched" class="mt-3 p-3 bg-accent-success/10 border border-accent-success/30 rounded-md">
                 <div class="text-sm text-accent-success font-medium">
-                    Matched: <span x-text="intentResult.matched_keyword"></span>
+                    Matched: <span x-text="intentResult?.matched_keyword || ''"></span>
                 </div>
                 <div class="text-xs text-text-secondary mt-1">
-                    <template x-for="suggestion in intentResult.suggestions" :key="suggestion">
+                    <template x-for="suggestion in (intentResult?.suggestions || [])" :key="suggestion">
                         <div x-text="suggestion"></div>
                     </template>
                 </div>

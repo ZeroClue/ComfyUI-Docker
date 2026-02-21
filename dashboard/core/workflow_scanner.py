@@ -40,6 +40,15 @@ class WorkflowScanner:
         "SaveAudio": "audio",
     }
 
+    # Model type inference patterns
+    MODEL_TYPE_PATTERNS = {
+        "diffusion_models": ["flux", "unet", "diffusion", "_turbo", "sdxl", "sd15"],
+        "text_encoders": ["clip", "t5", "qwen", "llama", "text_encoder"],
+        "vae": ["vae", "ae.safetensors"],
+        "loras": ["lora"],
+        "checkpoints": ["checkpoint", "inpaint", "dreamshaper"],
+    }
+
     def __init__(self, workflow_base_path: Path):
         self.base_path = Path(workflow_base_path)
 
@@ -120,6 +129,18 @@ class WorkflowScanner:
         if len(parts) > 1:
             return parts[0]
         return "general"
+
+    def _infer_model_type(self, filename: str) -> str:
+        """Infer model type from filename patterns."""
+        filename_lower = filename.lower()
+
+        for model_type, patterns in self.MODEL_TYPE_PATTERNS.items():
+            for pattern in patterns:
+                if pattern in filename_lower:
+                    return model_type
+
+        # Default to checkpoints for unknown models
+        return "checkpoints"
 
     def _extract_models_from_widgets(self, node: Dict) -> List[str]:
         """Extract model filenames from widgets_values array."""

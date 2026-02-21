@@ -106,6 +106,13 @@ class WorkflowScanner:
         # Extract required models from workflow
         required_models = self._extract_required_models(data)
 
+        # Check model availability
+        models = self.check_workflow_models(required_models)
+
+        # Calculate model status
+        installed_count = sum(1 for m in models if m["installed"])
+        missing_count = len(models) - installed_count
+
         return {
             "id": workflow_path.stem,
             "name": meta.get("name", workflow_path.stem),
@@ -116,6 +123,14 @@ class WorkflowScanner:
             "input_types": list(input_types),
             "output_types": list(output_types),
             "required_models": required_models,
+            # Model availability fields
+            "models": models,
+            "model_status": {
+                "total": len(models),
+                "installed": installed_count,
+                "missing": missing_count,
+            },
+            "ready": missing_count == 0 if models else True,  # Ready if no models or all installed
         }
 
     def scan_all(self) -> List[Dict[str, Any]]:

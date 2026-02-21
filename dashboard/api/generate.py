@@ -4,12 +4,69 @@ Handles workflow browsing, intent matching, and generation control.
 """
 from typing import List, Dict, Optional, Any
 from pathlib import Path
+import yaml
+import json
 
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from ..core.config import settings
 from ..core.workflow_scanner import WorkflowScanner
+
+
+# Preset matching utilities
+def load_preset_registry() -> Dict[str, Any]:
+    """Load preset registry from file."""
+    registry_path = Path("/workspace/data/registry.json")
+    if registry_path.exists():
+        with open(registry_path) as f:
+            return json.load(f)
+
+    # Fallback to presets.yaml
+    presets_path = Path(settings.PRESET_CONFIG_PATH)
+    if presets_path.exists():
+        with open(presets_path) as f:
+            return yaml.safe_load(f)
+
+    return {"presets": {}}
+
+
+def find_preset_for_model(model_filename: str, registry: Dict) -> Optional[Dict[str, Any]]:
+    """Find a preset that contains the given model filename."""
+    presets = registry.get("presets", {})
+
+    for preset_id, preset_data in presets.items():
+        files = preset_data.get("files", [])
+        for file_info in files:
+            file_path = file_info.get("path", "")
+            if file_path.endswith(model_filename):
+                return {
+                    "id": preset_id,
+                    "name": preset_data.get("name", preset_id),
+                    "download_size": preset_data.get("download_size", "Unknown"),
+                }
+
+    return None
+
+
+GITHUB_ISSUE_URL = "https://github.com/ZeroClue/comfyui-presets/issues/new"
+
+
+def generate_request_preset_url(model_name: str, model_type: str, workflow_id: str) -> str:
+    """Generate GitHub issue URL for requesting a new preset."""
+    from urllib.parse import urlencode
+
+    title = f"Add preset for {model_name}"
+    body = f"Model: {model_name}\nType: {model_type}\nWorkflow: {workflow_id}"
+
+    params = {
+        "title": title,
+        "body": body
+    }
+
+    return f"{GITHUB_ISSUE_URL}?{urlencode(params)}"
+
+
 from ..core.intent_matcher import IntentMatcher
 from ..core.comfyui_client import ComfyUIClient
 

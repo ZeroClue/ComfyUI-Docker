@@ -82,6 +82,8 @@ class PresetResponse(BaseModel):
     tags: List[str]
     installed: bool = False
     installation_status: Optional[str] = None
+    vram_gb: Optional[int] = None
+    disk_gb: Optional[float] = None
 
 
 class PresetListResponse(BaseModel):
@@ -281,7 +283,9 @@ async def list_presets(
             use_case=preset_data.get('use_case', ''),
             tags=preset_data.get('tags', []),
             installed=is_installed,
-            installation_status='installed' if is_installed else 'not_installed'
+            installation_status='installed' if is_installed else 'not_installed',
+            vram_gb=preset_data.get('requirements', {}).get('vram_gb'),
+            disk_gb=preset_data.get('requirements', {}).get('disk_gb')
         ))
 
     return PresetListResponse(

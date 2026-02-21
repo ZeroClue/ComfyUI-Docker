@@ -273,7 +273,21 @@
                                 </div>
                                 <div x-show="model.vram_gb">
                                     <span class="text-text-secondary">VRAM:</span>
-                                    <span class="ml-2 font-medium" x-text="`${model.vram_gb}GB recommended`"></span>
+                                    <span class="ml-2 font-medium text-accent-warning" x-text="`${model.vram_gb}GB recommended`"></span>
+                                </div>
+                                <div x-show="model.disk_gb">
+                                    <span class="text-text-secondary">Disk:</span>
+                                    <span class="ml-2 font-medium" x-text="`${model.disk_gb}GB required`"></span>
+                                </div>
+                            </div>
+
+                            <!-- Hardware Requirements Warning -->
+                            <div x-show="model.vram_gb && model.vram_gb > 8"
+                                 class="flex items-start gap-2 p-3 bg-accent-warning/10 border border-accent-warning/20 rounded-md">
+                                <span class="text-accent-warning text-sm">⚠</span>
+                                <div class="text-sm">
+                                    <span class="text-accent-warning font-medium">High VRAM Requirement</span>
+                                    <p class="text-text-secondary text-xs mt-1">This model requires a GPU with at least <span x-text="model.vram_gb"></span>GB VRAM. RTX 4090, A100, or H100 recommended.</p>
                                 </div>
                             </div>
 

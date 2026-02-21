@@ -548,6 +548,11 @@ All major dashboard features working as of 2026-02-20. See Feature Status sectio
 - **Network volume disk metrics**: `psutil.disk_usage('/workspace')` returns host filesystem size on RunPod network volumes. Use `du -sb /workspace` for actual usage and `RUNPOD_VOLUME_GB` env var for total size.
 - **add_activity() signature**: Only supports `activity_type`, `status`, `title`, `subtitle`, `details`. Does NOT support `link` parameter - will raise TypeError if passed.
 
+### Bug Fixes Applied (2026-02-21)
+- **GitHub raw content-type**: GitHub raw URLs return `text/plain; charset=utf-8` instead of `application/json`. Use `response.text()` + `json.loads()` instead of `response.json()`.
+- **Alpine.js variable initialization**: Variables used in templates (modelCount, gpuUsage, memoryUsage, unreadCount) must be declared in dashboardApp() with initial values and fetched via API in fetchSidebarStats().
+- **Favicon 404**: Add favicon.ico to dashboard/static/ to prevent console errors.
+
 ### RunPod Pod Management
 **CRITICAL**: Always verify pod status after stop command:
 ```bash

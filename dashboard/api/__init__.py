@@ -12,6 +12,7 @@ from .system import router as system_router
 from .activity import router as activity_router
 from .settings import router as settings_router
 from .generate import router as generate_router
+from .llm import router as llm_router
 
 # Create main API router
 api_router = APIRouter()
@@ -24,6 +25,7 @@ api_router.include_router(system_router, prefix="/system", tags=["system"])
 api_router.include_router(activity_router, prefix="/activity", tags=["activity"])
 api_router.include_router(settings_router, tags=["settings"])
 api_router.include_router(generate_router, prefix="/generate", tags=["generate"])
+api_router.include_router(llm_router, prefix="/llm", tags=["llm"])
 
 
 __all__ = ["api_router"]

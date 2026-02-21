@@ -18,6 +18,7 @@ from contextlib import asynccontextmanager
 from .api import api_router
 from .core.config import settings
 from .core.websocket import ConnectionManager
+from .core.generation_manager import generation_manager
 
 
 # WebSocket connection manager for real-time updates
@@ -369,6 +370,35 @@ async def downloads_websocket(websocket: WebSocket):
             }))
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+
+@app.websocket("/ws/generate")
+async def websocket_generate(websocket: WebSocket):
+    """WebSocket for real-time generation updates."""
+    await websocket.accept()
+    generation_manager.register_connection(websocket)
+
+    try:
+        # Send initial state
+        await websocket.send_text(json.dumps({
+            "type": "connected",
+            "active_generations": generation_manager.get_active()
+        }))
+
+        # Keep connection alive
+        while True:
+            data = await websocket.receive_text()
+            # Handle any client messages if needed
+            try:
+                message = json.loads(data)
+                # Echo back for keepalive
+                if message.get("type") == "ping":
+                    await websocket.send_text(json.dumps({"type": "pong"}))
+            except json.JSONDecodeError:
+                pass
+
+    except WebSocketDisconnect:
+        pass
 
 
 # Expose connection manager for use in other modules

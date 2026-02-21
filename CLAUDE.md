@@ -178,6 +178,29 @@ Located in `scripts/preset_manager/` with three core components:
 2. **web_interface.py**: Flask web UI on port 9000 for visual preset management
 3. **config.py**: Configuration mappings and model path definitions
 
+## Preset Registry System (2026-02-20)
+
+The preset system now uses a **separate repository**: [comfyui-presets](https://github.com/ZeroClue/comfyui-presets)
+
+**Architecture:**
+- **Centralized Management**: Single bot scans for model version changes
+- **Distributed Consumption**: Pods pull registry.json (no local scanning)
+- **Dual Format Support**: Dashboard reads both old `presets.yaml` and new registry format
+
+**Key Endpoints:**
+- `GET /api/presets/registry/sync` - Pull latest registry from GitHub
+- `GET /api/presets/registry/status` - Check sync status
+
+**Registry Location:** `/workspace/data/registry.json`
+
+**For preset development**, work in the separate repo:
+```bash
+cd /mnt/wsl/SharedData/projects/comfyui-presets
+python scripts/validate.py          # Validate preset schema
+python scripts/generate_registry.py # Rebuild registry.json
+python scripts/check_urls.py        # Health check all URLs
+```
+
 ## Triple Preset Architecture
 The system supports three independent model categories defined in `config/presets.yaml`:
 

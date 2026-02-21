@@ -117,14 +117,21 @@
                                         <span x-text="getWorkflowIcon(workflow)"></span>
                                     </div>
                                     <div>
-                                        <div class="font-semibold text-sm" x-text="workflow.name"></div>
+                                        <div class="font-semibold text-sm flex items-center gap-2">
+                                            <span x-text="workflow.name"></span>
+                                            <!-- Status Badge -->
+                                            <span x-show="workflow.ready"
+                                                  class="px-2 py-0.5 text-xs rounded-full bg-accent-success/20 text-accent-success">
+                                                Ready
+                                            </span>
+                                            <span x-show="!workflow.ready && workflow.model_status"
+                                                  class="px-2 py-0.5 text-xs rounded-full bg-accent-warning/20 text-accent-warning">
+                                                <span x-text="workflow.model_status.missing"></span> models needed
+                                            </span>
+                                        </div>
                                         <div class="text-xs text-text-tertiary" x-text="workflow.category"></div>
                                     </div>
                                 </div>
-                                <span class="text-xs px-2 py-0.5 rounded-full"
-                                      :class="getWorkflowStatusClass(workflow)">
-                                    <span x-text="getWorkflowStatus(workflow)"></span>
-                                </span>
                             </div>
 
                             <!-- Description -->
@@ -796,22 +803,9 @@ function generatePage() {
             return '◈';
         },
 
-        getWorkflowStatus(workflow) {
-            if (workflow.required_models?.length > 0) {
-                return 'Models Required';
-            }
-            return 'Ready';
-        },
-
-        getWorkflowStatusClass(workflow) {
-            if (workflow.required_models?.length > 0) {
-                return 'bg-accent-warning/15 text-accent-warning';
-            }
-            return 'bg-accent-success/15 text-accent-success';
-        },
-
         isWorkflowReady(workflow) {
-            return this.workflowCompatibility?.can_generate !== false;
+            // Use the synced ready status from the API
+            return workflow.ready === true;
         },
 
         get requiresInputImage() {

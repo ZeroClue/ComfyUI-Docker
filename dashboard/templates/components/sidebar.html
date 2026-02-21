@@ -28,6 +28,9 @@
            :class="{ 'bg-bg-active text-text-primary border-border-medium': currentPath.startsWith('/generate') }">
             <div class="nav-item-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">⚡</div>
             <span class="nav-item-label font-medium text-sm">Generate</span>
+            <span class="nav-item-badge ml-auto bg-accent-primary text-text-inverse text-xs font-semibold px-2 py-0.5 rounded-full"
+                  x-show="queueCount > 0"
+                  x-text="queueCount"></span>
         </a>
 
         <a href="/models"

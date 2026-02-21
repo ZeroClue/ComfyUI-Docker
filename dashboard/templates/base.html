@@ -352,6 +352,7 @@
                 websocket: null,
                 // Sidebar stats
                 modelCount: 0,
+                queueCount: 0,
                 gpuUsage: '--',
                 memoryUsage: '--',
                 // Header stats
@@ -450,6 +451,9 @@
                             break;
                         case 'system_status':
                             this.updateSystemStatus(data);
+                            break;
+                        case 'queue_updated':
+                            this.queueCount = data.pending_count || 0;
                             break;
                         default:
                             console.log('Unknown message type:', data.type);

@@ -69,9 +69,9 @@
                 <div class="w-2 h-2 rounded-full bg-accent-success animate-pulse"></div>
                 <span class="text-text-secondary">System Online</span>
             </div>
-            <div class="flex items-center gap-3 text-text-tertiary">
-                <span x-text="gpuUsage"></span>
-                <span x-text="memoryUsage"></span>
+            <div class="flex items-center gap-3 text-text-tertiary" x-show="gpuUsage !== '--' || memoryUsage !== '--'">
+                <span x-text="gpuUsage" x-show="gpuUsage !== '--'"></span>
+                <span x-text="memoryUsage" x-show="memoryUsage !== '--'"></span>
             </div>
         </div>
     </div>

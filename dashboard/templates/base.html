@@ -345,6 +345,12 @@
                 currentPath: window.location.pathname,
                 isLoading: false,
                 websocket: null,
+                // Sidebar stats
+                modelCount: 0,
+                gpuUsage: '--',
+                memoryUsage: '--',
+                // Header stats
+                unreadCount: 0,
 
                 initDashboard() {
                     // Initialize sidebar state from localStorage
@@ -359,11 +365,39 @@
                     // Initialize WebSocket connection for real-time updates
                     this.initWebSocket();
 
+                    // Fetch initial stats
+                    this.fetchSidebarStats();
+
                     // Listen for browser back/forward
                     window.addEventListener('popstate', () => {
                         this.currentPath = window.location.pathname;
                         this.updateActiveNav();
                     });
+                },
+
+                async fetchSidebarStats() {
+                    try {
+                        // Fetch system resources for GPU/memory
+                        const res = await fetch('/api/system/resources');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.gpu && data.gpu.utilization_percent !== undefined) {
+                                this.gpuUsage = `GPU ${data.gpu.utilization_percent}%`;
+                            }
+                            if (data.memory && data.memory.percent !== undefined) {
+                                this.memoryUsage = `RAM ${data.memory.percent}%`;
+                            }
+                        }
+
+                        // Fetch model count
+                        const modelsRes = await fetch('/api/presets/?installed_only=true');
+                        if (modelsRes.ok) {
+                            const modelsData = await modelsRes.json();
+                            this.modelCount = modelsData.presets ? Object.keys(modelsData.presets).length : 0;
+                        }
+                    } catch (error) {
+                        console.error('Failed to fetch sidebar stats:', error);
+                    }
                 },
 
                 initWebSocket() {
@@ -481,6 +515,13 @@
                 },
 
                 updateSystemStatus(data) {
+                    // Update sidebar stats
+                    if (data.gpu && data.gpu.utilization_percent !== undefined) {
+                        this.gpuUsage = `GPU ${data.gpu.utilization_percent}%`;
+                    }
+                    if (data.memory && data.memory.percent !== undefined) {
+                        this.memoryUsage = `RAM ${data.memory.percent}%`;
+                    }
                     // Dispatch custom event for components to listen to
                     window.dispatchEvent(new CustomEvent('system-status', { detail: data }));
                 }

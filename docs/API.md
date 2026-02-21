@@ -1,8 +1,8 @@
 # ComfyUI-Docker API Documentation
 
-**Version:** 2.0.0
-**Base URL:** `http://localhost:8080/api`
-**Last Updated:** 2026-02-15
+**Version:** 2.1.0
+**Base URL:** `http://localhost:8082/api`
+**Last Updated:** 2026-02-21
 
 ## Table of Contents
 
@@ -11,6 +11,9 @@
 - [REST API](#rest-api)
   - [Health & Status](#health--status)
   - [Preset Management](#preset-management)
+  - [GPU Recommendations](#gpu-recommendations)
+  - [Version & Updates](#version--updates)
+  - [Registry Sync](#registry-sync)
   - [Model Management](#model-management)
   - [ComfyUI Integration](#comfyui-integration)
   - [Workflow Management](#workflow-management)
@@ -28,7 +31,7 @@ The ComfyUI-Docker API provides a RESTful interface for managing ComfyUI models,
 
 ### Base URL
 
-- **Development:** `http://localhost:8080/api`
+- **Development:** `http://localhost:8082/api`
 - **Production:** `https://your-pod-url.proxy.runpod.net/api`
 
 ### Response Format
@@ -288,6 +291,113 @@ Get installation status for a preset.
     "completed": 2,
     "failed": 0
   }
+}
+```
+
+---
+
+## GPU Recommendations
+
+#### GET /api/presets/recommendations
+
+Get preset recommendations based on GPU VRAM.
+
+**Response:**
+```json
+{
+  "gpu": {
+    "name": "NVIDIA RTX 4090",
+    "vram_mb": 24564,
+    "vram_gb": 24.0
+  },
+  "compatible": [
+    {
+      "id": "WAN_22_5B_TIV2",
+      "name": "WAN 2.2 5B T2V",
+      "vram_gb": 16,
+      "compatible": true,
+      "installed": false
+    }
+  ],
+  "incompatible": [
+    {
+      "id": "FLUX_DEV_FULL",
+      "name": "FLUX Dev Full Precision",
+      "vram_gb": 32,
+      "compatible": false
+    }
+  ],
+  "unknown": [
+    {
+      "id": "LEGACY_MODEL",
+      "name": "Legacy Model",
+      "vram_gb": null,
+      "compatible": null
+    }
+  ]
+}
+```
+
+---
+
+## Version & Updates
+
+#### GET /api/presets/updates
+
+Check for preset updates by comparing local versions with remote registry.
+
+**Response:**
+```json
+{
+  "total": 2,
+  "updates": [
+    {
+      "id": "WAN_22_5B_TIV2",
+      "name": "WAN 2.2 5B T2V",
+      "local_version": "1.0.0",
+      "remote_version": "1.1.0",
+      "category": "Video Generation",
+      "type": "video"
+    }
+  ]
+}
+```
+
+---
+
+## Registry Sync
+
+#### GET /api/presets/registry/sync
+
+Sync preset registry from remote GitHub repository.
+
+**Response:**
+```json
+{
+  "status": "synced",
+  "timestamp": "2026-02-21T10:30:00Z",
+  "presets_count": 56,
+  "source": "https://raw.githubusercontent.com/zeroclue/comfyui-presets/main/registry.json"
+}
+```
+
+#### GET /api/presets/registry/status
+
+Get current registry cache status.
+
+**Response:**
+```json
+{
+  "status": "loaded",
+  "version": "1.0.0",
+  "generated_at": "2026-02-21T08:00:00Z",
+  "total_presets": 56,
+  "categories": {
+    "Video Generation": 26,
+    "Image Generation": 25,
+    "Audio Generation": 5
+  },
+  "last_sync": "2026-02-21T10:30:00Z"
 }
 ```
 

@@ -2,6 +2,13 @@
 
 # ZeroClue ComfyUI-Docker
 
+[![Build Status](https://github.com/ZeroClue/ComfyUI-Docker/actions/workflows/build.yml/badge.svg)](https://github.com/ZeroClue/ComfyUI-Docker/actions/workflows/build.yml)
+[![Presets](https://img.shields.io/badge/Presets-56+-blue)](https://github.com/ZeroClue/comfyui-presets)
+[![Docker Pulls](https://img.shields.io/docker/pulls/zeroclue/comfyui)](https://hub.docker.com/r/zeroclue/comfyui)
+[![License](https://img.shields.io/github/license/ZeroClue/ComfyUI-Docker)](LICENSE)
+
+> **Features**: 🖥️ Unified Dashboard | 💡 GPU Recommendations | 🔄 Update Tracking | ✅ Checksum Validation | 📊 Real-Time Monitoring
+
 > 💬 Feedback & Issues → [GitHub Issues](https://github.com/ZeroClue/ComfyUI-Docker/issues)
 
 > 🚀 This Docker image is maintained by ZeroClue and designed for both cloud deployment and local use.
@@ -16,14 +23,58 @@
 
 ## 🔌 Exposed Ports
 
-| Port | Type | Service               |
-| ---- | ---- | --------------------- |
-| 22   | TCP  | SSH                   |
-| 3000 | HTTP | ComfyUI               |
-| 5001 | HTTP | ComfyUI Studio        |
-| 8080 | HTTP | code-server           |
-| 8888 | HTTP | JupyterLab            |
-| 9000 | HTTP | Preset Manager Web UI |
+| Port | Type | Service               | Notes |
+| ---- | ---- | --------------------- | ----- |
+| 22   | TCP  | SSH                   | |
+| 3000 | HTTP | ComfyUI               | Main generation interface |
+| 5001 | HTTP | ComfyUI Studio        | Simplified workflow runner |
+| 8080 | HTTP | code-server           | VS Code in browser |
+| 8082 | HTTP | **Unified Dashboard** | Primary management interface |
+| 8888 | HTTP | JupyterLab            | Notebook interface |
+| 9000 | HTTP | Preset Manager        | Legacy (auto-disabled when Dashboard enabled) |
+
+---
+
+## 🖥️ Unified Dashboard
+
+> **The primary interface for managing ComfyUI models, presets, and system resources.**
+
+### Screenshots
+
+| Home | Models |
+|------|--------|
+| ![Dashboard Home](docs/screenshots/unified-dashboard/home.png) | ![Models Page](docs/screenshots/unified-dashboard/models.png) |
+
+| Preset Detail | System Status |
+|---------------|---------------|
+| ![Preset Detail](docs/screenshots/unified-dashboard/preset-detail.png) | ![Dashboard](docs/screenshots/unified-dashboard/dashboard-fixed.png) |
+
+### Key Features
+
+- **🎛️ Preset Management**: Browse 56+ presets with GPU compatibility indicators
+- **💡 GPU Recommendations**: See which presets fit your GPU's VRAM
+- **🔄 Update Tracking**: "Update Available" badges when new versions released
+- **✅ Checksum Validation**: SHA256 verification for downloaded files
+- **📊 System Monitoring**: Real-time CPU, memory, disk, and GPU metrics
+- **🗂️ Storage Management**: Visual disk usage and cleanup tools
+- **⚡ Real-Time Progress**: WebSocket-based download tracking
+
+### Quick Access
+
+```bash
+# Dashboard is enabled by default
+docker run --gpus all -p 8082:8082 -p 3000:3000 \
+  zeroclue/comfyui:base-torch2.8.0-cu126
+
+# Access at http://localhost:8082
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ENABLE_UNIFIED_DASHBOARD` | Enable/disable the unified dashboard | `true` |
+| `ACCESS_PASSWORD` | Password for dashboard authentication | `admin` |
 
 ---
 
@@ -119,7 +170,7 @@ docker run --gpus all \
 | `COMFYUI_EXTRA_ARGS`    | Extra ComfyUI options (e.g. `--fast`)                        | (unset)   |
 | `INSTALL_SAGEATTENTION` | Install [SageAttention2](https://github.com/thu-ml/SageAttention) on start (`True`/`False`) | `False`    |
 | `INSTALL_EXTRA_NODES`   | Install optional extra custom nodes at runtime (`True`/`False`). Includes: LayerStyle, IC-Light, SAM3, RMBG | `False` |
-| `FORCE_SYNC_ALL`        | Force full resync of venv and ComfyUI on startup (`True`/`False`) | `False`    |
+| `ENABLE_UNIFIED_DASHBOARD` | Enable/disable unified dashboard web interface (`True`/`False`) | `True`     |
 | `ENABLE_PRESET_MANAGER` | Enable/disable preset manager web interface (`True`/`False`) | `True`     |
 | `ENABLE_STUDIO`         | Enable/disable ComfyUI Studio web interface (`True`/`False`) | `True`     |
 | `STUDIO_PORT`           | ComfyUI Studio internal port | `5000`     |

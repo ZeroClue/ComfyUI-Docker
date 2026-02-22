@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     MODEL_BASE_PATH: str = "/workspace/models"
     PRESET_CONFIG_PATH: str = "/workspace/config/presets.yaml"
     WORKFLOW_BASE_PATH: str = "/workspace/workflows"
+    COMFYUI_USER_PATH: str = "/workspace/ComfyUI/user"
 
     # Download settings
     DOWNLOAD_TIMEOUT: int = 3600  # 1 hour

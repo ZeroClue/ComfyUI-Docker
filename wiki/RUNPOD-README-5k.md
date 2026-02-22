@@ -56,7 +56,6 @@ Click port links in RunPod console to access interfaces.
 |----------|---------|-------------|
 | `ACCESS_PASSWORD` | - | Password for web UIs |
 | `TIME_ZONE` | UTC | Container timezone |
-| `ENABLE_STUDIO` | true | Enable ComfyUI Studio |
 | `INSTALL_SAGEATTENTION` | false | Speed boost for Ampere+ GPUs |
 
 ---
@@ -109,24 +108,10 @@ Click port links in RunPod console to access interfaces.
 | Port | Service | Purpose |
 |------|---------|---------|
 | **3000** | ComfyUI | Node-based workflow editor |
-| **5000** | ComfyUI Studio | Simplified workflow UI |
-| **9000** | Preset Manager | Model download manager |
+| **8082** | Unified Dashboard | Primary management interface |
 | 8080 | Code Server | VS Code IDE (if in image) |
 | 8888 | JupyterLab | Notebook environment |
 | 22 | SSH | Command line access |
-
----
-
-## ComfyUI Studio (Port 5000)
-
-A simplified interface for executing pre-configured workflows without node editing:
-
-- **Workflow Templates**: Execute saved workflows with auto-generated forms
-- **Progress Tracking**: Real-time updates during generation
-- **Image Upload**: Upload images for img2img workflows
-- **Output Gallery**: View and download generated content
-
-Access via **Port 5000** link in RunPod console. Uses same `ACCESS_PASSWORD` as other services.
 
 ---
 

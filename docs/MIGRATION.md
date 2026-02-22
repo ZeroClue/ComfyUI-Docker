@@ -76,11 +76,6 @@ Container Start → Generate Config → Start Services (<30s)
    - Real-time progress tracking
    - WebSocket updates
 
-5. **ComfyUI Studio** (Port 5001)
-   - Simplified workflow execution
-   - Auto-generated input forms
-   - Template-based workflows
-
 ---
 
 ## Breaking Changes
@@ -103,8 +98,10 @@ Container Start → Generate Config → Start Services (<30s)
 
 **New Variables:**
 - `ENABLE_DASHBOARD` - Control unified dashboard (default: true)
-- `ENABLE_STUDIO` - Control ComfyUI Studio (default: true)
-- `STUDIO_PORT` - Studio internal port (default: 5000)
+
+**Deprecated Variables:**
+- `ENABLE_STUDIO` - ComfyUI Studio is deprecated, use Unified Dashboard instead
+- `STUDIO_PORT` - No longer used
 
 **Changed Variables:**
 - `WORKSPACE_DIR` → `WORKSPACE_ROOT` (more explicit naming)
@@ -240,9 +237,8 @@ Container Start → Generate Config → Start Services (<30s)
    - Add new environment variables:
      ```
      ENABLE_DASHBOARD: true
-     ENABLE_STUDIO: true
      ```
-   - Update exposed ports (add 8080, 5001)
+   - Update exposed ports (add 8082 for Unified Dashboard)
 
 2. **Deploy New Pod**
    - Deploy pod from updated template
@@ -280,7 +276,6 @@ Container Start → Generate Config → Start Services (<30s)
 
 4. **Test New Features**
    - Explore unified dashboard
-   - Try ComfyUI Studio
    - Test background downloads
 
 ---
@@ -410,8 +405,6 @@ MODEL_SYNC_SOURCE=/workspace
 
 # New variables (add)
 ENABLE_DASHBOARD=true
-ENABLE_STUDIO=true
-STUDIO_PORT=5000
 
 # Keep existing variables
 ACCESS_PASSWORD=your_password
@@ -542,7 +535,7 @@ After migration, verify:
 - [ ] Workflows execute correctly
 - [ ] Preset installation works
 - [ ] Dashboard is accessible
-- [ ] ComfyUI Studio works
+- [ ] Unified Dashboard works
 - [ ] Background downloads work
 - [ ] Storage usage is as expected
 - [ ] Performance is acceptable

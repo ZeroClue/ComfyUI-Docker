@@ -82,17 +82,15 @@ Create a reusable pod template for easy deployment.
    ```
    ACCESS_PASSWORD: your_secure_password_here
    PRESET_DOWNLOAD: WAN_22_5B_TIV2,SDXL_BASE_V1
-   ENABLE_PRESET_MANAGER: true
-   ENABLE_STUDIO: true
    TIME_ZONE: Etc/UTC
    ```
 
 5. **Exposed Ports**
    ```
    3000 (HTTP) - ComfyUI
-   8080 (HTTP) - Unified Dashboard
-   9000 (HTTP) - Preset Manager
-   5001 (HTTP) - ComfyUI Studio
+   8082 (HTTP) - Unified Dashboard (Primary Interface)
+   8080 (HTTP) - code-server
+   8888 (HTTP) - JupyterLab
    ```
 
 6. **Save Template**

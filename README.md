@@ -23,15 +23,14 @@
 
 ## 🔌 Exposed Ports
 
-| Port | Type | Service               | Notes |
-| ---- | ---- | --------------------- | ----- |
-| 22   | TCP  | SSH                   | |
-| 3000 | HTTP | ComfyUI               | Main generation interface |
-| 5001 | HTTP | ComfyUI Studio        | Simplified workflow runner |
-| 8080 | HTTP | code-server           | VS Code in browser |
-| 8082 | HTTP | **Unified Dashboard** | Primary management interface |
-| 8888 | HTTP | JupyterLab            | Notebook interface |
-| 9000 | HTTP | Preset Manager        | Legacy (auto-disabled when Dashboard enabled) |
+| Port | Type | Service               | Status |
+| ---- | ---- | --------------------- | ------ |
+| 22   | TCP  | SSH                   | - |
+| 3000 | HTTP | ComfyUI               | Primary |
+| 8082 | HTTP | **Unified Dashboard** | Primary |
+| 8080 | HTTP | code-server           | Secondary |
+| 8888 | HTTP | JupyterLab            | Secondary |
+| 9000 | HTTP | Preset Manager        | Legacy (opt-in) |
 
 ---
 
@@ -171,9 +170,7 @@ docker run --gpus all \
 | `INSTALL_SAGEATTENTION` | Install [SageAttention2](https://github.com/thu-ml/SageAttention) on start (`True`/`False`) | `False`    |
 | `INSTALL_EXTRA_NODES`   | Install optional extra custom nodes at runtime (`True`/`False`). Includes: LayerStyle, IC-Light, SAM3, RMBG | `False` |
 | `ENABLE_UNIFIED_DASHBOARD` | Enable/disable unified dashboard web interface (`True`/`False`) | `True`     |
-| `ENABLE_PRESET_MANAGER` | Enable/disable preset manager web interface (`True`/`False`) | `True`     |
-| `ENABLE_STUDIO`         | Enable/disable ComfyUI Studio web interface (`True`/`False`) | `True`     |
-| `STUDIO_PORT`           | ComfyUI Studio internal port | `5000`     |
+| `ENABLE_PRESET_MANAGER` | Enable preset manager web interface (`True`/`False`). **Legacy** - auto-disabled when Dashboard enabled | `True`     |
 | `PRESET_DOWNLOAD`       | Download video generation model presets at startup (comma-separated list). **See below**. | (unset)   |
 | `IMAGE_PRESET_DOWNLOAD` | Download image generation model presets at startup (comma-separated list). **See below**. | (unset)   |
 | `AUDIO_PRESET_DOWNLOAD` | Download audio generation model presets at startup (comma-separated list). ⚠️ **Experimental** - **See below**. | (unset)   |
@@ -184,7 +181,11 @@ docker run --gpus all \
 
 ---
 
-## 🌐 Preset Manager Web Interface
+## 🌐 Preset Manager Web Interface (Legacy)
+
+> ⚠️ **Deprecated**: The Preset Manager is superseded by the **Unified Dashboard** (port 8082). Use the Dashboard for the best experience.
+>
+> The Preset Manager is now opt-in only. To enable it, set `ENABLE_PRESET_MANAGER=true`.
 
 > **Web-based preset management system** - Browse, install, and manage ComfyUI model presets through an intuitive web interface.
 
@@ -206,58 +207,13 @@ docker run --gpus all \
 ### Usage Examples
 
 ```bash
-# Enable preset manager (default - enabled)
-docker run -e ACCESS_PASSWORD=mypassword zeroclue/comfyui:base-torch2.8.0-cu126
-
-# Disable preset manager to save resources
-docker run -e ENABLE_PRESET_MANAGER=False zeroclue/comfyui:base-torch2.8.0-cu126
+# Explicitly enable preset manager (opt-in)
+docker run -e ENABLE_PRESET_MANAGER=true -e ACCESS_PASSWORD=mypassword zeroclue/comfyui:base-torch2.8.0-cu126
 ```
 
-> 👉 **Complete Guide**: See [PRESET_MANAGER.md](PRESET_MANAGER.md) for detailed documentation, screenshots, and advanced features.
+> 💡 **Recommendation**: Use the Unified Dashboard instead for a modern interface with more features.
 
----
-
-## 🎨 ComfyUI Studio Web Interface
-
-> **Simplified workflow execution interface** - Run pre-configured ComfyUI workflows without the node editor.
->
-> 💡 Inspired by [am05mhz/comfy-dock](https://github.com/am05mhz/comfy-dock)
-
-### Quick Access
-
-- **URL**: `http://your-pod-url:5001` (nginx proxy) or `http://your-pod-url:5000` (direct)
-- **Authentication**: Use `ACCESS_PASSWORD` environment variable (if set)
-- **Features**: Real-time progress tracking, workflow templates, auto-generated input forms
-
-### Key Capabilities
-
-- **📝 Workflow Templates**: Browse and run pre-configured workflows
-- **🎛️ Auto-Generated Forms**: Inputs automatically extracted from workflow nodes
-- **📊 Real-Time Progress**: WebSocket-based progress tracking
-- **🔄 Sync from ComfyUI**: Import workflows saved in ComfyUI
-- **🔐 Password Protected**: Uses the same `ACCESS_PASSWORD` as other services
-
-### Usage Examples
-
-```bash
-# Enable studio (default - enabled)
-docker run -e ACCESS_PASSWORD=mypassword zeroclue/comfyui:base-torch2.8.0-cu126
-
-# Disable studio to save resources
-docker run -e ENABLE_STUDIO=False zeroclue/comfyui:base-torch2.8.0-cu126
-
-# Custom studio port
-docker run -e STUDIO_PORT=6000 zeroclue/comfyui:base-torch2.8.0-cu126
-```
-
-### Adding Workflows
-
-1. Create a workflow in ComfyUI's node editor
-2. Export using **"Save (API Format)"** button (not regular Save)
-3. Save the JSON file to `/workspace/config/workflows/`
-4. Or use the **"Sync from ComfyUI"** button in Studio
-
-> ⚠️ **Note**: Workflows must be in API format, not the full UI format. The sync feature automatically validates and converts workflows.
+> 👉 **Complete Guide**: See [docs/PRESET_MANAGER.md](docs/PRESET_MANAGER.md) for detailed documentation.
 
 ---
 
@@ -367,10 +323,10 @@ docker run -e AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC" zeroclue/comfyu
 | App            | Log Path                                      |
 | -------------- | --------------------------------------------- |
 | ComfyUI        | `/workspace/ComfyUI/user/comfyui_3000.log`    |
+| Unified Dashboard | `/workspace/logs/unified_dashboard.log`   |
 | code-server    | `/workspace/logs/code-server.log`             |
 | JupyterLab     | `/workspace/logs/jupyterlab.log`              |
 | Preset Manager | `/workspace/logs/preset_manager.log`          |
-| ComfyUI Studio | `/workspace/logs/comfyui_studio.log`          |
 
 ---
 

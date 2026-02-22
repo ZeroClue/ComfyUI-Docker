@@ -48,9 +48,6 @@ AUDIO_PRESET_DOWNLOAD="ACE_STEP_V1_3_5B"
 
 # Security
 ACCESS_PASSWORD="your-secure-password"
-
-# Enable Studio interface
-ENABLE_STUDIO=true
 ```
 
 ### Preset Combinations
@@ -90,23 +87,9 @@ AUDIO_PRESET_DOWNLOAD="COMPLETE_AUDIO_SUITE"
 | Port | Service | Purpose |
 |------|---------|---------|
 | **3000** | ComfyUI | Node-based audio workflows |
-| **5000** | ComfyUI Studio | Simplified workflow execution |
-| **9000** | Preset Manager | Model download management |
+| **8082** | Unified Dashboard | Primary management interface |
 | 8080 | Code Server | VS Code IDE |
 | 8888 | JupyterLab | Notebook environment |
-
----
-
-## ComfyUI Studio (Port 5000)
-
-Simplified interface for audio generation:
-
-- **Workflow Templates**: Pre-configured music/TTS workflows
-- **Progress Tracking**: Real-time generation updates
-- **Audio Upload**: Upload samples for transformation
-- **Output Gallery**: Download generated audio
-
-Access via **Port 5000** link in RunPod console.
 
 ---
 

@@ -46,9 +46,6 @@ IMAGE_PRESET_DOWNLOAD="SDXL_BASE_V1,FLUX_DEV_BASIC"
 
 # Security
 ACCESS_PASSWORD="your-secure-password"
-
-# Enable Studio interface
-ENABLE_STUDIO=true
 ```
 
 ### Preset Combinations
@@ -119,23 +116,9 @@ IMAGE_PRESET_DOWNLOAD="QWEN_IMAGE_CHINESE"
 | Port | Service | Purpose |
 |------|---------|---------|
 | **3000** | ComfyUI | Node-based workflow editor |
-| **5000** | ComfyUI Studio | Simplified workflow execution |
-| **9000** | Preset Manager | Model download management |
+| **8082** | Unified Dashboard | Primary management interface |
 | 8080 | Code Server | VS Code IDE |
 | 8888 | JupyterLab | Notebook environment |
-
----
-
-## ComfyUI Studio (Port 5000)
-
-Simplified interface for image generation:
-
-- **Workflow Templates**: txt2img, img2img, upscale presets
-- **Auto-Generated Forms**: Prompts, steps, CFG, dimensions
-- **Image Upload**: For img2img and inpainting
-- **Output Gallery**: View and download images
-
-Access via **Port 5000** link in RunPod console.
 
 ---
 

@@ -1,5 +1,11 @@
 # ComfyUI Preset Manager
 
+> ⚠️ **Deprecated**: The Preset Manager is superseded by the **Unified Dashboard** (port 8082).
+>
+> - The Preset Manager is now **opt-in only** and auto-disabled when the Unified Dashboard is enabled.
+> - To explicitly enable, set `ENABLE_PRESET_MANAGER=true`.
+> - For new deployments, use the Unified Dashboard for the best experience.
+
 A comprehensive web-based model management system for ComfyUI containers, providing complete CRUD operations for AI model presets with storage monitoring and management capabilities.
 
 ## Features

@@ -43,7 +43,6 @@
 # Video presets (26 available)
 PRESET_DOWNLOAD="WAN_2_2_T2V_BASIC"
 ACCESS_PASSWORD="your-secure-password"
-ENABLE_STUDIO=true
 ```
 
 ### Preset Combinations
@@ -99,23 +98,9 @@ PRESET_DOWNLOAD="WAN_2_2_S2V"
 | Port | Service | Purpose |
 |------|---------|---------|
 | **3000** | ComfyUI | Node-based video workflows |
-| **5000** | ComfyUI Studio | Simplified workflow execution |
-| **9000** | Preset Manager | Model download management |
+| **8082** | Unified Dashboard | Primary management interface |
 | 8080 | Code Server | VS Code IDE |
 | 8888 | JupyterLab | Notebook environment |
-
----
-
-## ComfyUI Studio (Port 5000)
-
-Simplified interface for video generation:
-
-- **Workflow Templates**: Pre-configured T2V, I2V workflows
-- **Progress Tracking**: Real-time generation updates
-- **Image Upload**: For image-to-video workflows
-- **Output Gallery**: View and download videos
-
-Access via **Port 5000** link in RunPod console.
 
 ---
 

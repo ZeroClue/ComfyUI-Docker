@@ -136,3 +136,6 @@ docs/notes/
 
 # Design playgrounds (dev tools only)
 playgrounds/
+
+# Claude backups
+.claude/backups

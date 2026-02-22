@@ -245,3 +245,4 @@ docs/notes/
 .claude.json
 .claude.json.bak
 .mcp.json
+.claude/backups

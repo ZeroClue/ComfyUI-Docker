@@ -84,6 +84,28 @@
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary">◉</span>
                 </div>
 
+                <!-- Source Filters -->
+                <div class="flex gap-2 mb-3">
+                    <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                            :class="sourceFilter === 'all' ? 'bg-accent-primary text-white' : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'"
+                            @click="sourceFilter = 'all'">
+                        All
+                        <span class="ml-1 opacity-70" x-text="workflows.length"></span>
+                    </button>
+                    <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                            :class="sourceFilter === 'library' ? 'bg-accent-primary text-white' : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'"
+                            @click="sourceFilter = 'library'">
+                        Library
+                        <span class="ml-1 opacity-70" x-text="workflows.filter(w => w.source === 'library').length"></span>
+                    </button>
+                    <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                            :class="sourceFilter === 'user' ? 'bg-accent-primary text-white' : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'"
+                            @click="sourceFilter = 'user'">
+                        My Workflows
+                        <span class="ml-1 opacity-70" x-text="workflows.filter(w => w.source === 'user').length"></span>
+                    </button>
+                </div>
+
                 <!-- Category Filters -->
                 <div class="flex gap-2 overflow-x-auto pb-1">
                     <button class="px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all"
@@ -161,8 +183,8 @@
                                 </div>
                             </div>
 
-                            <!-- Model Requirements Panel -->
-                            <div x-show="selectedWorkflow && selectedWorkflow.id === workflow.id" class="mt-3 pt-3 border-t border-border-primary">
+                            <!-- Model Requirements Panel (for user workflows) -->
+                            <div x-show="selectedWorkflow && selectedWorkflow.id === workflow.id && workflow.source === 'user'" class="mt-3 pt-3 border-t border-border-primary">
                                 <h4 class="text-sm font-medium text-text-secondary mb-2">Required Models</h4>
 
                                 <template x-for="model in workflow.models" :key="model.name">
@@ -217,6 +239,57 @@
                                             :class="workflow.ready ? 'bg-accent-primary' : 'bg-accent-warning'"
                                             class="px-4 py-2 text-sm text-white rounded hover:opacity-80">
                                         <span x-text="workflow.ready ? 'Start Generation' : 'Generate (Missing Models)'"></span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Preset Requirements Panel (for library workflows) -->
+                            <div x-show="selectedWorkflow && selectedWorkflow.id === workflow.id && workflow.source === 'library'" class="mt-3 pt-3 border-t border-border-primary">
+                                <h4 class="text-sm font-medium text-text-secondary mb-2">Required Presets</h4>
+
+                                <template x-for="preset in workflow.required_presets" :key="preset.id">
+                                    <div class="flex items-center justify-between py-1.5">
+                                        <div class="flex items-center gap-2">
+                                            <!-- Status Icon -->
+                                            <template x-if="preset.installed">
+                                                <svg class="w-4 h-4 text-accent-success" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </template>
+                                            <template x-if="!preset.installed">
+                                                <svg class="w-4 h-4 text-accent-warning" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </template>
+                                            <span class="text-sm" x-text="preset.name"></span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <template x-if="preset.installed">
+                                                <span class="text-xs text-accent-success">Installed</span>
+                                            </template>
+                                            <template x-if="!preset.installed">
+                                                <button @click.stop="installPreset(preset.id)"
+                                                        class="px-2 py-1 text-xs bg-accent-primary text-white rounded hover:bg-accent-primary/80 flex items-center gap-1">
+                                                    <span>↓</span>
+                                                    <span x-text="preset.download_size || 'Install'"></span>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Install All & Generate / Generate Buttons -->
+                                <div class="mt-4 flex justify-end gap-2">
+                                    <button x-show="!workflow.ready"
+                                            @click.stop="installAllAndGenerate(workflow)"
+                                            class="px-3 py-1.5 text-sm bg-accent-warning text-white rounded hover:opacity-80 flex items-center gap-1">
+                                        <span>↓</span>
+                                        <span>Install All & Generate</span>
+                                    </button>
+                                    <button x-show="workflow.ready"
+                                            @click.stop="selectAndGenerate(workflow)"
+                                            class="px-4 py-2 text-sm bg-accent-primary text-white rounded hover:opacity-80">
+                                        Generate
                                     </button>
                                 </div>
                             </div>
@@ -504,6 +577,63 @@
         </div>
     </div>
 
+    <!-- Disk Space Warning Modal -->
+    <div x-show="diskSpaceModal"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="display: none;"
+         @click.self="diskSpaceModal = null">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+        <!-- Modal Content -->
+        <div class="relative bg-bg-secondary border border-border-medium rounded-lg max-w-md w-full shadow-xl"
+             @click.stop>
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-border-subtle">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">⚠️</span>
+                    <h3 class="text-lg font-semibold text-accent-warning">Insufficient Disk Space</h3>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="px-6 py-4">
+                <p class="text-sm text-text-secondary mb-4">
+                    This workflow requires <span class="font-semibold text-text-primary" x-text="diskSpaceModal?.required_gb?.toFixed(1)"></span> GB of downloads,
+                    but only <span class="font-semibold text-text-primary" x-text="diskSpaceModal?.available_gb?.toFixed(1)"></span> GB is available on your workspace volume.
+                </p>
+
+                <div class="bg-accent-warning/10 border border-accent-warning/30 rounded-lg p-3 mb-4">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-text-secondary">Shortfall:</span>
+                        <span class="font-semibold text-accent-warning" x-text="(diskSpaceModal?.shortfall_gb || 0).toFixed(1) + ' GB'"></span>
+                    </div>
+                </div>
+
+                <p class="text-xs text-text-tertiary">
+                    Options: Delete unused models to free space, or expand your network volume size.
+                </p>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-border-subtle flex justify-end gap-3">
+                <a href="/models" class="px-4 py-2 text-sm font-medium border border-border-medium rounded-md text-text-secondary hover:bg-bg-hover transition-colors">
+                    View Models
+                </a>
+                <button @click="diskSpaceModal = null"
+                        class="px-4 py-2 text-sm font-medium bg-accent-primary text-white rounded-md hover:bg-orange-600 transition-colors">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Workflow Details Modal -->
     <div x-show="detailsWorkflow"
          x-transition:enter="transition ease-out duration-200"
@@ -615,9 +745,11 @@ function generatePage() {
         categories: {},
         searchQuery: '',
         categoryFilter: 'all',
+        sourceFilter: 'all',
         selectedWorkflow: null,
         detailsWorkflow: null,
         workflowCompatibility: null,
+        diskSpaceModal: null,
 
         // Generation State
         prompt: '',
@@ -761,6 +893,11 @@ function generatePage() {
 
         get filteredWorkflows() {
             return this.workflows.filter(w => {
+                // Source filter
+                if (this.sourceFilter !== 'all' && w.source !== this.sourceFilter) {
+                    return false;
+                }
+
                 // Category filter
                 if (this.categoryFilter !== 'all' && w.category !== this.categoryFilter) {
                     return false;
@@ -1005,6 +1142,63 @@ function generatePage() {
             } catch (error) {
                 console.error('Install preset failed:', error);
                 window.showToast('error', 'Installation Failed', error.message);
+            }
+        },
+
+        async installAllAndGenerate(workflow) {
+            if (!workflow.required_presets) return;
+
+            const missingPresets = workflow.required_presets.filter(p => !p.installed);
+            if (missingPresets.length === 0) {
+                // All installed, just generate
+                this.selectAndGenerate(workflow);
+                return;
+            }
+
+            // Check disk space requirements first
+            try {
+                const checkResponse = await fetch(`/api/workflows/registry/${workflow.id}/check-requirements`);
+                if (checkResponse.ok) {
+                    const checkData = await checkResponse.json();
+                    if (checkData.disk_check && !checkData.disk_check.can_proceed) {
+                        // Show disk space warning modal
+                        this.diskSpaceModal = checkData.disk_check;
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to check requirements:', error);
+                // Continue with installation if check fails
+            }
+
+            // Install all missing presets
+            let installedCount = 0;
+            let failedCount = 0;
+
+            for (const preset of missingPresets) {
+                try {
+                    const response = await fetch(`/api/presets/${preset.id}/install`, { method: 'POST' });
+                    if (response.ok) {
+                        installedCount++;
+                    } else {
+                        failedCount++;
+                    }
+                } catch (error) {
+                    console.error(`Failed to install preset ${preset.id}:`, error);
+                    failedCount++;
+                }
+            }
+
+            if (installedCount > 0) {
+                window.showToast('success', 'Installation Started',
+                    `${installedCount} preset(s) queued for download. Generation will start when ready.`);
+                // Refresh workflows to get updated status
+                await this.loadWorkflows();
+            }
+
+            if (failedCount > 0) {
+                window.showToast('warning', 'Partial Installation',
+                    `${failedCount} preset(s) failed to install.`);
             }
         }
     }

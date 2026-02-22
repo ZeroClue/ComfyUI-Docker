@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 
 from .api import api_router
+from .api.workflow_registry import router as workflow_registry_router
 from .core.config import settings
 from .core.websocket import ConnectionManager
 from .core.generation_manager import generation_manager
@@ -77,6 +78,7 @@ templates = Jinja2Templates(directory=str(templates_dir))
 
 # Include API routers
 app.include_router(api_router, prefix="/api")
+app.include_router(workflow_registry_router, prefix="/api/workflows/registry", tags=["workflow-registry"])
 
 
 @app.get("/", response_class=HTMLResponse)

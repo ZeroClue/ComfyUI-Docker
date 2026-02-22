@@ -395,6 +395,15 @@ COPY --from=comfyui-core /app/comfyui /app/comfyui
 # Copy dashboard application code (from repository)
 COPY dashboard/ /app/dashboard/
 
+# Download workflow library from comfyui-presets registry
+RUN mkdir -p /app/workflows/library/video \
+             /app/workflows/library/image \
+             /app/workflows/library/audio && \
+    curl -sL "https://raw.githubusercontent.com/ZeroClue/comfyui-presets/main/workflows/video/wan_t2v_basic.json" \
+         -o /app/workflows/library/video/wan_t2v_basic.json && \
+    curl -sL "https://raw.githubusercontent.com/ZeroClue/comfyui-presets/main/workflows/image/flux_schnell_basic.json" \
+         -o /app/workflows/library/image/flux_schnell_basic.json
+
 # =============================================================================
 # Install code-server (conditional)
 # =============================================================================

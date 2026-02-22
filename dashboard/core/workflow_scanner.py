@@ -1,10 +1,11 @@
 """
 Workflow Scanner Service
 Scans workflow JSON files and extracts metadata for the Generate page.
+Supports both user workflows (filesystem) and library workflows (registry).
 """
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass
 
 
@@ -63,6 +64,8 @@ class WorkflowScanner:
 
     def __init__(self, workflow_base_path: Path):
         self.base_path = Path(workflow_base_path)
+        self._registry_path = Path("/workspace/data/registry.json")
+        self._models_path = self.base_path.parent / "models"
 
     def scan_workflow(self, workflow_path: Path) -> Dict[str, Any]:
         """Scan a single workflow file and extract metadata."""
@@ -131,10 +134,25 @@ class WorkflowScanner:
                 "missing": missing_count,
             },
             "ready": missing_count == 0 if models else True,  # Ready if no models or all installed
+            "source": "user",  # Mark as user workflow from filesystem
         }
 
     def scan_all(self) -> List[Dict[str, Any]]:
-        """Scan all workflow files in the base path."""
+        """Scan all workflows - both library (registry) and user (filesystem)."""
+        workflows = []
+
+        # First, scan library workflows from registry
+        library_workflows = self.scan_library_workflows()
+        workflows.extend(library_workflows)
+
+        # Then, scan user workflows from filesystem
+        user_workflows = self.scan_user_workflows()
+        workflows.extend(user_workflows)
+
+        return workflows
+
+    def scan_user_workflows(self) -> List[Dict[str, Any]]:
+        """Scan user workflow files from the filesystem."""
         workflows = []
 
         if not self.base_path.exists():
@@ -149,6 +167,98 @@ class WorkflowScanner:
                 continue
 
         return workflows
+
+    def scan_library_workflows(self) -> List[Dict[str, Any]]:
+        """
+        Scan workflows from the registry.json file.
+        Returns workflows with source='library' and preset-based model checking.
+        """
+        workflows = []
+
+        if not self._registry_path.exists():
+            return workflows
+
+        try:
+            with open(self._registry_path, 'r') as f:
+                registry = json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Warning: Failed to load registry: {e}")
+            return workflows
+
+        workflows_data = registry.get("workflows", {})
+        presets_data = registry.get("presets", {})
+        installed_presets = self._get_installed_presets(presets_data)
+
+        for wf_id, wf_data in workflows_data.items():
+            required_presets = wf_data.get("required_presets", [])
+            preset_statuses = []
+
+            for preset_id in required_presets:
+                preset_info = presets_data.get(preset_id, {})
+                preset_statuses.append({
+                    "id": preset_id,
+                    "name": preset_info.get("name", preset_id),
+                    "installed": preset_id in installed_presets,
+                    "download_size": preset_info.get("download_size"),
+                })
+
+            # Calculate ready status based on preset availability
+            ready = all(ps["installed"] for ps in preset_statuses) if preset_statuses else True
+            installed_count = sum(1 for ps in preset_statuses if ps["installed"])
+            missing_count = len(preset_statuses) - installed_count
+
+            workflows.append({
+                "id": wf_id,
+                "name": wf_data.get("name", wf_id),
+                "description": wf_data.get("description", ""),
+                "category": wf_data.get("category", "General"),
+                "path": None,  # Library workflows don't have local paths
+                "node_count": 0,  # Not available from registry metadata
+                "input_types": wf_data.get("input_types", []),
+                "output_types": wf_data.get("output_types", []),
+                "required_presets": required_presets,  # Preset IDs for library workflows
+                "models": preset_statuses,  # For UI compatibility
+                "model_status": {
+                    "total": len(preset_statuses),
+                    "installed": installed_count,
+                    "missing": missing_count,
+                },
+                "ready": ready,
+                "source": "library",
+                "type": wf_data.get("type", "image"),
+                "tags": wf_data.get("tags", []),
+                "author": wf_data.get("author", "Unknown"),
+                "version": wf_data.get("version", "1.0.0"),
+            })
+
+        return workflows
+
+    def _get_installed_presets(self, presets_data: Dict[str, Any]) -> Set[str]:
+        """
+        Check which presets are installed by verifying all files exist.
+        Returns a set of installed preset IDs.
+        """
+        installed = set()
+
+        for preset_id, preset_data in presets_data.items():
+            files = preset_data.get("files", [])
+
+            # If no files defined, skip this preset
+            if not files:
+                continue
+
+            all_installed = True
+            for file_info in files:
+                file_path = file_info.get("path", "")
+                full_path = self._models_path / file_path
+                if not full_path.exists():
+                    all_installed = False
+                    break
+
+            if all_installed:
+                installed.add(preset_id)
+
+        return installed
 
     def _infer_category(self, workflow_path: Path) -> str:
         """Infer category from path structure."""

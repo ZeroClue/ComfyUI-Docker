@@ -206,6 +206,10 @@ phase1_volume_setup() {
     mkdir -p "${COMFYUI_WORKSPACE}/temp"
     mkdir -p "${CONFIG_DIR}"
 
+    # Create workflow directories
+    mkdir -p "${WORKSPACE_ROOT}/workflows/user"
+    mkdir -p "${WORKSPACE_ROOT}/data"
+
     log_success "Directory structure created"
 
     # Create symlinks for ComfyUI models to workspace
@@ -224,6 +228,12 @@ phase1_volume_setup() {
 
     if [[ ! -L "${COMFYUI_DIR}/input" ]]; then
         ln -sf "${COMFYUI_WORKSPACE}/input" "${COMFYUI_DIR}/input"
+    fi
+
+    # Symlink library workflows if not already accessible
+    if [[ ! -d "${WORKSPACE_ROOT}/workflows/library" ]] && [[ -d "/app/workflows/library" ]]; then
+        ln -sf /app/workflows/library "${WORKSPACE_ROOT}/workflows/library"
+        log_success "Library workflows symlinked"
     fi
 
     local end_time=$(get_time_ms)

@@ -84,6 +84,28 @@
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary">◉</span>
                 </div>
 
+                <!-- Source Filters -->
+                <div class="flex gap-2 mb-3">
+                    <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                            :class="sourceFilter === 'all' ? 'bg-accent-primary text-white' : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'"
+                            @click="sourceFilter = 'all'">
+                        All
+                        <span class="ml-1 opacity-70" x-text="workflows.length"></span>
+                    </button>
+                    <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                            :class="sourceFilter === 'library' ? 'bg-accent-primary text-white' : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'"
+                            @click="sourceFilter = 'library'">
+                        Library
+                        <span class="ml-1 opacity-70" x-text="workflows.filter(w => w.source === 'library').length"></span>
+                    </button>
+                    <button class="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                            :class="sourceFilter === 'user' ? 'bg-accent-primary text-white' : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'"
+                            @click="sourceFilter = 'user'">
+                        My Workflows
+                        <span class="ml-1 opacity-70" x-text="workflows.filter(w => w.source === 'user').length"></span>
+                    </button>
+                </div>
+
                 <!-- Category Filters -->
                 <div class="flex gap-2 overflow-x-auto pb-1">
                     <button class="px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all"
@@ -666,6 +688,7 @@ function generatePage() {
         categories: {},
         searchQuery: '',
         categoryFilter: 'all',
+        sourceFilter: 'all',
         selectedWorkflow: null,
         detailsWorkflow: null,
         workflowCompatibility: null,
@@ -812,6 +835,11 @@ function generatePage() {
 
         get filteredWorkflows() {
             return this.workflows.filter(w => {
+                // Source filter
+                if (this.sourceFilter !== 'all' && w.source !== this.sourceFilter) {
+                    return false;
+                }
+
                 // Category filter
                 if (this.categoryFilter !== 'all' && w.category !== this.categoryFilter) {
                     return false;

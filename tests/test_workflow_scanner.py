@@ -254,3 +254,128 @@ def test_scan_all_handles_invalid_json(tmp_path):
     # Should only return the valid workflow
     assert len(results) == 1
     assert results[0]["name"] == "Valid"
+
+
+def test_scan_comfyui_workflows_finds_workflows():
+    """Test that scan_comfyui_workflows finds workflows in ComfyUI user directory."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_path = Path(tmpdir) / "workflows"
+        comfyui_path = Path(tmpdir) / "ComfyUI" / "user" / "default" / "workflows"
+        comfyui_path.mkdir(parents=True)
+
+        # Create a test workflow
+        workflow = {
+            "1": {"class_type": "KSampler", "inputs": {}},
+            "_meta": {"name": "Test ComfyUI Workflow", "description": "From ComfyUI"}
+        }
+        with open(comfyui_path / "test_workflow.json", "w") as f:
+            json.dump(workflow, f)
+
+        scanner = WorkflowScanner(base_path)
+        scanner._comfyui_user_path = Path(tmpdir) / "ComfyUI" / "user"
+
+        comfyui_workflows = scanner.scan_comfyui_workflows()
+
+        assert len(comfyui_workflows) == 1
+        assert comfyui_workflows[0]["id"] == "test_workflow"
+        assert comfyui_workflows[0]["name"] == "Test ComfyUI Workflow"
+        assert comfyui_workflows[0]["source"] == "comfyui"
+
+
+def test_scan_all_includes_comfyui_workflows():
+    """Test that scan_all includes workflows from all three sources."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_path = Path(tmpdir) / "workflows"
+        base_path.mkdir(parents=True)
+
+        # Create user workflow
+        user_workflow = {"1": {"class_type": "KSampler"}, "_meta": {"name": "User WF"}}
+        with open(base_path / "user_wf.json", "w") as f:
+            json.dump(user_workflow, f)
+
+        # Create ComfyUI workflow
+        comfyui_path = Path(tmpdir) / "ComfyUI" / "user" / "default" / "workflows"
+        comfyui_path.mkdir(parents=True)
+        comfyui_workflow = {"1": {"class_type": "KSampler"}, "_meta": {"name": "ComfyUI WF"}}
+        with open(comfyui_path / "comfyui_wf.json", "w") as f:
+            json.dump(comfyui_workflow, f)
+
+        scanner = WorkflowScanner(base_path)
+        scanner._comfyui_user_path = Path(tmpdir) / "ComfyUI" / "user"
+
+        all_workflows = scanner.scan_all()
+
+        # Should have 2 workflows (user + comfyui), no library without registry
+        assert len(all_workflows) == 2
+        sources = {wf["source"] for wf in all_workflows}
+        assert "user" in sources
+        assert "comfyui" in sources
+
+
+def test_scan_all_deduplicates_preferring_comfyui():
+    """Test that scan_all deduplicates workflows, preferring ComfyUI version."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_path = Path(tmpdir) / "workflows"
+        base_path.mkdir(parents=True)
+
+        # Create user workflow with same id as ComfyUI workflow
+        user_workflow = {"1": {"class_type": "KSampler"}, "_meta": {"name": "User Version"}}
+        with open(base_path / "duplicate.json", "w") as f:
+            json.dump(user_workflow, f)
+
+        # Create ComfyUI workflow with same id
+        comfyui_path = Path(tmpdir) / "ComfyUI" / "user" / "default" / "workflows"
+        comfyui_path.mkdir(parents=True)
+        comfyui_workflow = {"1": {"class_type": "KSampler"}, "_meta": {"name": "ComfyUI Version"}}
+        with open(comfyui_path / "duplicate.json", "w") as f:
+            json.dump(comfyui_workflow, f)
+
+        scanner = WorkflowScanner(base_path)
+        scanner._comfyui_user_path = Path(tmpdir) / "ComfyUI" / "user"
+
+        all_workflows = scanner.scan_all()
+
+        # Should have 1 workflow (deduplicated)
+        assert len(all_workflows) == 1
+        # Should prefer ComfyUI version
+        assert all_workflows[0]["source"] == "comfyui"
+        assert all_workflows[0]["name"] == "ComfyUI Version"
+
+
+def test_multi_user_comfyui_workflows():
+    """Test scanning workflows from multiple ComfyUI user directories."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_path = Path(tmpdir) / "workflows"
+        base_path.mkdir(parents=True)
+
+        # Create workflows for user1
+        user1_path = Path(tmpdir) / "ComfyUI" / "user" / "user1" / "workflows"
+        user1_path.mkdir(parents=True)
+        workflow1 = {"1": {"class_type": "KSampler"}, "_meta": {"name": "User1 WF"}}
+        with open(user1_path / "user1_wf.json", "w") as f:
+            json.dump(workflow1, f)
+
+        # Create workflows for user2
+        user2_path = Path(tmpdir) / "ComfyUI" / "user" / "user2" / "workflows"
+        user2_path.mkdir(parents=True)
+        workflow2 = {"1": {"class_type": "KSampler"}, "_meta": {"name": "User2 WF"}}
+        with open(user2_path / "user2_wf.json", "w") as f:
+            json.dump(workflow2, f)
+
+        scanner = WorkflowScanner(base_path)
+        scanner._comfyui_user_path = Path(tmpdir) / "ComfyUI" / "user"
+
+        comfyui_workflows = scanner.scan_comfyui_workflows()
+
+        assert len(comfyui_workflows) == 2
+        names = {wf["name"] for wf in comfyui_workflows}
+        assert "User1 WF" in names
+        assert "User2 WF" in names

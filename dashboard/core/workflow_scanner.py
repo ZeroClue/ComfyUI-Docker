@@ -66,6 +66,37 @@ class WorkflowScanner:
         self.base_path = Path(workflow_base_path)
         self._registry_path = Path("/workspace/data/registry.json")
         self._models_path = self.base_path.parent / "models"
+        self._comfyui_user_path = Path("/workspace/ComfyUI/user")
+
+    def scan_comfyui_workflows(self) -> List[Dict[str, Any]]:
+        """
+        Scan workflows from ComfyUI's user directory.
+        Handles both single-user (default) and multi-user configurations.
+        """
+        workflows = []
+
+        if not self._comfyui_user_path.exists():
+            return workflows
+
+        # Scan all user directories (handles multi-user mode)
+        for user_dir in self._comfyui_user_path.iterdir():
+            if not user_dir.is_dir():
+                continue
+
+            workflows_dir = user_dir / "workflows"
+            if not workflows_dir.exists():
+                continue
+
+            for workflow_file in workflows_dir.rglob("*.json"):
+                try:
+                    metadata = self.scan_workflow(workflow_file)
+                    metadata["source"] = "comfyui"
+                    workflows.append(metadata)
+                except Exception as e:
+                    print(f"Warning: Failed to scan ComfyUI workflow {workflow_file}: {e}")
+                    continue
+
+        return workflows
 
     def scan_workflow(self, workflow_path: Path) -> Dict[str, Any]:
         """Scan a single workflow file and extract metadata."""
@@ -138,18 +169,32 @@ class WorkflowScanner:
         }
 
     def scan_all(self) -> List[Dict[str, Any]]:
-        """Scan all workflows - both library (registry) and user (filesystem)."""
+        """Scan all workflows - library (registry), comfyui, and user (filesystem)."""
         workflows = []
 
         # First, scan library workflows from registry
         library_workflows = self.scan_library_workflows()
         workflows.extend(library_workflows)
 
-        # Then, scan user workflows from filesystem
+        # Then, scan ComfyUI user workflows
+        comfyui_workflows = self.scan_comfyui_workflows()
+        workflows.extend(comfyui_workflows)
+
+        # Finally, scan user workflows from filesystem
         user_workflows = self.scan_user_workflows()
         workflows.extend(user_workflows)
 
-        return workflows
+        # De-duplicate by id (prefer comfyui over user for same id)
+        seen_ids = {}
+        for wf in workflows:
+            wf_id = wf.get("id")
+            if wf_id not in seen_ids:
+                seen_ids[wf_id] = wf
+            elif wf.get("source") == "comfyui":
+                # Prefer comfyui version over user version
+                seen_ids[wf_id] = wf
+
+        return list(seen_ids.values())
 
     def scan_user_workflows(self) -> List[Dict[str, Any]]:
         """Scan user workflow files from the filesystem."""
@@ -262,6 +307,17 @@ class WorkflowScanner:
 
     def _infer_category(self, workflow_path: Path) -> str:
         """Infer category from path structure."""
+        # Handle paths outside base_path (e.g., ComfyUI workflows)
+        if not workflow_path.is_relative_to(self.base_path):
+            # Try to infer from ComfyUI user directory structure
+            if self._comfyui_user_path and workflow_path.is_relative_to(self._comfyui_user_path):
+                # Extract user/workflows/category structure
+                parts = workflow_path.relative_to(self._comfyui_user_path).parts
+                # parts might be: ["default", "workflows", "category", "workflow.json"]
+                if len(parts) > 2:
+                    return parts[2]  # Return category after user/workflows
+            return "comfyui"  # Default for ComfyUI workflows
+
         parts = workflow_path.relative_to(self.base_path).parts
         if len(parts) > 1:
             return parts[0]

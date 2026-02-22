@@ -189,16 +189,19 @@
                                             </template>
                                             <template x-if="!model.installed && model.preset">
                                                 <button @click.stop="installPreset(model.preset.id)"
-                                                        class="px-2 py-1 text-xs bg-accent-primary text-white rounded hover:bg-accent-primary/80">
-                                                    Install <span x-text="model.preset.download_size"></span>
+                                                        class="px-2 py-1 text-xs bg-accent-primary text-white rounded hover:bg-accent-primary/80 flex items-center gap-1">
+                                                    ⬇️ Download <span x-text="model.preset.download_size"></span>
                                                 </button>
                                             </template>
                                             <template x-if="!model.installed && !model.preset && model.actions">
-                                                <a :href="model.actions.request_preset_url" target="_blank"
-                                                   @click.stop
-                                                   class="px-2 py-1 text-xs bg-bg-elevated text-text-secondary rounded hover:bg-bg-hover">
-                                                    Request Preset
-                                                </a>
+                                                <div class="flex items-center gap-2">
+                                                    <a :href="model.actions.request_preset_url" target="_blank"
+                                                       @click.stop
+                                                       class="px-2 py-1 text-xs bg-accent-warning/20 text-accent-warning rounded hover:bg-accent-warning/30">
+                                                        📋 Report to ZeroClue
+                                                    </a>
+                                                    <span class="text-xs text-text-tertiary" x-text="`→ ${model.actions.manual_path}`"></span>
+                                                </div>
                                             </template>
                                         </div>
                                     </div>

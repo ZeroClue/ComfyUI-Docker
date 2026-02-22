@@ -68,6 +68,9 @@ docker-compose.override.yml
 Dockerfile.custom
 Dockerfile.*.local
 Dockerfile.*.custom
+Dockerfile.modern
+Dockerfile.new
+Dockerfile.single-stage
 
 # Scratch/development requirements files
 requirements.txt
@@ -77,6 +80,8 @@ requirementsX.txt
 # Docker build artifacts and temporary files
 *.dockerbuild
 docker-bake-*.tmp
+docker-bake-*.hcl
+!docker-bake.hcl
 *.image.tar
 *.layer.tar
 
@@ -150,6 +155,7 @@ npm_cache/
 # Test coverage
 coverage/
 .coverage
+coverage.json
 .nyc_output
 htmlcov/
 
@@ -196,6 +202,19 @@ claude_settings.json
 ai_generated_*
 *_claude_*
 .agents
+
+# Browser automation
+.playwright-mcp/
+
+# Test/documentation screenshots
+*.png
+!logo/*.png
+
+# Old/backup code folders
+dashboard_old/
+
+# Runtime workspace (models, outputs, etc.)
+workspace/
 
 # Git worktrees (isolated development workspaces)
 .worktrees/

@@ -58,7 +58,10 @@ Thumbs.db
 
 # Alternate Build Files (not used in main build)
 Dockerfile.single-stage
+Dockerfile.modern
+Dockerfile.new
 docker-bake-single-stage.hcl
+docker-bake-modern.hcl
 Dockerfile.*-alt
 docker-bake.*-alt
 # Don't exclude main Dockerfile variants - they're needed for builds!
@@ -90,6 +93,7 @@ CHANGELOG-*
 .dmypy.json
 dmypy.json
 .coverage
+coverage.json
 .pytest_cache/
 htmlcov/
 .tox/
@@ -139,3 +143,16 @@ playgrounds/
 
 # Claude backups
 .claude/backups
+
+# Browser automation
+.playwright-mcp/
+
+# Test/documentation screenshots
+*.png
+!logo/*.png
+
+# Old/backup code folders
+dashboard_old/
+
+# Runtime workspace
+workspace/

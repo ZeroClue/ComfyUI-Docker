@@ -376,10 +376,23 @@
                                   class="w-full px-4 py-3 bg-bg-tertiary border border-border-subtle rounded-md text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all resize-none"></textarea>
                         <div class="flex items-center justify-between mt-2">
                             <div class="flex items-center gap-2">
-                                <button class="text-xs text-text-secondary hover:text-text-primary transition-colors"
-                                        @click="enhancePrompt">
-                                    ✨ Enhance
-                                </button>
+                                <!-- LLM Style Selector -->
+                                <div class="flex items-center gap-2">
+                                    <select x-model="enhanceStyle"
+                                            :disabled="isEnhancing"
+                                            class="text-xs bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-text-secondary focus:outline-none focus:border-accent-primary">
+                                        <option value="detailed">Detailed</option>
+                                        <option value="cinematic">Cinematic</option>
+                                        <option value="artistic">Artistic</option>
+                                        <option value="minimal">Minimal</option>
+                                    </select>
+                                    <button class="text-xs text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+                                            @click="enhancePrompt()"
+                                            :disabled="isEnhancing">
+                                        <span x-show="!isEnhancing">✨ Enhance</span>
+                                        <span x-show="isEnhancing">⏳ Enhancing...</span>
+                                    </button>
+                                </div>
                                 <button class="text-xs text-text-secondary hover:text-text-primary transition-colors"
                                         @click="loadPromptTemplate">
                                     📋 Template
@@ -785,6 +798,18 @@ function generatePage() {
                 this.loadRecentOutputs()
             ]);
 
+            // Load LLM settings
+            try {
+                const settingsResp = await fetch('/api/settings');
+                if (settingsResp.ok) {
+                    const settings = await settingsResp.json();
+                    this.llmEnabled = settings.llm_enabled === true || settings.llm_enabled === 'true';
+                    this.llmModel = settings.llm_model || 'phi-3-mini';
+                }
+            } catch (e) {
+                console.warn('Failed to load LLM settings:', e);
+            }
+
             this.initWebSocket();
 
             // Check URL params
@@ -1036,11 +1061,56 @@ function generatePage() {
             }
         },
 
-        enhancePrompt() {
-            const enhancements = ['highly detailed', 'professional quality', 'cinematic lighting'];
-            if (this.prompt.trim()) {
-                this.prompt = `${this.prompt.trim()}, ${enhancements.join(', ')}`;
-                window.showToast('info', 'Prompt Enhanced', 'Added quality modifiers');
+        async enhancePrompt() {
+            if (!this.prompt.trim()) {
+                window.showToast('warning', 'Empty Prompt', 'Enter a prompt to enhance');
+                return;
+            }
+
+            // Static fallback enhancement
+            const fallbackEnhance = () => {
+                const mods = ['highly detailed', 'professional quality', 'cinematic lighting'];
+                this.prompt = `${this.prompt.trim()}, ${mods.join(', ')}`;
+                window.showToast('info', 'Quick Enhance', 'Added quality modifiers');
+            };
+
+            // If LLM disabled, use fallback
+            if (!this.llmEnabled) {
+                fallbackEnhance();
+                return;
+            }
+
+            // Call LLM API
+            this.isEnhancing = true;
+            try {
+                const response = await fetch('/api/llm/enhance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: this.prompt.trim(),
+                        style: this.enhanceStyle,
+                        model: this.llmModel
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.enhanced_prompt) {
+                        this.prompt = data.enhanced_prompt;
+                        window.showToast('success', 'Prompt Enhanced', `Style: ${this.enhanceStyle}`);
+                    } else {
+                        throw new Error(data.error || 'Enhancement failed');
+                    }
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `API error: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('LLM enhance error:', error);
+                window.showToast('error', 'Enhancement Failed', error.message);
+                fallbackEnhance(); // Graceful fallback
+            } finally {
+                this.isEnhancing = false;
             }
         },
 

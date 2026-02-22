@@ -26,9 +26,9 @@ def load_preset_registry() -> Dict[str, Any]:
     presets_path = Path(settings.PRESET_CONFIG_PATH)
     if presets_path.exists():
         with open(presets_path) as f:
-            return yaml.safe_load(f)
+            return {"presets": yaml.safe_load(f), "workflows": {}}
 
-    return {"presets": {}}
+    return {"presets": {}, "workflows": {}}
 
 
 def find_preset_for_model(model_filename: str, registry: Dict) -> Optional[Dict[str, Any]]:

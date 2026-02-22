@@ -222,17 +222,32 @@ async def get_workflow_compatibility(workflow_id: str) -> Dict[str, Any]:
     if not workflow:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
 
-    # Check model availability
-    # TODO: Integrate with preset system to check installed models
-    required_models = workflow.get("required_models", [])
+    # Get model availability from scanner (already includes installed status)
+    models = workflow.get("models", [])
+    missing_models = [m["name"] for m in models if not m["installed"]]
+    installed_count = sum(1 for m in models if m["installed"])
+    total_count = len(models)
+
+    # Determine status
+    if total_count == 0:
+        status = "ready"
+    elif len(missing_models) == 0:
+        status = "ready"
+    else:
+        status = "check_required"
 
     return {
         "workflow_id": workflow_id,
         "workflow_name": workflow.get("name", workflow_id),
-        "required_models": required_models,
-        "missing_models": [],  # TODO: Check against installed models
-        "status": "ready" if len(required_models) == 0 else "check_required",
-        "can_generate": True  # TODO: Based on missing models check
+        "required_models": workflow.get("required_models", []),
+        "missing_models": missing_models,
+        "model_status": {
+            "total": total_count,
+            "installed": installed_count,
+            "missing": len(missing_models)
+        },
+        "status": status,
+        "can_generate": len(missing_models) == 0
     }
 
 

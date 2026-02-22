@@ -289,31 +289,65 @@ async def start_generation(
     if not workflow:
         raise HTTPException(status_code=404, detail=f"Workflow {request.workflow_id} not found")
 
+    # Load the workflow JSON
+    workflow_path = Path(settings.WORKFLOW_BASE_PATH) / workflow["path"]
+    with open(workflow_path, 'r') as f:
+        workflow_data = json.load(f)
+
+    # Check workflow format and handle accordingly
+    is_ui_format = "nodes" in workflow_data and isinstance(workflow_data["nodes"], list)
+    has_subgraphs = "definitions" in workflow_data and workflow_data.get("definitions", {}).get("subgraphs")
+
+    if is_ui_format and has_subgraphs:
+        # UI format with subgraphs cannot be directly executed via API
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "workflow_format_not_supported",
+                "message": "This workflow uses UI format with composite nodes (subgraphs).",
+                "solution": "To execute this workflow:\n"
+                           "1. Open the workflow in ComfyUI\n"
+                           "2. Enable Dev Mode in Settings\n"
+                           "3. Click 'Export (API Format)' from the menu\n"
+                           "4. Save the exported workflow\n\n"
+                           "API format workflows can be executed directly from the dashboard."
+            }
+        )
+
+    if is_ui_format:
+        # UI format without subgraphs still needs conversion
+        # For now, require API format workflows
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "workflow_format_not_supported",
+                "message": "This workflow is in UI format.",
+                "solution": "To execute this workflow:\n"
+                           "1. Open the workflow in ComfyUI\n"
+                           "2. Enable Dev Mode in Settings\n"
+                           "3. Click 'Export (API Format)' from the menu\n"
+                           "4. Save the exported workflow\n\n"
+                           "API format workflows can be executed directly from the dashboard."
+            }
+        )
+
+    # Already in API format - strip _meta keys before sending to ComfyUI
+    api_workflow = {k: v for k, v in workflow_data.items() if not k.startswith("_")}
+
+    # Inject prompt into workflow
+    api_workflow = get_comfyui_client().inject_prompt(api_workflow, request.prompt)
+
+    # Queue the workflow
     try:
-        # Load the workflow JSON
-        workflow_path = Path(settings.WORKFLOW_BASE_PATH) / workflow["path"]
-        import json
-        with open(workflow_path, 'r') as f:
-            workflow_data = json.load(f)
-
-        # Inject prompt into workflow
-        workflow_data = get_comfyui_client().inject_prompt(workflow_data, request.prompt)
-
-        # Queue the workflow
-        result = await get_comfyui_client().queue_workflow(workflow_data)
-
-        return GenerationStartResponse(
-            status="queued",
-            prompt_id=result.get("prompt_id"),
-            message=f"Generation started with {workflow.get('name', request.workflow_id)}"
-        )
-
+        result = await get_comfyui_client().queue_workflow(api_workflow)
     except Exception as e:
-        return GenerationStartResponse(
-            status="error",
-            prompt_id=None,
-            message=f"Failed to start generation: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to queue workflow: {str(e)}")
+
+    return GenerationStartResponse(
+        status="queued",
+        prompt_id=result.get("prompt_id"),
+        message=f"Generation started with {workflow.get('name', request.workflow_id)}"
+    )
 
 
 @router.post("/{prompt_id}/pause")

@@ -76,11 +76,34 @@ class ComfyUIClient:
         return history[prompt_id]
 
     async def queue_workflow(self, workflow: Dict) -> Dict:
-        """Queue a workflow for execution in ComfyUI"""
-        return await self._post("prompt", json={
+        """
+        Queue a workflow for execution in ComfyUI.
+
+        Returns the prompt_id on success, or raises an exception on failure.
+        """
+        result = await self._post("prompt", json={
             "prompt": workflow,
             "client_id": self.client_id
         })
+
+        # Check for errors in the response
+        if "error" in result:
+            error_info = result.get("error", {})
+            if isinstance(error_info, dict):
+                error_type = error_info.get("type", "unknown")
+                error_msg = error_info.get("message", str(error_info))
+                raise Exception(f"ComfyUI error ({error_type}): {error_msg}")
+            else:
+                raise Exception(f"ComfyUI error: {error_info}")
+
+        if "node_errors" in result and result["node_errors"]:
+            # Format node errors
+            errors = []
+            for node_id, node_error in result["node_errors"].items():
+                errors.append(f"Node {node_id}: {node_error.get('errors', ['unknown error'])}")
+            raise Exception(f"Workflow validation errors: {'; '.join(errors)}")
+
+        return result
 
     async def interrupt_execution(self) -> Dict:
         """Interrupt current execution"""
@@ -136,20 +159,36 @@ class ComfyUIClient:
 
     def inject_prompt(self, workflow: Dict, prompt_text: str) -> Dict:
         """
-        Inject prompt text into workflow nodes
-        Finds text nodes and replaces their content with the provided prompt
+        Inject prompt text into workflow nodes.
+        Finds the first positive prompt text encoder and replaces its content.
+        Works with API format workflows (dict with node IDs as keys).
         """
         import copy
         workflow = copy.deepcopy(workflow)
 
+        # Track if we've replaced a prompt already
+        prompt_replaced = False
+
+        # API format: {"1": {"class_type": "CLIPTextEncode", "inputs": {...}}, ...}
         for node_id, node_data in workflow.items():
-            if 'inputs' in node_data:
-                for input_key, input_value in node_data['inputs'].items():
-                    # Check if this is a text input (common patterns)
-                    if isinstance(input_value, str) and input_key in ['text', 'prompt', 'text_positive', 'text_negative']:
-                        # Replace with new prompt
-                        if 'positive' in input_key or 'negative' not in input_key:
-                            node_data['inputs'][input_key] = prompt_text
+            if not isinstance(node_data, dict):
+                continue
+
+            class_type = node_data.get("class_type", "")
+            inputs = node_data.get("inputs", {})
+
+            # Handle CLIPTextEncode nodes (most common for prompts)
+            if class_type == "CLIPTextEncode" and "text" in inputs:
+                node_title = node_data.get("_meta", {}).get("title", "").lower()
+
+                # Skip negative prompt nodes
+                if "negative" in node_title:
+                    continue
+
+                # Only replace the first positive prompt found
+                if not prompt_replaced:
+                    inputs["text"] = prompt_text
+                    prompt_replaced = True
 
         return workflow
 

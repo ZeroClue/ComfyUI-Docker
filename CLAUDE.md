@@ -550,13 +550,48 @@ Major features have design docs in `docs/plans/`:
 
 These documents are gitignored but tracked with `git add -f`.
 
-## Dashboard Known Issues (2026-02-20)
+## Dashboard Known Issues (2026-02-22)
 
-All major dashboard features working as of 2026-02-20. See Feature Status section for details.
+All major dashboard features working. See Feature Status section for details.
 
 **Known Limitations:**
 - Generate page queue card not connected to ComfyUI queue (UI only)
 - Gated HuggingFace models require HF token (configure in Settings)
+- **Workflow formats**: Only API format workflows can be executed via dashboard. UI format workflows with subgraphs require manual export from ComfyUI.
+
+**Workflow Format Requirements:**
+ComfyUI's `/prompt` endpoint requires **API format** workflows (dict with node IDs as keys):
+```json
+// API format (WORKS)
+{
+  "1": {"class_type": "KSampler", "inputs": {...}},
+  "2": {"class_type": "CLIPTextEncode", "inputs": {...}}
+}
+
+// UI format (DOES NOT WORK - has "nodes" array)
+{
+  "nodes": [{"id": 1, "type": "KSampler", ...}],
+  "links": [...]
+}
+```
+
+To convert UI format to API format:
+1. Open workflow in ComfyUI
+2. Enable Dev Mode in Settings
+3. Click "Export (API Format)" from menu
+4. Save the exported workflow
+
+**Alpine.js Script Loading:**
+Alpine.js must load AFTER page-specific function definitions. Load it at end of `<body>`:
+```html
+<!-- WRONG - defer causes race condition with inline scripts -->
+<script defer src="alpine.js"></script>
+{% block extra_scripts %}{% endblock %}
+
+<!-- CORRECT - Alpine loads after all page functions defined -->
+{% block extra_scripts %}{% endblock %}
+<script src="alpine.js"></script>
+```
 
 ## Performance Optimizations (2026-02-19)
 
@@ -567,6 +602,12 @@ All major dashboard features working as of 2026-02-20. See Feature Status sectio
 - Location: `dashboard/api/presets.py` - `PresetCache` class
 
 ## Bug Fixes & Learnings (Consolidated)
+
+### 2026-02-22
+- **Workflow format handling**: ComfyUI `/prompt` endpoint only accepts API format workflows. UI format (with `nodes` array) must be exported as API format from ComfyUI. Workflows with subgraphs (composite nodes) cannot be directly executed.
+- **Strip `_meta` keys**: ComfyUI rejects workflows with `_meta` keys at root level. Strip them before sending: `{k: v for k, v in workflow.items() if not k.startswith("_")}`
+- **Prompt injection**: Only replace positive prompts, preserve negative prompts. Check for "negative" in node title before replacing text in CLIPTextEncode nodes.
+- **Alpine.js initialization**: Alpine must load AFTER inline script definitions. Do not use `defer` on Alpine script if it's at end of body - the inline scripts need to define functions before Alpine initializes.
 
 ### 2026-02-21
 - **Subprocess security**: Always use `shutil.which()` to resolve executable paths before `subprocess.run()` - prevents shell injection

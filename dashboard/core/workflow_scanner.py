@@ -169,18 +169,32 @@ class WorkflowScanner:
         }
 
     def scan_all(self) -> List[Dict[str, Any]]:
-        """Scan all workflows - both library (registry) and user (filesystem)."""
+        """Scan all workflows - library (registry), comfyui, and user (filesystem)."""
         workflows = []
 
         # First, scan library workflows from registry
         library_workflows = self.scan_library_workflows()
         workflows.extend(library_workflows)
 
-        # Then, scan user workflows from filesystem
+        # Then, scan ComfyUI user workflows
+        comfyui_workflows = self.scan_comfyui_workflows()
+        workflows.extend(comfyui_workflows)
+
+        # Finally, scan user workflows from filesystem
         user_workflows = self.scan_user_workflows()
         workflows.extend(user_workflows)
 
-        return workflows
+        # De-duplicate by id (prefer comfyui over user for same id)
+        seen_ids = {}
+        for wf in workflows:
+            wf_id = wf.get("id")
+            if wf_id not in seen_ids:
+                seen_ids[wf_id] = wf
+            elif wf.get("source") == "comfyui":
+                # Prefer comfyui version over user version
+                seen_ids[wf_id] = wf
+
+        return list(seen_ids.values())
 
     def scan_user_workflows(self) -> List[Dict[str, Any]]:
         """Scan user workflow files from the filesystem."""

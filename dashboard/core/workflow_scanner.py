@@ -174,14 +174,20 @@ class WorkflowScanner:
         models = []
         widgets_values = node.get("widgets_values", [])
 
+        # Skip MarkdownNote nodes - their content contains model URLs as text
+        node_type = node.get("type", "")
+        if node_type == "MarkdownNote":
+            return models
+
         if not isinstance(widgets_values, list):
             return models
 
         for value in widgets_values:
-            if isinstance(value, str) and any(
-                ext in value.lower()
-                for ext in [".safetensors", ".pt", ".pth", ".bin", ".ckpt"]
-            ):
+            # Only extract short strings that look like filenames (< 100 chars, no newlines)
+            if (isinstance(value, str) and
+                len(value) < 100 and
+                "\n" not in value and
+                any(ext in value.lower() for ext in [".safetensors", ".pt", ".pth", ".bin", ".ckpt"])):
                 models.append(value)
 
         return models

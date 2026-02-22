@@ -254,3 +254,31 @@ def test_scan_all_handles_invalid_json(tmp_path):
     # Should only return the valid workflow
     assert len(results) == 1
     assert results[0]["name"] == "Valid"
+
+
+def test_scan_comfyui_workflows_finds_workflows():
+    """Test that scan_comfyui_workflows finds workflows in ComfyUI user directory."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_path = Path(tmpdir) / "workflows"
+        comfyui_path = Path(tmpdir) / "ComfyUI" / "user" / "default" / "workflows"
+        comfyui_path.mkdir(parents=True)
+
+        # Create a test workflow
+        workflow = {
+            "1": {"class_type": "KSampler", "inputs": {}},
+            "_meta": {"name": "Test ComfyUI Workflow", "description": "From ComfyUI"}
+        }
+        with open(comfyui_path / "test_workflow.json", "w") as f:
+            json.dump(workflow, f)
+
+        scanner = WorkflowScanner(base_path)
+        scanner._comfyui_user_path = Path(tmpdir) / "ComfyUI" / "user"
+
+        comfyui_workflows = scanner.scan_comfyui_workflows()
+
+        assert len(comfyui_workflows) == 1
+        assert comfyui_workflows[0]["id"] == "test_workflow"
+        assert comfyui_workflows[0]["name"] == "Test ComfyUI Workflow"
+        assert comfyui_workflows[0]["source"] == "comfyui"

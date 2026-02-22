@@ -755,6 +755,13 @@ function generatePage() {
         prompt: '',
         negativePrompt: '',
         inputImage: null,
+
+        // LLM enhancement state
+        enhanceStyle: 'detailed',
+        isEnhancing: false,
+        llmEnabled: false,
+        llmModel: 'phi-3-mini',
+
         settings: {
             seed: -1,
             batch: 1,

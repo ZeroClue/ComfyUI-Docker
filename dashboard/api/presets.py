@@ -73,6 +73,11 @@ remote_registry_timestamp: float = 0
 REMOTE_REGISTRY_TTL = 300  # 5 minutes
 REMOTE_REGISTRY_URL = "https://raw.githubusercontent.com/zeroclue/comfyui-presets/main/registry.json"
 
+# Model index URLs and paths (maps model files to preset IDs)
+MODEL_INDEX_URL = "https://raw.githubusercontent.com/zeroclue/comfyui-presets/main/model_index.json"
+MODEL_INDEX_PATH = Path("/workspace/data/model_index.json")
+REGISTRY_PATH = Path("/workspace/data/registry.json")
+
 
 async def get_remote_registry() -> Optional[Dict]:
     """Fetch remote registry from GitHub for version comparison
@@ -487,10 +492,18 @@ async def get_available_updates():
 @router.get("/registry/sync")
 async def sync_registry():
     """
-    Sync preset registry from remote source
+    Sync preset registry and model index from GitHub
 
-    Fetches the latest registry.json from GitHub and updates local cache
+    Downloads both registry.json and model_index.json from the comfyui-presets repo.
+    Model index download failures are non-fatal (partial success allowed).
     """
+    results = {
+        "registry": None,
+        "model_index": None,
+        "errors": []
+    }
+
+    # Download registry.json
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
@@ -507,15 +520,21 @@ async def sync_registry():
                 text = await response.text()
                 registry = json.loads(text)
 
+        # Save registry to disk
+        REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(REGISTRY_PATH, 'w') as f:
+            json.dump(registry, f)
+
         # Update local cache
         preset_cache.set_config({"registry": registry})
 
-        return {
+        results["registry"] = {
             "status": "synced",
-            "timestamp": datetime.utcnow().isoformat(),
-            "presets_count": registry.get("stats", {}).get("total", 0)
+            "presets": len(registry.get("presets", {}))
         }
 
+    except HTTPException:
+        raise
     except aiohttp.ClientError as e:
         raise HTTPException(
             status_code=502,
@@ -524,8 +543,41 @@ async def sync_registry():
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected error during sync: {str(e)}"
+            detail=f"Unexpected error during registry sync: {str(e)}"
         )
+
+    # Download model_index.json (non-fatal if fails)
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                MODEL_INDEX_URL,
+                timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
+                if response.status != 200:
+                    raise Exception(f"HTTP {response.status}")
+
+                text = await response.text()
+                index_data = json.loads(text)
+
+        # Save model index to disk
+        MODEL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(MODEL_INDEX_PATH, 'w') as f:
+            json.dump(index_data, f)
+
+        results["model_index"] = {
+            "status": "synced",
+            "mappings": len(index_data.get("mappings", {}))
+        }
+
+    except Exception as e:
+        # Non-fatal - model index is optional
+        results["errors"].append(f"Model index sync failed: {str(e)}")
+
+    return {
+        "status": "synced" if not results["errors"] else "partial",
+        "timestamp": datetime.utcnow().isoformat(),
+        **results
+    }
 
 
 @router.get("/registry/status")

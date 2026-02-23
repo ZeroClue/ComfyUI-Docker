@@ -107,3 +107,37 @@ def test_load_model_index_missing_mappings_key():
 
         # Should have empty index
         assert scanner._model_index == {}
+
+
+# =============================================================================
+# Task 3: resolve_model_to_preset tests
+# =============================================================================
+
+def test_resolve_model_to_preset_exact_match():
+    """Test resolving model filename to preset via exact path match."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        workflow_path = Path(tmpdir) / "workflows"
+        workflow_path.mkdir()
+
+        scanner = WorkflowScanner(workflow_path)
+        scanner._model_index = {
+            "checkpoints/flux-dev.safetensors": "FLUX_DEV",
+            "text_encoders/t5xxl_fp16.safetensors": "T5_XXL"
+        }
+
+        result = scanner.resolve_model_to_preset("flux-dev.safetensors")
+        assert result is not None
+        assert result["preset_id"] == "FLUX_DEV"
+
+
+def test_resolve_model_to_preset_not_found():
+    """Test resolving model that has no preset mapping."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        workflow_path = Path(tmpdir) / "workflows"
+        workflow_path.mkdir()
+
+        scanner = WorkflowScanner(workflow_path)
+        scanner._model_index = {}
+
+        result = scanner.resolve_model_to_preset("unknown_model.safetensors")
+        assert result is None

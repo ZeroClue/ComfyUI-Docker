@@ -67,6 +67,80 @@ class WorkflowScanner:
         self._registry_path = Path("/workspace/data/registry.json")
         self._models_path = self.base_path.parent / "models"
         self._comfyui_user_path = Path("/workspace/ComfyUI/user")
+        # Model index for preset suggestions
+        self._model_index_path = Path("/workspace/data/model_index.json")
+        self._model_index: Dict[str, str] = {}
+        self._load_model_index()
+
+    def _load_model_index(self) -> None:
+        """Load model filename to preset_id mapping from cache."""
+        if self._model_index_path.exists():
+            try:
+                with open(self._model_index_path, 'r') as f:
+                    data = json.load(f)
+                    self._model_index = data.get("mappings", {})
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Warning: Failed to load model index: {e}")
+                self._model_index = {}
+
+    def resolve_model_to_preset(self, model_filename: str) -> Optional[Dict[str, Any]]:
+        """
+        Find which preset provides a given model file.
+
+        Args:
+            model_filename: The model filename (e.g., "flux-dev.safetensors")
+
+        Returns:
+            Dict with preset_id, preset_name, model_file, installed status, or None if not found.
+        """
+        # Try exact path match first (checkpoints/filename.safetensors)
+        for model_dir in self.MODEL_DIRECTORIES:
+            path_key = f"{model_dir}/{model_filename}"
+            if path_key in self._model_index:
+                preset_id = self._model_index[path_key]
+                return self._build_preset_info(preset_id, model_filename)
+
+        # Fallback: filename-only match
+        for path_key, preset_id in self._model_index.items():
+            if Path(path_key).name == model_filename:
+                return self._build_preset_info(preset_id, model_filename)
+
+        return None
+
+    def _build_preset_info(self, preset_id: str, model_file: str) -> Dict[str, Any]:
+        """Build preset info dict with installation status."""
+        # Get preset details from registry if available
+        preset_info = self._get_preset_from_registry(preset_id)
+
+        # Check if the model file is installed
+        installed = self._check_model_installed(model_file)
+
+        return {
+            "preset_id": preset_id,
+            "preset_name": preset_info.get("name", preset_id) if preset_info else preset_id,
+            "model_file": model_file,
+            "installed": installed,
+            "download_size": preset_info.get("download_size") if preset_info else None,
+        }
+
+    def _get_preset_from_registry(self, preset_id: str) -> Optional[Dict]:
+        """Get preset info from cached registry."""
+        if not self._registry_path.exists():
+            return None
+        try:
+            with open(self._registry_path, 'r') as f:
+                registry = json.load(f)
+                return registry.get("presets", {}).get(preset_id)
+        except (json.JSONDecodeError, IOError):
+            return None
+
+    def _check_model_installed(self, model_filename: str) -> bool:
+        """Check if a model file exists in any model directory."""
+        for model_dir in self.MODEL_DIRECTORIES:
+            model_path = self._models_path / model_dir / model_filename
+            if model_path.exists():
+                return True
+        return False
 
     def scan_comfyui_workflows(self) -> List[Dict[str, Any]]:
         """
@@ -147,6 +221,21 @@ class WorkflowScanner:
         installed_count = sum(1 for m in models if m["installed"])
         missing_count = len(models) - installed_count
 
+        # Resolve models to presets
+        suggested_presets = []
+        unmapped_models = []
+        seen_presets = set()
+
+        for model_file in required_models:
+            preset_info = self.resolve_model_to_preset(model_file)
+            if preset_info:
+                preset_id = preset_info["preset_id"]
+                if preset_id not in seen_presets:
+                    seen_presets.add(preset_id)
+                    suggested_presets.append(preset_info)
+            else:
+                unmapped_models.append(model_file)
+
         return {
             "id": workflow_path.stem,
             "name": meta.get("name", workflow_path.stem),
@@ -166,6 +255,9 @@ class WorkflowScanner:
             },
             "ready": missing_count == 0 if models else True,  # Ready if no models or all installed
             "source": "user",  # Mark as user workflow from filesystem
+            # Preset suggestion fields
+            "suggested_presets": suggested_presets,
+            "unmapped_models": unmapped_models,
         }
 
     def scan_all(self) -> List[Dict[str, Any]]:

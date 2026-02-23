@@ -146,9 +146,13 @@
                                                   class="px-2 py-0.5 text-xs rounded-full bg-accent-success/20 text-accent-success">
                                                 Ready
                                             </span>
-                                            <span x-show="!workflow.ready && workflow.model_status"
+                                            <span x-show="!workflow.ready && workflow.source !== 'library' && (workflow.suggested_presets?.filter(p => !p.installed).length || workflow.unmapped_models?.length)"
                                                   class="px-2 py-0.5 text-xs rounded-full bg-accent-warning/20 text-accent-warning">
-                                                <span x-text="workflow.model_status.missing"></span> models needed
+                                                <span x-text="(workflow.suggested_presets?.filter(p => !p.installed).length || 0) + (workflow.unmapped_models?.length || 0)"></span> needed
+                                            </span>
+                                            <span x-show="!workflow.ready && workflow.source === 'library' && workflow.required_presets?.filter(p => !p.installed).length"
+                                                  class="px-2 py-0.5 text-xs rounded-full bg-accent-warning/20 text-accent-warning">
+                                                <span x-text="workflow.required_presets.filter(p => !p.installed).length"></span> presets needed
                                             </span>
                                         </div>
                                         <div class="text-xs text-text-tertiary" x-text="workflow.category"></div>
@@ -183,62 +187,59 @@
                                 </div>
                             </div>
 
-                            <!-- Model Requirements Panel (for user workflows) -->
-                            <div x-show="selectedWorkflow && selectedWorkflow.id === workflow.id && workflow.source === 'user'" class="mt-3 pt-3 border-t border-border-primary">
+                            <!-- Model Requirements Panel (for user/comfyui workflows with missing models) -->
+                            <div x-show="selectedWorkflow?.id === workflow.id &&
+                                         workflow.source !== 'library' &&
+                                         (workflow.suggested_presets?.length || workflow.unmapped_models?.length)"
+                                 class="mt-3 pt-3 border-t border-border-primary">
+
                                 <h4 class="text-sm font-medium text-text-secondary mb-2">Required Models</h4>
 
-                                <template x-for="model in workflow.models" :key="model.name">
+                                <!-- Suggested Presets -->
+                                <template x-for="preset in workflow.suggested_presets" :key="preset.preset_id">
                                     <div class="flex items-center justify-between py-1.5">
                                         <div class="flex items-center gap-2">
-                                            <!-- Status Icon -->
-                                            <template x-if="model.installed">
-                                                <svg class="w-4 h-4 text-accent-success" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                                </svg>
-                                            </template>
-                                            <template x-if="!model.installed">
-                                                <svg class="w-4 h-4 text-accent-warning" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                                </svg>
-                                            </template>
-                                            <span class="text-sm" x-text="model.name"></span>
+                                            <span x-show="preset.installed" class="text-accent-success">✓</span>
+                                            <span x-show="!preset.installed" class="text-accent-warning">⚠</span>
+                                            <div>
+                                                <div class="text-sm" x-text="preset.preset_name"></div>
+                                                <div class="text-xs text-text-tertiary" x-text="preset.model_file"></div>
+                                            </div>
                                         </div>
-
-                                        <!-- Actions -->
-                                        <div class="flex items-center gap-2">
-                                            <template x-if="model.installed">
-                                                <span class="text-xs text-accent-success">Installed</span>
-                                            </template>
-                                            <template x-if="!model.installed && model.preset">
-                                                <button @click.stop="installPreset(model.preset.id)"
-                                                        class="px-2 py-1 text-xs bg-accent-primary text-white rounded hover:bg-accent-primary/80 flex items-center gap-1">
-                                                    ⬇️ Download <span x-text="model.preset.download_size"></span>
-                                                </button>
-                                            </template>
-                                            <template x-if="!model.installed && !model.preset && model.actions">
-                                                <div class="flex items-center gap-2">
-                                                    <a :href="model.actions.request_preset_url" target="_blank"
-                                                       @click.stop
-                                                       class="px-2 py-1 text-xs bg-accent-warning/20 text-accent-warning rounded hover:bg-accent-warning/30">
-                                                        📋 Report to ZeroClue
-                                                    </a>
-                                                    <span class="text-xs text-text-tertiary" x-text="`→ ${model.actions.manual_path}`"></span>
-                                                </div>
-                                            </template>
+                                        <div>
+                                            <span x-show="preset.installed" class="text-xs text-accent-success">Installed</span>
+                                            <button x-show="!preset.installed"
+                                                    @click.stop="installPreset(preset.preset_id)"
+                                                    class="px-2 py-1 text-xs bg-accent-primary text-white rounded hover:opacity-80">
+                                                <span x-text="preset.download_size || 'Install'"></span>
+                                            </button>
                                         </div>
                                     </div>
                                 </template>
 
-                                <!-- Start Generation Button -->
+                                <!-- Unmapped Models (no preset found) -->
+                                <template x-for="model in workflow.unmapped_models" :key="model">
+                                    <div class="flex items-center justify-between py-1.5 bg-bg-tertiary rounded px-2 mt-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-text-tertiary">?</span>
+                                            <span class="text-sm text-text-secondary" x-text="model"></span>
+                                        </div>
+                                        <span class="text-xs text-text-tertiary">Manual download required</span>
+                                    </div>
+                                </template>
+
+                                <!-- Install All & Generate / Generate Buttons -->
                                 <div class="mt-4 flex justify-end gap-2">
-                                    <button x-show="!workflow.ready"
-                                            class="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary">
-                                        Start Anyway
+                                    <button x-show="hasMissingUserPresets(workflow)"
+                                            @click.stop="installAllUserPresets(workflow)"
+                                            class="px-3 py-1.5 text-sm bg-accent-warning text-white rounded hover:opacity-80 flex items-center gap-1">
+                                        <span>↓</span>
+                                        <span>Install Missing & Generate</span>
                                     </button>
-                                    <button @click.stop="selectAndGenerate(workflow)"
-                                            :class="workflow.ready ? 'bg-accent-primary' : 'bg-accent-warning'"
-                                            class="px-4 py-2 text-sm text-white rounded hover:opacity-80">
-                                        <span x-text="workflow.ready ? 'Start Generation' : 'Generate (Missing Models)'"></span>
+                                    <button x-show="workflow.ready"
+                                            @click.stop="selectAndGenerate(workflow)"
+                                            class="px-4 py-2 text-sm bg-accent-primary text-white rounded hover:opacity-80">
+                                        Generate
                                     </button>
                                 </div>
                             </div>
@@ -1262,6 +1263,54 @@ function generatePage() {
                     }
                 } catch (error) {
                     console.error(`Failed to install preset ${preset.id}:`, error);
+                    failedCount++;
+                }
+            }
+
+            if (installedCount > 0) {
+                window.showToast('success', 'Installation Started',
+                    `${installedCount} preset(s) queued for download. Generation will start when ready.`);
+                // Refresh workflows to get updated status
+                await this.loadWorkflows();
+            }
+
+            if (failedCount > 0) {
+                window.showToast('warning', 'Partial Installation',
+                    `${failedCount} preset(s) failed to install.`);
+            }
+        },
+
+        // Helper to check if user workflow has missing presets
+        hasMissingUserPresets(workflow) {
+            if (!workflow.suggested_presets) return false;
+            return workflow.suggested_presets.some(p => !p.installed);
+        },
+
+        // Install all missing presets for user workflows
+        async installAllUserPresets(workflow) {
+            if (!workflow.suggested_presets) return;
+
+            const missingPresets = workflow.suggested_presets.filter(p => !p.installed);
+            if (missingPresets.length === 0) {
+                // All installed, just generate
+                this.selectAndGenerate(workflow);
+                return;
+            }
+
+            // Install all missing presets
+            let installedCount = 0;
+            let failedCount = 0;
+
+            for (const preset of missingPresets) {
+                try {
+                    const response = await fetch(`/api/presets/${preset.preset_id}/install`, { method: 'POST' });
+                    if (response.ok) {
+                        installedCount++;
+                    } else {
+                        failedCount++;
+                    }
+                } catch (error) {
+                    console.error(`Failed to install preset ${preset.preset_id}:`, error);
                     failedCount++;
                 }
             }

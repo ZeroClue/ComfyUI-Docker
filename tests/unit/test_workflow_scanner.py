@@ -141,3 +141,36 @@ def test_resolve_model_to_preset_not_found():
 
         result = scanner.resolve_model_to_preset("unknown_model.safetensors")
         assert result is None
+
+
+# =============================================================================
+# Task 4: scan_workflow includes suggested_presets tests
+# =============================================================================
+
+def test_scan_workflow_includes_suggested_presets():
+    """Test that scan_workflow returns suggested_presets for missing models."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        workflow_path = Path(tmpdir) / "workflows"
+        workflow_path.mkdir()
+
+        # Create a workflow with model reference
+        workflow_file = workflow_path / "test_workflow.json"
+        workflow_data = {
+            "1": {
+                "class_type": "UNETLoader",
+                "inputs": {"unet_name": "flux-dev.safetensors"}
+            },
+            "_meta": {"name": "Test WF"}
+        }
+        with open(workflow_file, 'w') as f:
+            json.dump(workflow_data, f)
+
+        scanner = WorkflowScanner(workflow_path)
+        scanner._model_index = {"checkpoints/flux-dev.safetensors": "FLUX_DEV"}
+
+        result = scanner.scan_workflow(workflow_file)
+
+        assert "suggested_presets" in result
+        assert len(result["suggested_presets"]) == 1
+        assert result["suggested_presets"][0]["preset_id"] == "FLUX_DEV"
+        assert "unmapped_models" in result

@@ -221,6 +221,21 @@ class WorkflowScanner:
         installed_count = sum(1 for m in models if m["installed"])
         missing_count = len(models) - installed_count
 
+        # Resolve models to presets
+        suggested_presets = []
+        unmapped_models = []
+        seen_presets = set()
+
+        for model_file in required_models:
+            preset_info = self.resolve_model_to_preset(model_file)
+            if preset_info:
+                preset_id = preset_info["preset_id"]
+                if preset_id not in seen_presets:
+                    seen_presets.add(preset_id)
+                    suggested_presets.append(preset_info)
+            else:
+                unmapped_models.append(model_file)
+
         return {
             "id": workflow_path.stem,
             "name": meta.get("name", workflow_path.stem),
@@ -240,6 +255,9 @@ class WorkflowScanner:
             },
             "ready": missing_count == 0 if models else True,  # Ready if no models or all installed
             "source": "user",  # Mark as user workflow from filesystem
+            # Preset suggestion fields
+            "suggested_presets": suggested_presets,
+            "unmapped_models": unmapped_models,
         }
 
     def scan_all(self) -> List[Dict[str, Any]]:

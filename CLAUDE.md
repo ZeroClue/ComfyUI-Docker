@@ -173,6 +173,10 @@ All sections use real API data (no mockups):
 - ✅ Per-file download progress display (2026-02-20)
 - ✅ Download pause/resume functionality (2026-02-20)
 - ✅ HTTP error messages (401 auth, 403 license, 404 not found) (2026-02-20)
+- ✅ Workflow Registry System - dual-source workflows, preset linking, disk space checks (2026-02-22)
+- ✅ ComfyUI Bridge - workflow execution via /api/generate endpoint (2026-02-22)
+- ✅ LLM Integration - prompt enhancement with style selector (2026-02-22)
+- ✅ Workflow Preset Suggestions - model-to-preset mapping for user workflows (2026-02-23)
 
 ## Generate Page Redesign (2026-02-21)
 
@@ -191,6 +195,39 @@ Redesigned as all-in-one workflow consumer with:
 - `dashboard/api/llm.py`: LLM management endpoints
 
 **Design Docs:** `docs/plans/2026-02-21-generate-page-*.md`
+
+## LLM Integration (2026-02-22)
+
+Optional prompt enhancement via local LLM models (Phi-3, Qwen, Llama).
+
+**API Endpoint:** `POST /api/llm/enhance`
+- Request: `{ prompt, style, model }`
+- Response: `{ success, enhanced_prompt }`
+
+**Styles:** detailed, cinematic, artistic, minimal
+
+**Settings:** Configure via `/settings` - `llm_enabled`, `llm_model`
+
+**Fallback:** When LLM disabled or fails, uses static enhancement (quality modifiers)
+
+## Workflow Preset Suggestions (2026-02-23)
+
+Suggest presets for missing models in user workflows.
+
+**Architecture:**
+- **model_index.json**: Maps model filenames → preset IDs (bot-generated in comfyui-presets repo)
+- **Sync**: Pulled with registry.json via `/api/presets/registry/sync`
+- **Runtime**: WorkflowScanner resolves models → suggested presets
+
+**Key Methods:**
+- `WorkflowScanner.resolve_model_to_preset()` - Maps filename to preset info
+- `WorkflowScanner._check_model_installed()` - Verifies model exists on disk
+
+**UI:** User workflow cards show suggested presets with install buttons for missing models.
+
+**Edge Cases:**
+- Model not in any preset → Added to `unmapped_models`, shows "Manual download required"
+- model_index.json not synced → Returns empty mapping, shows sync prompt
 
 ## Preset Management System
 Located in `scripts/preset_manager/` with three core components:

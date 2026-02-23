@@ -67,6 +67,21 @@ class WorkflowScanner:
         self._registry_path = Path("/workspace/data/registry.json")
         self._models_path = self.base_path.parent / "models"
         self._comfyui_user_path = Path("/workspace/ComfyUI/user")
+        # Model index for preset suggestions
+        self._model_index_path = Path("/workspace/data/model_index.json")
+        self._model_index: Dict[str, str] = {}
+        self._load_model_index()
+
+    def _load_model_index(self) -> None:
+        """Load model filename to preset_id mapping from cache."""
+        if self._model_index_path.exists():
+            try:
+                with open(self._model_index_path, 'r') as f:
+                    data = json.load(f)
+                    self._model_index = data.get("mappings", {})
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Warning: Failed to load model index: {e}")
+                self._model_index = {}
 
     def scan_comfyui_workflows(self) -> List[Dict[str, Any]]:
         """

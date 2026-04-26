@@ -158,26 +158,6 @@ All sections use real API data (no mockups):
 - `/settings` - Settings page
 - `/pro` - Pro features
 
-**Feature Status**:
-- ✅ Preset management (downloads, status)
-- ✅ Model listing/validation with installation status
-- ✅ Workflow execution via ComfyUI API
-- ✅ System monitoring (CPU, memory, disk, GPU)
-- ✅ System metrics: Container-aware memory (cgroups), workspace disk usage (du)
-- ✅ WebSocket real-time updates
-- ✅ Dashboard stats (connected to real data)
-- ✅ Page routes (/generate, /models, /workflows, /gallery, /settings, /pro)
-- ✅ Gallery view (implemented 2026-02-19)
-- ✅ Persistence layer - SQLite database for settings, activity, history (2026-02-20)
-- ✅ HF token support for gated model downloads (2026-02-20)
-- ✅ Per-file download progress display (2026-02-20)
-- ✅ Download pause/resume functionality (2026-02-20)
-- ✅ HTTP error messages (401 auth, 403 license, 404 not found) (2026-02-20)
-- ✅ Workflow Registry System - dual-source workflows, preset linking, disk space checks (2026-02-22)
-- ✅ ComfyUI Bridge - workflow execution via /api/generate endpoint (2026-02-22)
-- ✅ LLM Integration - prompt enhancement with style selector (2026-02-22)
-- ✅ Workflow Preset Suggestions - model-to-preset mapping for user workflows (2026-02-23)
-
 ## Generate Page Redesign (2026-02-21)
 
 Redesigned as all-in-one workflow consumer with:
@@ -253,7 +233,7 @@ The preset system now uses a **separate repository**: [comfyui-presets](https://
 
 **For preset development**, work in the separate repo:
 ```bash
-cd /mnt/wsl/SharedData/projects/comfyui-presets
+cd /home/arminm/projects/qwen-image/comfyui-presets
 python scripts/validate.py          # Validate preset schema
 python scripts/generate_registry.py # Rebuild registry.json
 python scripts/check_urls.py        # Health check all URLs
@@ -457,33 +437,7 @@ Example: https://8myhxhyx0ojmq4-8082.proxy.runpod.net/
 
 ## RunPod Pod Management
 
-**GraphQL API** (preferred for queries):
-```bash
-# Query network volumes
-source .runpod/.env && curl -s "https://api.runpod.io/graphql" \
-  -H "Authorization: Bearer $RUNPOD_API_KEY" \
-  -d '{"query": "{ myself { networkVolumes { id name size dataCenter { id } } } }"}'
-
-# Query available GPUs
-source .runpod/.env && curl -s "https://api.runpod.io/graphql" \
-  -H "Authorization: Bearer $RUNPOD_API_KEY" \
-  -d '{"query": "{ gpuTypes { id displayName memoryInGb } }"}'
-```
-
-**REST API** (for pod creation/deletion):
-```bash
-# List all pods
-source .runpod/.env && curl -s "https://rest.runpod.io/v1/pods" -H "Authorization: Bearer $RUNPOD_API_KEY"
-
-# Get pod details
-source .runpod/.env && curl -s "https://rest.runpod.io/v1/pods/{pod-id}" -H "Authorization: Bearer $RUNPOD_API_KEY"
-
-# Stop a pod
-source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods/{pod-id}/stop" -H "Authorization: Bearer $RUNPOD_API_KEY"
-
-# Terminate (delete) a pod
-source .runpod/.env && curl -X DELETE "https://rest.runpod.io/v1/pods/{pod-id}" -H "Authorization: Bearer $RUNPOD_API_KEY"
-```
+API key in `.runpod/.env`. Use GraphQL (`https://api.runpod.io/graphql`) for queries (volumes, GPUs), REST (`https://rest.runpod.io/v1/pods`) for CRUD. Always verify pod status after stop.
 
 # Development & Testing
 
@@ -592,43 +546,13 @@ These documents are gitignored but tracked with `git add -f`.
 All major dashboard features working. See Feature Status section for details.
 
 **Known Limitations:**
-- Generate page queue card not connected to ComfyUI queue (UI only)
+- ComfyUI does not support pause/resume — only interrupt/cancel. No pause endpoint exposed.
 - Gated HuggingFace models require HF token (configure in Settings)
-- **Workflow formats**: Only API format workflows can be executed via dashboard. UI format workflows with subgraphs require manual export from ComfyUI.
-
-**Workflow Format Requirements:**
-ComfyUI's `/prompt` endpoint requires **API format** workflows (dict with node IDs as keys):
-```json
-// API format (WORKS)
-{
-  "1": {"class_type": "KSampler", "inputs": {...}},
-  "2": {"class_type": "CLIPTextEncode", "inputs": {...}}
-}
-
-// UI format (DOES NOT WORK - has "nodes" array)
-{
-  "nodes": [{"id": 1, "type": "KSampler", ...}],
-  "links": [...]
-}
-```
-
-To convert UI format to API format:
-1. Open workflow in ComfyUI
-2. Enable Dev Mode in Settings
-3. Click "Export (API Format)" from menu
-4. Save the exported workflow
+- **Workflow formats**: Only API format workflows can be executed (dict with node IDs as keys, not the `nodes` array format). UI format must be exported via ComfyUI > Dev Mode > "Export (API Format)".
+- **Strip `_meta` keys** before sending workflows — ComfyUI rejects them.
 
 **Alpine.js Script Loading:**
-Alpine.js must load AFTER page-specific function definitions. Load it at end of `<body>`:
-```html
-<!-- WRONG - defer causes race condition with inline scripts -->
-<script defer src="alpine.js"></script>
-{% block extra_scripts %}{% endblock %}
-
-<!-- CORRECT - Alpine loads after all page functions defined -->
-{% block extra_scripts %}{% endblock %}
-<script src="alpine.js"></script>
-```
+Load Alpine.js at end of `<body>`, AFTER `{% block extra_scripts %}` — not with `defer`. Inline scripts must define functions before Alpine initializes.
 
 ## Performance Optimizations (2026-02-19)
 
@@ -638,88 +562,9 @@ Alpine.js must load AFTER page-specific function definitions. Load it at end of 
 - **Cache invalidation** triggered on download complete and preset delete
 - Location: `dashboard/api/presets.py` - `PresetCache` class
 
-## Bug Fixes & Learnings (Consolidated)
+## Bug Fixes & Learnings
 
-### 2026-02-22
-- **Workflow format handling**: ComfyUI `/prompt` endpoint only accepts API format workflows. UI format (with `nodes` array) must be exported as API format from ComfyUI. Workflows with subgraphs (composite nodes) cannot be directly executed.
-- **Strip `_meta` keys**: ComfyUI rejects workflows with `_meta` keys at root level. Strip them before sending: `{k: v for k, v in workflow.items() if not k.startswith("_")}`
-- **Prompt injection**: Only replace positive prompts, preserve negative prompts. Check for "negative" in node title before replacing text in CLIPTextEncode nodes.
-- **Alpine.js initialization**: Alpine must load AFTER inline script definitions. Do not use `defer` on Alpine script if it's at end of body - the inline scripts need to define functions before Alpine initializes.
-
-### 2026-02-21
-- **Subprocess security**: Always use `shutil.which()` to resolve executable paths before `subprocess.run()` - prevents shell injection
-- **Semantic versioning**: Use `packaging.version.parse()` for version comparisons, not string comparison
-- **SHA256 chunk size**: Use 1MB chunks (not 8KB) for hashing large model files - significantly faster
-- **SHA256 validation**: Validate hash format is 64 hex characters before comparison
-- **Constant extraction**: Extract repeated URLs to module-level constants (e.g., `REMOTE_REGISTRY_URL`)
-- **GitHub raw content-type**: GitHub raw URLs return `text/plain; charset=utf-8` instead of `application/json`. Use `response.text()` + `json.loads()` instead of `response.json()`.
-- **Alpine.js variable initialization**: Variables used in templates (modelCount, gpuUsage, memoryUsage, unreadCount) must be declared in dashboardApp() with initial values and fetched via API in fetchSidebarStats().
-- **Favicon 404**: Add favicon.ico to dashboard/static/ to prevent console errors.
-- **Lazy initialization for settings-dependent services**: Services like WorkflowScanner that need settings values at init time should use lazy initialization via getter functions. Module-level initialization can happen before settings are loaded, causing path resolution failures.
-  ```python
-  # WRONG - settings.WORKFLOW_BASE_PATH may not be set yet
-  _workflow_scanner = WorkflowScanner(Path(settings.WORKFLOW_BASE_PATH))
-
-  # CORRECT - lazy initialization
-  _workflow_scanner = None
-  def get_workflow_scanner():
-      global _workflow_scanner
-      if _workflow_scanner is None:
-          _workflow_scanner = WorkflowScanner(Path(settings.WORKFLOW_BASE_PATH))
-      return _workflow_scanner
-  ```
-- **Alpine.js null safety**: Use optional chaining (`?.`) and nullish coalescing (`||`) when accessing potentially null objects in templates:
-  ```html
-  <!-- WRONG - crashes if intentResult is null -->
-  <span x-text="intentResult.matched_keyword"></span>
-
-  <!-- CORRECT - safe null handling -->
-  <span x-text="intentResult?.matched_keyword || ''"></span>
-  ```
-
-### 2026-02-20
-- **Runtime imports for globals**: Persistence globals (`settings_manager`, `activity_logger`) are None at module load time. Import the module (`from ..core import persistence`) and access the attribute at runtime (`persistence.settings_manager`), not the variable directly.
-- **FastAPI router prefixes**: Avoid duplicate prefixes. If router has `prefix="/activity"` and `include_router()` also has `prefix="/activity"`, the route becomes `/api/activity/activity/recent`. Only define prefix in one place.
-- **Asyncio.Queue lazy init**: Create queues inside async context, not at class instantiation time (no event loop yet). Use property with lazy initialization.
-- **Download pause bug**: When pausing download, the loop breaks but code continues to set `status="completed"`. Add explicit check for pause/cancel status before marking complete.
-- **Container memory metrics**: `psutil.virtual_memory()` returns host memory in containers. Read from `/sys/fs/cgroup/memory.max` (cgroup v2) or `/sys/fs/cgroup/memory/memory.limit_in_bytes` (cgroup v1) for container limit.
-- **Network volume disk metrics**: `psutil.disk_usage('/workspace')` returns host filesystem size on RunPod network volumes. Use `du -sb /workspace` for actual usage and `RUNPOD_VOLUME_GB` env var for total size.
-- **add_activity() signature**: Only supports `activity_type`, `status`, `title`, `subtitle`, `details`. Does NOT support `link` parameter - will raise TypeError if passed.
-
-### 2026-02-19
-- **FastAPI route ordering**: Literal routes must come BEFORE parameterized routes. `/queue/status` must be defined before `/{preset_id}/status` or FastAPI matches `preset_id="queue"`
-- **psutil.version_info**: It's a tuple, not namedtuple. Use `sys.version_info` for Python version
-- **activity.py current**: `get_queue_status()` returns `current` as string (preset_id), not dict with properties
-
-### 2026-02-18
-- **psutil.uname()**: Use `.sysname` not `.system` (posix.uname_result has no 'system' attribute)
-- **WebSocket endpoint**: Dashboard templates expect `/ws/dashboard`, not just `/ws`
-- **Dashboard port**: Internal port 8000, external 8082 (via nginx)
-- **Pydantic validation**: Preset `files` and `categories` need `Dict[str, Any]` not `Dict[str, str]` (preset YAML has boolean `optional: false` and nested category objects)
-
-### RunPod Pod Management
-**CRITICAL**: Always verify pod status after stop command:
-```bash
-# Stop pod
-curl -X POST "https://rest.runpod.io/v1/pods/{pod-id}/stop" -H "Authorization: Bearer $RUNPOD_API_KEY"
-
-# Verify it stopped (check desiredStatus = "EXITED")
-curl -s "https://rest.runpod.io/v1/pods/{pod-id}" -H "Authorization: Bearer $RUNPOD_API_KEY"
-```
-
-### CPU Pod Debugging
-CPU pods require `--cpu` flag for ComfyUI to disable GPU check:
-```bash
-# ComfyUI won't start on CPU pods without this flag
-python main.py --cpu --listen 0.0.0.0
-```
-
-### Communication Pattern
-Use ntfy for user notifications during long-running tasks:
-```bash
-# Send notification via MCP tool
-mcp__ntfy-me-mcp-extended__ntfy_me(taskTitle="Build Complete", taskSummary="...")
-
-# Ask question with action buttons
-mcp__ntfy-me-mcp-extended__ntfy_me_ask(question="Continue?", options=["Yes", "No"])
-```
+Historical learnings moved to `docs/LEARNINGS.md`. Key gotchas still in this file:
+- **Persistence import pattern** — see Persistence Layer section above
+- **Alpine.js loading** — see Dashboard Known Issues section above
+- **Container metrics** — use cgroup files for memory, `du` for disk, not `psutil`

@@ -231,6 +231,16 @@ async def clear_queue():
         raise HTTPException(status_code=500, detail=f"Error clearing queue: {str(e)}")
 
 
+@router.post("/queue/delete/{prompt_id}")
+async def delete_queue_item(prompt_id: str):
+    """Delete a specific pending item from ComfyUI queue"""
+    try:
+        await comfyui_client.delete_queue_item(prompt_id)
+        return {"status": "deleted", "prompt_id": prompt_id, "message": "Item removed from queue"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting queue item: {str(e)}")
+
+
 @router.get("/outputs")
 async def get_outputs():
     """Get list of generated outputs from ComfyUI"""

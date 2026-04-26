@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="h-full flex flex-col" x-data="generatePage()" x-init="initGeneratePage()">
+<div class="h-full flex flex-col" x-data="generatePage()" x-init="initGeneratePage()" @alpine:destroyed="if (queuePollInterval) { clearInterval(queuePollInterval); queuePollInterval = null; }">
     <!-- Quick Intent Bar (Collapsible) -->
     <div class="border-b border-border-subtle bg-bg-secondary">
         <button class="w-full px-6 py-3 flex items-center justify-between text-left hover:bg-bg-hover transition-colors"
@@ -516,11 +516,11 @@
             <div class="flex items-center gap-3">
                 <span class="text-lg">📊</span>
                 <span class="font-medium text-sm">Output & Queue</span>
-                <span x-show="currentGeneration" class="text-xs px-2 py-0.5 rounded-full bg-accent-primary/15 text-accent-primary">
+                <span x-show="currentGeneration || comfyuiRunning.length > 0" class="text-xs px-2 py-0.5 rounded-full bg-accent-primary/15 text-accent-primary">
                     Generating...
                 </span>
-                <span x-show="queue.length > 0" class="text-xs text-text-tertiary">
-                    <span x-text="queue.length"></span> in queue
+                <span x-show="comfyuiPending.length > 0" class="text-xs text-text-tertiary">
+                    <span x-text="comfyuiPending.length"></span> in queue
                 </span>
             </div>
             <span class="text-text-tertiary transition-transform" :class="{ 'rotate-180': outputPanelExpanded }">▼</span>
@@ -554,11 +554,14 @@
                         </div>
                         <template x-for="(item, index) in queue" :key="item.id">
                             <div class="flex items-center gap-2 py-1" :class="{ 'border-t border-border-subtle': index > 0 }">
-                                <div class="w-6 h-6 bg-bg-hover rounded flex items-center justify-center text-xs text-text-tertiary">
-                                    <span x-text="index + 1"></span>
+                                <div class="w-6 h-6 rounded flex items-center justify-center text-xs"
+                                     :class="item.isRunning ? 'bg-accent-primary/20 text-accent-primary' : 'bg-bg-hover text-text-tertiary'">
+                                    <span x-show="item.isRunning" class="spinner" style="width: 12px; height: 12px; border-width: 2px;"></span>
+                                    <span x-show="!item.isRunning" x-text="item.position || index + 1"></span>
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <div class="text-xs font-medium truncate" x-text="item.workflow_name"></div>
+                                    <div x-show="item.isRunning && currentGeneration" class="text-xs text-accent-primary" x-text="`${currentGeneration.progress}%`"></div>
                                 </div>
                                 <button class="text-xs text-accent-error hover:text-red-400"
                                         @click="cancelQueueItem(item.id)">
@@ -787,6 +790,10 @@ function generatePage() {
 
         // Queue State
         queue: [],
+        comfyuiRunning: [],
+        comfyuiPending: [],
+        queuePollInterval: null,
+        workflowNameMap: {},
         recentOutputs: [],
 
         // WebSocket
@@ -798,6 +805,11 @@ function generatePage() {
                 this.loadWorkflows(),
                 this.loadRecentOutputs()
             ]);
+
+            // Poll ComfyUI queue every 3 seconds
+            if (this.queuePollInterval) clearInterval(this.queuePollInterval);
+            this.fetchQueueStatus();
+            this.queuePollInterval = setInterval(() => this.fetchQueueStatus(), 3000);
 
             // Load LLM settings
             try {
@@ -905,23 +917,62 @@ function generatePage() {
                     this.currentGeneration = null;
                     window.showToast('success', 'Generation Complete', 'Your content is ready!');
                     this.loadRecentOutputs();
-                    // Process queue
-                    if (this.queue.length > 0) {
-                        const next = this.queue.shift();
-                        this.startQueueItem(next);
-                    }
+                    this.fetchQueueStatus();
                     break;
 
                 case 'generation_failed':
                     this.isGenerating = false;
                     this.currentGeneration = null;
                     window.showToast('error', 'Generation Failed', data.error || 'Unknown error');
+                    this.fetchQueueStatus();
                     break;
 
                 case 'queue_updated':
-                    // Sync queue state if needed
+                    this.fetchQueueStatus();
                     break;
             }
+        },
+
+        async fetchQueueStatus() {
+            try {
+                const response = await fetch('/api/workflows/queue/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.comfyuiRunning = (data.queue_running || []).map(item => ({
+                        id: item[1],
+                        status: 'running'
+                    }));
+                    this.comfyuiPending = (data.queue_pending || []).map((item, index) => ({
+                        id: item[1],
+                        position: index + 1,
+                        status: 'pending'
+                    }));
+                    this.updateQueueDisplay();
+                }
+            } catch (e) {
+                console.warn('Failed to fetch queue status:', e);
+            }
+        },
+
+        updateQueueDisplay() {
+            const running = this.comfyuiRunning.map(item => ({
+                ...item,
+                workflow_name: this.findWorkflowName(item.id) || 'Unknown',
+                isRunning: true
+            }));
+            const pending = this.comfyuiPending.map(item => ({
+                ...item,
+                workflow_name: this.findWorkflowName(item.id) || 'Queued',
+                isRunning: false
+            }));
+            this.queue = [...running, ...pending];
+        },
+
+        findWorkflowName(promptId) {
+            if (this.currentGeneration && this.currentGeneration.id === promptId) {
+                return this.selectedWorkflow?.name || 'Generating...';
+            }
+            return this.workflowNameMap[promptId] || null;
         },
 
         get filteredWorkflows() {
@@ -1158,20 +1209,10 @@ function generatePage() {
                 if (response.ok) {
                     const result = await response.json();
                     this.currentGeneration.id = result.prompt_id;
-
-                    // Add batch items to queue
-                    if (this.settings.batch > 1) {
-                        for (let i = 1; i < this.settings.batch; i++) {
-                            this.queue.push({
-                                id: `${result.prompt_id}-${i}`,
-                                workflow_id: this.selectedWorkflow.id,
-                                workflow_name: this.selectedWorkflow.name,
-                                prompt: this.prompt
-                            });
-                        }
-                    }
+                    this.workflowNameMap[result.prompt_id] = this.selectedWorkflow?.name || 'Generation';
 
                     window.showToast('success', 'Generation Started', result.message);
+                    this.fetchQueueStatus();
                 } else {
                     const error = await response.json();
                     throw new Error(error.detail || 'Generation failed');
@@ -1186,19 +1227,17 @@ function generatePage() {
 
         async cancelQueueItem(itemId) {
             try {
-                await fetch(`/api/generate/${itemId}/cancel`, { method: 'POST' });
-                this.queue = this.queue.filter(item => item.id !== itemId);
+                const item = this.queue.find(q => q.id === itemId);
+                if (item?.isRunning) {
+                    await fetch(`/api/generate/${itemId}/cancel`, { method: 'POST' });
+                } else {
+                    await fetch(`/api/workflows/queue/delete/${itemId}`, { method: 'POST' });
+                }
                 window.showToast('info', 'Cancelled', 'Item removed from queue');
+                this.fetchQueueStatus();
             } catch (error) {
                 console.error('Cancel failed:', error);
             }
-        },
-
-        async startQueueItem(item) {
-            // Start generation for queued item
-            this.selectedWorkflow = this.workflows.find(w => w.id === item.workflow_id);
-            this.prompt = item.prompt;
-            await this.startGeneration();
         },
 
         viewOutput(output) {

@@ -113,6 +113,10 @@ class ComfyUIClient:
         """Clear all pending items from queue"""
         return await self._post("queue", json={"clear": True})
 
+    async def delete_queue_item(self, prompt_id: str) -> Dict:
+        """Delete a specific pending item from queue"""
+        return await self._post("queue", json={"delete": [prompt_id]})
+
     async def get_outputs(self) -> List[Dict]:
         """Get list of generated outputs"""
         try:

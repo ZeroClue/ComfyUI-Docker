@@ -350,13 +350,6 @@ async def start_generation(
     )
 
 
-@router.post("/{prompt_id}/pause")
-async def pause_generation(prompt_id: str) -> Dict[str, str]:
-    """Pause an active generation."""
-    # TODO: Implement pause functionality
-    return {"status": "paused", "prompt_id": prompt_id, "message": "Generation paused"}
-
-
 @router.post("/{prompt_id}/cancel")
 async def cancel_generation(prompt_id: str) -> Dict[str, str]:
     """Cancel a generation."""

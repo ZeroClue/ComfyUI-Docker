@@ -98,16 +98,22 @@ async def list_workflows(
 @router.get("/{workflow_name}")
 async def get_workflow(workflow_name: str):
     """Get specific workflow by name"""
+    # Prevent path traversal in workflow name
+    if "/" in workflow_name or "\\" in workflow_name or ".." in workflow_name:
+        raise HTTPException(status_code=400, detail="Invalid workflow name")
+
     workflow_dir = Path(settings.WORKFLOW_BASE_PATH)
 
     if not workflow_dir.exists():
         raise HTTPException(status_code=404, detail="Workflow directory not found")
 
-    # Find workflow file
+    # Find workflow file (only in immediate subdirectories, not deep traversal)
     workflow_file = None
     for file_path in workflow_dir.rglob(f"{workflow_name}.json"):
-        workflow_file = file_path
-        break
+        resolved = file_path.resolve()
+        if str(resolved).startswith(str(workflow_dir.resolve())):
+            workflow_file = file_path
+            break
 
     if not workflow_file:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_name} not found")
@@ -447,6 +453,10 @@ async def upload_workflow(
 @router.delete("/{workflow_name}")
 async def delete_workflow(workflow_name: str):
     """Delete a workflow file"""
+    # Prevent path traversal in workflow name
+    if "/" in workflow_name or "\\" in workflow_name or ".." in workflow_name:
+        raise HTTPException(status_code=400, detail="Invalid workflow name")
+
     workflow_dir = Path(settings.WORKFLOW_BASE_PATH)
 
     if not workflow_dir.exists():
@@ -455,8 +465,10 @@ async def delete_workflow(workflow_name: str):
     # Find workflow file
     workflow_file = None
     for file_path in workflow_dir.rglob(f"{workflow_name}.json"):
-        workflow_file = file_path
-        break
+        resolved = file_path.resolve()
+        if str(resolved).startswith(str(workflow_dir.resolve())):
+            workflow_file = file_path
+            break
 
     if not workflow_file:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_name} not found")

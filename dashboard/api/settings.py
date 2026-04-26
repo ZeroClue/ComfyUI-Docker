@@ -45,7 +45,7 @@ async def get_settings():
 @router.patch("")
 async def update_setting(update: SettingsUpdate):
     """Update a single setting"""
-    valid_keys = ["theme", "hf_token", "activity_retention_days"]
+    valid_keys = ["theme", "activity_retention_days"]
     if update.key not in valid_keys:
         raise HTTPException(400, f"Invalid setting key: {update.key}")
 

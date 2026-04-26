@@ -155,6 +155,12 @@ class DownloadManager:
             if not file_url:
                 continue
 
+            # Prevent path traversal
+            target = (self.base_path / file_path).resolve()
+            if not str(target).startswith(str(self.base_path.resolve())):
+                print(f"Path traversal blocked: {file_path}")
+                continue
+
             # Check if file exists and force flag
             full_path = self.base_path / file_path
             if full_path.exists() and not force:
@@ -412,8 +418,9 @@ class DownloadManager:
                         "message": "Verifying file integrity..."
                     })
 
-                    # Calculate hash of downloaded file
-                    actual_hash = calculate_sha256(full_path)
+                    # Calculate hash of downloaded file (non-blocking)
+                    loop = asyncio.get_event_loop()
+                    actual_hash = await loop.run_in_executor(None, calculate_sha256, full_path)
 
                     if actual_hash != expected_hash:
                         # Checksum mismatch - delete file and raise error

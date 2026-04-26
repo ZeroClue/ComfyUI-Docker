@@ -1,7 +1,7 @@
 <!-- Preset Card Component -->
 {% macro preset_card(preset, status='available', progress=0) %}
 <div class="preset-card bg-bg-secondary border border-border-subtle rounded-lg p-4 card-hover relative"
-     x-data="presetCard('{{ preset.id }}', '{{ status }}', {{ progress }})"
+     x-data="presetCard({{ preset.id | tojson }}, {{ status | tojson }}, {{ progress }})"
      @download-progress.window="updateProgress($event.detail)">
 
     <!-- Status Badge -->

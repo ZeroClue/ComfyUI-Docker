@@ -18,12 +18,8 @@ from contextlib import asynccontextmanager
 from .api import api_router
 from .api.workflow_registry import router as workflow_registry_router
 from .core.config import settings
-from .core.websocket import ConnectionManager
+from .core.websocket import manager
 from .core.generation_manager import generation_manager
-
-
-# WebSocket connection manager for real-time updates
-manager = ConnectionManager()
 
 
 @asynccontextmanager
@@ -75,6 +71,7 @@ templates_dir = BASE_DIR / "dashboard" / "templates"
 
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 templates = Jinja2Templates(directory=str(templates_dir))
+templates.env.autoescape = True
 
 # Include API routers
 app.include_router(api_router, prefix="/api")
@@ -330,56 +327,41 @@ async def get_recent_generations(limit: int = 20):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Main WebSocket endpoint for real-time updates"""
-    await manager.connect(websocket)
+    """Main WebSocket endpoint — client subscribes to all channels"""
+    await manager.connect(websocket, channel="general")
     try:
         while True:
             data = await websocket.receive_text()
-            # Echo back or handle incoming messages
-            await manager.broadcast(f"Received: {data}")
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        manager.disconnect(websocket, channel="general")
 
 
 @app.websocket("/ws/dashboard")
 async def dashboard_websocket(websocket: WebSocket):
     """WebSocket endpoint for dashboard real-time updates"""
-    await manager.connect(websocket)
+    await manager.connect(websocket, channel="general")
     try:
         while True:
-            data = await websocket.receive_text()
-            # Handle dashboard-specific messages
-            message = json.loads(data) if data.startswith('{') else {"type": "message", "data": data}
-            await manager.broadcast(json.dumps({
-                "type": message.get("type", "update"),
-                "data": message.get("data", data)
-            }))
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        manager.disconnect(websocket, channel="general")
 
 
 @app.websocket("/ws/downloads")
 async def downloads_websocket(websocket: WebSocket):
     """WebSocket endpoint for download progress updates"""
-    await manager.connect(websocket)
+    await manager.connect(websocket, channel="downloads")
     try:
         while True:
-            data = await websocket.receive_text()
-            # Handle download-specific messages
-            await manager.broadcast(json.dumps({
-                "type": "download_update",
-                "data": data
-            }))
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        manager.disconnect(websocket, channel="downloads")
 
 
 @app.websocket("/ws/generate")
 async def websocket_generate(websocket: WebSocket):
     """WebSocket for real-time generation updates."""
-    await websocket.accept()
-    generation_manager.register_connection(websocket)
-
+    await manager.connect(websocket, channel="general")
     try:
         # Send initial state
         await websocket.send_text(json.dumps({
@@ -387,20 +369,17 @@ async def websocket_generate(websocket: WebSocket):
             "active_generations": generation_manager.get_active()
         }))
 
-        # Keep connection alive
         while True:
             data = await websocket.receive_text()
-            # Handle any client messages if needed
             try:
                 message = json.loads(data)
-                # Echo back for keepalive
                 if message.get("type") == "ping":
                     await websocket.send_text(json.dumps({"type": "pong"}))
             except json.JSONDecodeError:
                 pass
 
     except WebSocketDisconnect:
-        pass
+        manager.disconnect(websocket, channel="general")
 
 
 # Expose connection manager for use in other modules

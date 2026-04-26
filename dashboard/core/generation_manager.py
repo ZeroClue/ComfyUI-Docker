@@ -5,10 +5,9 @@ Manages active generations and broadcasts progress via WebSocket.
 
 import asyncio
 import json
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
-import weakref
 
 
 @dataclass
@@ -26,12 +25,20 @@ class ActiveGeneration:
 
 
 class GenerationManager:
-    """Manages generations and WebSocket broadcasts."""
+    """Manages generations and broadcasts via the shared ConnectionManager."""
 
     def __init__(self):
         self.active_generations: Dict[str, ActiveGeneration] = {}
-        self.connections: Set = weakref.WeakSet()
         self._comfyui_client = None
+        self._manager = None
+
+    @property
+    def connection_manager(self):
+        """Lazy reference to the shared ConnectionManager."""
+        if self._manager is None:
+            from .websocket import manager
+            self._manager = manager
+        return self._manager
 
     @property
     def comfyui_client(self):
@@ -42,28 +49,14 @@ class GenerationManager:
             self._comfyui_client = ComfyUIClient(base_url=f"http://localhost:{settings.COMFYUI_PORT}")
         return self._comfyui_client
 
-    def register_connection(self, websocket):
-        """Register a WebSocket connection."""
-        self.connections.add(websocket)
-
     async def broadcast(self, event_type: str, data: Dict[str, Any]):
-        """Broadcast event to all connected clients."""
+        """Broadcast event via shared ConnectionManager."""
         message = json.dumps({
             "type": event_type,
             "timestamp": datetime.now().isoformat(),
             **data
         })
-
-        dead_connections = set()
-        for ws in self.connections:
-            try:
-                await ws.send_text(message)
-            except Exception:
-                dead_connections.add(ws)
-
-        # Clean up dead connections
-        for ws in dead_connections:
-            self.connections.discard(ws)
+        await self.connection_manager.broadcast(message, channel="general")
 
     async def start_generation(self, prompt_id: str, workflow_id: str, workflow_name: str, prompt: str):
         """Start tracking a generation."""
@@ -110,9 +103,8 @@ class GenerationManager:
                 "duration_seconds": (datetime.now() - gen.started_at).total_seconds()
             })
 
-            # Remove after a delay
-            await asyncio.sleep(60)
-            self.active_generations.pop(prompt_id, None)
+            # Schedule cleanup in background (don't block)
+            asyncio.create_task(self._cleanup_generation(prompt_id))
 
     async def fail_generation(self, prompt_id: str, error: str):
         """Mark generation as failed."""
@@ -125,9 +117,12 @@ class GenerationManager:
                 "error": error
             })
 
-            # Remove after a delay
-            await asyncio.sleep(60)
-            self.active_generations.pop(prompt_id, None)
+            asyncio.create_task(self._cleanup_generation(prompt_id))
+
+    async def _cleanup_generation(self, prompt_id: str):
+        """Remove generation after delay."""
+        await asyncio.sleep(60)
+        self.active_generations.pop(prompt_id, None)
 
     def get_active(self) -> List[Dict[str, Any]]:
         """Get all active generations."""

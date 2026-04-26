@@ -5,6 +5,7 @@ Handles system monitoring, resource usage, and service status
 
 from typing import Dict, List, Optional
 from pathlib import Path
+import asyncio
 import shutil
 import sys
 import psutil
@@ -128,8 +129,9 @@ async def get_system_status() -> SystemStatusResponse:
 @router.get("/resources")
 async def get_resource_usage() -> ResourceUsage:
     """Get detailed system resource usage"""
-    # CPU usage
-    cpu_percent = psutil.cpu_percent(interval=1)
+    # CPU usage (run in executor to avoid blocking event loop)
+    loop = asyncio.get_event_loop()
+    cpu_percent = await loop.run_in_executor(None, lambda: psutil.cpu_percent(interval=0.5))
 
     # Memory usage - try to get container limit, fall back to host memory
     memory_info = {}
@@ -203,15 +205,16 @@ async def get_resource_usage() -> ResourceUsage:
     disk_info = {"path": '/'}
 
     if Path(workspace_path).exists():
-        import subprocess
         try:
-            # Get actual used space in /workspace
-            result = subprocess.run(
-                ['du', '-sb', workspace_path],
-                capture_output=True,
-                text=True,
-                timeout=30
+            # Get actual used space in /workspace (non-blocking)
+            proc = await asyncio.create_subprocess_exec(
+                'du', '-sb', workspace_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
             )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+            if proc.returncode == 0:
+                used_bytes = int(stdout.decode().split()[0])
             if result.returncode == 0:
                 used_bytes = int(result.stdout.split()[0])
                 # Try to get volume size from environment or default to 100GB
@@ -262,17 +265,16 @@ async def get_resource_usage() -> ResourceUsage:
     # GPU information (if available)
     gpu_info = None
     try:
-        import subprocess
-        result = subprocess.run(
-            ['nvidia-smi', '--query-gpu=name,memory.used,memory.total,utilization.gpu', '--format=csv,noheader,nounits'],
-            capture_output=True,
-            text=True,
-            timeout=5
+        proc = await asyncio.create_subprocess_exec(
+            'nvidia-smi', '--query-gpu=name,memory.used,memory.total,utilization.gpu', '--format=csv,noheader,nounits',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5)
 
-        if result.returncode == 0:
+        if proc.returncode == 0:
             gpu_info = {"devices": []}
-            for line in result.stdout.strip().split('\n'):
+            for line in stdout.decode().strip().split('\n'):
                 if line:
                     parts = [p.strip() for p in line.split(',')]
                     if len(parts) >= 4:

@@ -271,7 +271,12 @@ async def get_disk_usage(
 
     - **path**: Optional path to check (defaults to model base path)
     """
-    check_path = Path(path) if path else Path(settings.MODEL_BASE_PATH)
+    check_path = Path(path).resolve() if path else Path(settings.MODEL_BASE_PATH)
+
+    # Restrict to model storage paths
+    allowed_prefixes = [Path(settings.MODEL_BASE_PATH).resolve(), Path("/workspace")]
+    if not any(str(check_path).startswith(str(p)) for p in allowed_prefixes):
+        raise HTTPException(status_code=403, detail="Path not allowed")
 
     if not check_path.exists():
         raise HTTPException(status_code=404, detail="Path not found")

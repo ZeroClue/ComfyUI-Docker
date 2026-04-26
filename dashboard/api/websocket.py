@@ -96,10 +96,12 @@ async def broadcast_system_metrics():
     """Broadcast system metrics updates"""
     try:
         import psutil
+        import asyncio
 
-        cpu_percent = psutil.cpu_percent(interval=0.1)
-        memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+        loop = asyncio.get_event_loop()
+        cpu_percent = await loop.run_in_executor(None, lambda: psutil.cpu_percent(interval=0.1))
+        memory = await loop.run_in_executor(None, psutil.virtual_memory)
+        disk = await loop.run_in_executor(None, lambda: psutil.disk_usage('/'))
 
         message = json.dumps({
             "type": "system_metrics",

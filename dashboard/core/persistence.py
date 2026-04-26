@@ -113,19 +113,19 @@ class ActivityLogger:
                     row["details"] = None
         return rows
 
-    def clear(self) -> int:
+    def clear(self) -> bool:
         """Clear all activities"""
-        result = self.db.execute("DELETE FROM activity")
-        return result.rowcount
+        self.db.execute_commit("DELETE FROM activity")
+        return True
 
-    def cleanup_old(self) -> int:
+    def cleanup_old(self) -> bool:
         """Delete activities older than retention period"""
         cutoff = datetime.utcnow() - timedelta(days=self.retention_days)
-        result = self.db.execute(
+        self.db.execute_commit(
             "DELETE FROM activity WHERE created_at < ?",
             (cutoff.isoformat(),)
         )
-        return result.rowcount
+        return True
 
 
 class DownloadHistory:
@@ -136,16 +136,12 @@ class DownloadHistory:
 
     def start(self, preset_id: str, files_total: int) -> int:
         """Record download start, return history ID"""
-        self.db.execute_commit(
+        return self.db.execute_commit(
             """INSERT INTO download_history
                (preset_id, status, files_total, files_completed, started_at)
                VALUES (?, 'started', ?, 0, ?)""",
             (preset_id, files_total, datetime.utcnow().isoformat())
         )
-        row = self.db.fetchone(
-            "SELECT last_insert_rowid() as id"
-        )
-        return row["id"] if row else 0
 
     def complete(self, history_id: int, files_completed: int) -> bool:
         """Mark download as completed"""

@@ -87,9 +87,9 @@ install_sageattention_from_source() {
 install_attention_optimizer() {
     echo ""
     echo "CUDA ${CUDA_VERSION} detected - SageAttention not yet optimized for CUDA 13+"
-    echo "Installing ComfyUI-Attention-Optimizer as alternative..."
-    pip install --no-cache-dir comfyui-attention-optimizer
-    echo "✓ ComfyUI-Attention-Optimizer installed successfully"
+    echo "ComfyUI-Attention-Optimizer is a custom node (no PyPI package) — skipping."
+    echo "It will be available if included in custom_nodes.txt."
+    echo "✓ No additional attention package needed for CUDA 13+"
 }
 
 # Install legacy pip version (slower Triton backend, no compilation)

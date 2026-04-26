@@ -1,4 +1,4 @@
-[![Build and Push ZeroClue Docker Images (Optimized)](https://github.com/ZeroClue/ComfyUI-Docker/actions/workflows/build.yml/badge.svg)](https://github.com/ZeroClue/ComfyUI-Docker/actions/workflows/build.yml)
+[![Build and Push ZeroClue Docker Images (CUDA 12.8 + 13.0)](https://github.com/ZeroClue/ComfyUI-Docker/actions/workflows/build.yml/badge.svg)](https://github.com/ZeroClue/ComfyUI-Docker/actions/workflows/build.yml)
 
 # ZeroClue ComfyUI-Docker
 
@@ -63,7 +63,7 @@
 ```bash
 # Dashboard is enabled by default
 docker run --gpus all -p 8082:8082 -p 3000:3000 \
-  zeroclue/comfyui:base-torch2.8.0-cu126
+  zeroclue/comfyui:latest
 
 # Access at http://localhost:8082
 ```
@@ -80,79 +80,35 @@ docker run --gpus all -p 8082:8082 -p 3000:3000 \
 ## 🏷️ Tag Format
 
 ```text
-zeroclue/comfyui:(A)-torch2.8.0-(B)
+zeroclue/comfyui:(A)-py3.13-(B)
 ```
 
-* **(A)**: `base`, `slim`, or `minimal`
+* **(A)**: `base` (only variant currently auto-built)
   * `base`: ComfyUI + Manager + custom nodes + code-server (**~8-12GB**)
-  * `slim`: ComfyUI + Manager, optimized for serving (**~4-5GB**)
-  * `minimal`: ComfyUI + Manager + custom nodes, no dev tools (**~6-7GB**)
-* **(B)**: CUDA version → `cu126`, `cu128` (new variants), `cu124`, `cu129`, `cu130`
+* **(B)**: CUDA version → `cu130` (default), `cu128` (fallback)
+* **Version-pinned**: Tags include both floating (`base-py3.13-cu130`) and pinned (`base-py3.13-cu130-v1.3.0`) variants
 
 ---
 
 ## 🧱 Image Variants
 
-### Development & Full-Featured Variants
-| Image Name                            | Custom Nodes | Code Server | JupyterLab | Size | CUDA | Build Status |
-| ------------------------------------- | ------------ | ----------- | ---------- | ---- | ---- | ------------ |
-| `zeroclue/comfyui:base-torch2.8.0-cu126` | ✅ Yes        | ✅ Yes      | ✅ Yes     | ~8-12GB | 12.6 | ✅ Auto-built |
-| `zeroclue/comfyui:base-torch2.8.0-cu128` | ✅ Yes        | ✅ Yes      | ✅ Yes     | ~8-12GB | 12.8 | 🔧 Manual only |
+### Auto-Built (CI builds every 8 hours and on push)
 
-> ⚠️ **Important**: `base-torch2.8.0-cu128` requires manual build due to disk space constraints. See [Manual Build Guide](#-manual-build-for-large-variants) below.
+| Image Name | CUDA | PyTorch | Status |
+|------------|------|---------|--------|
+| `zeroclue/comfyui:latest` | 13.0.3 | 2.11.0 | Primary (`:latest` tag) |
+| `zeroclue/comfyui:base-py3.13-cu130` | 13.0.3 | 2.11.0 | Floating tag |
+| `zeroclue/comfyui:base-py3.13-cu130-v1.3.0` | 13.0.3 | 2.11.0 | Version-pinned |
+| `zeroclue/comfyui:base-py3.13-cu128` | 12.8.1 | 2.11.0 | Fallback |
+| `zeroclue/comfyui:base-py3.13-cu128-v1.3.0` | 12.8.1 | 2.11.0 | Version-pinned |
 
-### 🆕 Production Optimized Variants
-| Image Name                                    | Custom Nodes | Code Server | JupyterLab | Size | CUDA | Use Case |
-| --------------------------------------------- | ------------ | ----------- | ---------- | ---- | ---- | -------- |
-| `zeroclue/comfyui:slim-torch2.8.0-cu126` | ❌ No         | ❌ No       | ❌ No      | ~4-5GB | 12.6 | Production serving |
-| `zeroclue/comfyui:slim-torch2.8.0-cu128` | ❌ No         | ❌ No       | ❌ No      | ~4-5GB | 12.8 | Production serving |
+> **Note**: CUDA 13.0 is Blackwell-native with backward compatibility for older GPUs. Use `cu128` tags only if you encounter issues with CUDA 13.0.
 
-### 🎯 RunPod Optimized Variants (Minimal)
-| Image Name                                    | Custom Nodes | Code Server | JupyterLab | Size | CUDA | Use Case |
-| --------------------------------------------- | ------------ | ----------- | ---------- | ---- | ---- | -------- |
-| `zeroclue/comfyui:minimal-torch2.8.0-cu126` | ✅ Yes        | ❌ No       | ❌ No      | ~6-7GB | 12.6 | RunPod with custom nodes |
-| `zeroclue/comfyui:minimal-torch2.8.0-cu128` | ✅ Yes        | ❌ No       | ❌ No      | ~6-7GB | 12.8 | RunPod with custom nodes |
+### Variant Selection Guide
 
-### 🎨 Extended Variants (with Extra Nodes)
-| Image Name | Extra Nodes | Size | CUDA | Use Case |
-|------------|-------------|------|------|----------|
-| `zeroclue/comfyui:base-extra-torch2.8.0-cu126` | ✅ Yes | ~10-14GB | 12.6 | Full-featured with all nodes |
-| `zeroclue/comfyui:base-extra-torch2.8.0-cu128` | ✅ Yes | ~10-14GB | 12.8 | Full-featured with all nodes |
-
-> 📦 **Extra Nodes**: LayerStyle (compositing), IC-Light (relighting), SAM3 (segmentation), RMBG (background removal)
-
-> 👉 To switch: **Edit Pod/Template** → set `Container Image`.
-
-### 🚀 Variant Selection Guide
-
-- **For Development**: Use `base` variant with full tooling and 27 custom nodes
-- **For Full Features**: Use `base-extra` variants with all 31 nodes (27 core + 4 extra)
-- **For Production**: Use `slim` variants (50% smaller, faster startup)
-- **For RunPod**: Use `minimal` variants (custom nodes without dev tools, optimal size)
-- **All variants** support the same preset systems and environment variables
-
-### 🔄 Migration Guide
-
-Switching between variants is easy and preserves all your data:
-
-#### From Base to Production
-```bash
-# 1. Stop current container
-docker stop my_comfyui
-
-# 2. Start with slim variant (same volume)
-docker run --gpus all \
-  -v my_workspace:/workspace \
-  -e PRESET_DOWNLOAD="WAN_22_5B_TIV2" \
-  -e IMAGE_PRESET_DOWNLOAD="SDXL_BASE_V1" \
-  zeroclue/comfyui:slim-torch2.8.0-cu126
-```
-
-#### Benefits of Migration
-- **Smaller Size**: 30-70% reduction in image size
-- **Faster Startup**: No development tools to initialize
-- **Lower Memory**: Reduced runtime footprint
-- **Same Functionality**: All presets and custom nodes work identically
+- **Default**: Use `zeroclue/comfyui:latest` — always points to the current recommended build
+- **Pinned**: Use a version-pinned tag for reproducible deployments (rollback-safe)
+- **Fallback**: Use `cu128` tags if CUDA 13.0 has compatibility issues with your GPU
 
 > 👉 To switch: **Edit Pod/Template** → set `Container Image`.
 
@@ -208,7 +164,7 @@ docker run --gpus all \
 
 ```bash
 # Explicitly enable preset manager (opt-in)
-docker run -e ENABLE_PRESET_MANAGER=true -e ACCESS_PASSWORD=mypassword zeroclue/comfyui:base-torch2.8.0-cu126
+docker run -e ENABLE_PRESET_MANAGER=true -e ACCESS_PASSWORD=mypassword zeroclue/comfyui:latest
 ```
 
 > 💡 **Recommendation**: Use the Unified Dashboard instead for a modern interface with more features.
@@ -285,7 +241,7 @@ docker run \
   -e PRESET_DOWNLOAD="WAN_22_5B_TIV2,WAN22_LIGHTNING_LORA" \
   -e IMAGE_PRESET_DOWNLOAD="SDXL_BASE_V1,REALISTIC_VISION_V6" \
   -e AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC" \
-  zeroclue/comfyui:base-torch2.8.0-cu126
+  zeroclue/comfyui:latest
 ```
 > ⚠️ **Note**: Audio presets are experimental - see warnings above
 
@@ -295,20 +251,20 @@ docker run \
   -e IMAGE_PRESET_DOWNLOAD="FLUX_DEV_BASIC,QWEN_IMAGE_COMPLETE" \
   -e AUDIO_PRESET_DOWNLOAD="AUDIO_PRODUCTION" \
   -e PRESET_DOWNLOAD="WAN_22_5B_TIV2" \
-  zeroclue/comfyui:base-torch2.8.0-cu126
+  zeroclue/comfyui:latest
 ```
 > ⚠️ **Note**: Audio presets are experimental - see warnings above
 
 #### Quick Start Examples
 ```bash
 # Video generation only
-docker run -e PRESET_DOWNLOAD=WAN_22_5B_TIV2 zeroclue/comfyui:base-torch2.8.0-cu126
+docker run -e PRESET_DOWNLOAD=WAN_22_5B_TIV2 zeroclue/comfyui:latest
 
 # High-quality image generation
-docker run -e IMAGE_PRESET_DOWNLOAD=SDXL_BASE_V1 zeroclue/comfyui:base-torch2.8.0-cu126
+docker run -e IMAGE_PRESET_DOWNLOAD=SDXL_BASE_V1 zeroclue/comfyui:latest
 
 # Music and speech generation (⚠️ Experimental)
-docker run -e AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC" zeroclue/comfyui:base-torch2.8.0-cu126
+docker run -e AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC" zeroclue/comfyui:latest
 ```
 
 > 👉 To see detailed information about available presets and model specifications for each system, check the [Wiki documentation](https://github.com/ZeroClue/ComfyUI-Docker/wiki):
@@ -334,10 +290,11 @@ docker run -e AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC" zeroclue/comfyu
 
 ### System
 
-* **OS**: Ubuntu 24.04 (22.02 for CUDA 12.4)
+* **OS**: Ubuntu 24.04
 * **Python**: 3.13
 * **Framework**: [ComfyUI](https://github.com/comfyanonymous/ComfyUI) + [ComfyUI Manager](https://github.com/Comfy-Org/ComfyUI-Manager) + [JupyterLab](https://jupyter.org/) + [code-server](https://github.com/coder/code-server)
-* **Libraries**: PyTorch 2.8.0, CUDA (12.4–12.8), Triton, [hf\_hub](https://huggingface.co/docs/huggingface_hub), [nvtop](https://github.com/Syllo/nvtop)
+* **Libraries**: PyTorch 2.11.0, CUDA 13.0.3 (or 12.8.1), Triton, [hf\_hub](https://huggingface.co/docs/huggingface_hub), [nvtop](https://github.com/Syllo/nvtop)
+* **Attention**: SageAttention 2.2.0 (CUDA 12.x) or ComfyUI-Attention-Optimizer (CUDA 13.0+)
 
 #### Custom Nodes (only in **base** image)
 
@@ -364,73 +321,45 @@ docker run -e AUDIO_PRESET_DOWNLOAD="MUSICGEN_MEDIUM,BARK_BASIC" zeroclue/comfyu
 * comfy-ex-tagcomplete
 * ComfyUI-VideoHelperSuite
 * ComfyUI-wanBlockswap
+* ComfyUI-Attention-Optimizer
 
 > 👉 More details in the [Wiki](https://github.com/ZeroClue/ComfyUI-Docker/wiki/Custom-Nodes).
 
 ---
 
-## 🔧 Manual Build for Large Variants
+## 🔧 Manual Build
 
-### Why Manual Build Only?
-
-The `base-torch2.8.0-cu128` variant requires **35GB of disk space** during build, which exceeds GitHub Actions' standard runner limits. To maintain reliable builds (100% success rate), this variant is built manually on demand.
-
-### 🚀 Quick Manual Build (GitHub Actions)
+### Quick Manual Build (GitHub Actions)
 
 1. **Visit Actions**: https://github.com/ZeroClue/ComfyUI-Docker/actions
-2. **Click "Build and Push ZeroClue Docker Images"**
+2. **Click "Build and Push ZeroClue Docker Images (CUDA 12.8 + 13.0)"**
 3. **Click "Run workflow"**
 4. **Set Parameters**:
    ```
    targets: base
-   cuda_versions: 12-8
+   cuda_versions: 13-0
    ```
 5. **Click "Run workflow"** → Build completes in ~30 minutes
 
-### 📦 Alternative: Use Available Variants
+### Quick Start
 
-For most use cases, these alternatives provide the same functionality:
-
-#### **Need CUDA 12.8?**
 ```bash
-# Use base-12-8 for full development environment
-docker run --gpus all -p 3000:3000 \
-  zeroclue/comfyui:base-torch2.8.0-cu128
-# Custom nodes are pre-installed in base variants
+# Default (CUDA 13.0)
+docker run --gpus all -p 3000:3000 -p 8082:8082 \
+  zeroclue/comfyui:latest
+
+# CUDA 12.8 fallback
+docker run --gpus all -p 3000:3000 -p 8082:8082 \
+  zeroclue/comfyui:base-py3.13-cu128
 ```
-
-#### **Need Full Installation?**
-```bash
-# Use base-12-6 (same features, slightly older CUDA)
-docker run --gpus all -p 3000:3000 \
-  zeroclue/comfyui:base-torch2.8.0-cu126
-```
-
-#### **Need Production Ready?**
-```bash
-# Use slim-12-8 (optimized for serving)
-docker run --gpus all -p 3000:3000 \
-  zeroclue/comfyui:slim-torch2.8.0-cu128
-```
-
-### 📋 Auto-Built Variants (100% Success Rate)
-
-✅ **Reliably built automatically:**
-- `base-torch2.8.0-cu126/128/129/130` - Full installation with CUDA 12.6-13.0
-- `slim-torch2.8.0-cu126/128` - Optimized for serving
-- `minimal-torch2.8.0-cu126/128` - RunPod optimized with custom nodes
-
-### 📖 Detailed Instructions
-
-For comprehensive manual build instructions, local building options, and troubleshooting, see: **[Manual Build Guide](MANUAL_BUILD_GUIDE.md)**
 
 ---
 
 ## 📊 Build Status
 
-| Variant | Status | Success Rate |
-|---------|--------|--------------|
-| **Auto-built variants (9 total)** | ✅ Working | 100% |
-| **Manual variants** | 🔧 Available on demand | N/A |
+Both CUDA 13.0 and 12.8 variants build automatically on every push and every 8 hours via CI.
 
-**Last Updated**: Workflow optimized for reliable builds while maintaining full functionality.
+| Variant | CUDA | PyTorch | Tag |
+|---------|------|---------|-----|
+| **Primary** | 13.0.3 | 2.11.0 | `:latest` |
+| **Fallback** | 12.8.1 | 2.11.0 | `base-py3.13-cu128` |

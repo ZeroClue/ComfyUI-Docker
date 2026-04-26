@@ -47,6 +47,8 @@
 # This stage is only rebuilt when CUDA version changes
 # =============================================================================
 ARG BASE_IMAGE=nvidia/cuda:12.8.1-devel-ubuntu24.04
+ARG RUNTIME_BASE_IMAGE=nvidia/cuda:12.8.1-runtime-ubuntu24.04
+
 FROM ${BASE_IMAGE} AS builder-base
 
 # Build arguments
@@ -305,7 +307,6 @@ RUN test -f /app/comfyui/main.py && \
 # Purpose: Final minimal runtime image
 # Copies only necessary artifacts from previous stages
 # =============================================================================
-ARG RUNTIME_BASE_IMAGE=nvidia/cuda:12.8.1-runtime-ubuntu24.04
 FROM ${RUNTIME_BASE_IMAGE} AS runtime
 
 # Build arguments

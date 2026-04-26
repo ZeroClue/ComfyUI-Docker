@@ -267,7 +267,7 @@ target "base-12-6" {
 
 target "base-12-8" {
     inherits = ["_cu128"]
-    tags = tag("base", "cu128")
+    tags = concat(tag("base", "cu128"), ["${DOCKERHUB_REPO_NAME}:latest"])
 }
 
 target "base-12-9" {

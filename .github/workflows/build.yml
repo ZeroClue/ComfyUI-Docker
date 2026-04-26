@@ -108,6 +108,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
+          fetch-tags: true
 
       - name: Docker login
         if: env.SKIP_BUILD != 'true'

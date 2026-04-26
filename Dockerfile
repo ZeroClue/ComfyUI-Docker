@@ -184,7 +184,7 @@ RUN pip install --no-cache-dir \
     fastapi \
     uvicorn[standard] \
     python-multipart \
-    starlette \
+    starlette<1.0.0 \
     jinja2
 
 # Install common custom node dependencies

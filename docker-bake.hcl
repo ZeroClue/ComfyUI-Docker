@@ -7,14 +7,14 @@ variable "PYTHON_VERSION" {
     default = "3.13"
 }
 
-# PyTorch 2.8.0+ for latest features
+# PyTorch 2.11.0 for CUDA 13.0 + backward-compatible cu128 wheels
 variable "TORCH_VERSION" {
-    default = "2.8.0"
+    default = "2.11.0"
 }
 
-# CUDA 12.8 is the default (modern, stable, excellent GPU support)
+# CUDA 13.0 is the default (latest, Blackwell-native, backward-compatible)
 variable "DEFAULT_CUDA" {
-    default = "cu128"
+    default = "cu130"
 }
 
 variable "EXTRA_TAG" {
@@ -79,6 +79,7 @@ target "_cu128" {
     inherits = ["_common"]
     args = {
         BASE_IMAGE         = "nvidia/cuda:12.8.1-devel-ubuntu24.04"
+        RUNTIME_BASE_IMAGE = "nvidia/cuda:12.8.1-runtime-ubuntu24.04"
         CUDA_VERSION       = "cu128"
     }
 }
@@ -94,7 +95,8 @@ target "_cu129" {
 target "_cu130" {
     inherits = ["_common"]
     args = {
-        BASE_IMAGE         = "nvidia/cuda:13.0.0-devel-ubuntu24.04"
+        BASE_IMAGE         = "nvidia/cuda:13.0.3-cudnn-devel-ubuntu24.04"
+        RUNTIME_BASE_IMAGE = "nvidia/cuda:13.0.3-cudnn-runtime-ubuntu24.04"
         CUDA_VERSION       = "cu130"
     }
 }
@@ -166,9 +168,9 @@ target "_slim_base" {
 }
 
 # ============================================================================
-# PRIMARY BUILDS (February 2026 - CUDA 12.8 as default)
+# PRIMARY BUILDS (April 2026 - CUDA 13.0 as default, 12.8 as fallback)
 # Tag format: <variant>-py<python>-<cuda>
-# Example: latest-py313-cu128
+# Example: latest-py3.13-cu130
 # ============================================================================
 
 # Latest builds - forward-looking with Python 3.13
@@ -267,7 +269,7 @@ target "base-12-6" {
 
 target "base-12-8" {
     inherits = ["_cu128"]
-    tags = concat(tag("base", "cu128"), ["${DOCKERHUB_REPO_NAME}:latest"])
+    tags = tag("base", "cu128")
 }
 
 target "base-12-9" {
@@ -277,7 +279,7 @@ target "base-12-9" {
 
 target "base-13-0" {
     inherits = ["_cu130"]
-    tags = tag("base", "cu130")
+    tags = concat(tag("base", "cu130"), ["${DOCKERHUB_REPO_NAME}:latest"])
 }
 
 # Extended variants with extra nodes pre-installed

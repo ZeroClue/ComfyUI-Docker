@@ -46,7 +46,8 @@
 # Purpose: Create base builder image with CUDA and UV
 # This stage is only rebuilt when CUDA version changes
 # =============================================================================
-FROM nvidia/cuda:12.8.1-devel-ubuntu24.04 AS builder-base
+ARG BASE_IMAGE=nvidia/cuda:12.8.1-devel-ubuntu24.04
+FROM ${BASE_IMAGE} AS builder-base
 
 # Build arguments
 ARG PYTHON_VERSION=3.13
@@ -92,7 +93,7 @@ FROM builder-base AS python-deps
 
 # Build arguments
 ARG PYTHON_VERSION=3.13
-ARG TORCH_VERSION=2.8.0
+ARG TORCH_VERSION=2.11.0
 ARG CUDA_VERSION=cu128
 ARG INSTALL_DEV_TOOLS=true
 ARG INSTALL_SCIENCE_PACKAGES=true
@@ -304,11 +305,12 @@ RUN test -f /app/comfyui/main.py && \
 # Purpose: Final minimal runtime image
 # Copies only necessary artifacts from previous stages
 # =============================================================================
-FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04 AS runtime
+ARG RUNTIME_BASE_IMAGE=nvidia/cuda:12.8.1-runtime-ubuntu24.04
+FROM ${RUNTIME_BASE_IMAGE} AS runtime
 
 # Build arguments
 ARG PYTHON_VERSION=3.13
-ARG TORCH_VERSION=2.8.0
+ARG TORCH_VERSION=2.11.0
 ARG CUDA_VERSION=cu128
 ARG SKIP_CUSTOM_NODES=false
 ARG INSTALL_CODE_SERVER=true

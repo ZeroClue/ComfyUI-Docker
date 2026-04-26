@@ -1,4 +1,4 @@
-name: Build and Push ZeroClue Docker Images (Base Only)
+name: Build and Push ZeroClue Docker Images (CUDA 12.8 + 13.0)
 
 on:
   workflow_dispatch:
@@ -12,9 +12,9 @@ on:
         required: false
         default: 'base'
       cuda_versions:
-        description: 'CUDA versions (comma-separated): 12-6,12-8,12-9,13-0'
+        description: 'CUDA versions (comma-separated): 12-8,13-0'
         required: false
-        default: '12-8'
+        default: '13-0'
   schedule:
     - cron: "0 */8 * * *"
   push:
@@ -33,17 +33,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix:
         include:
-          # Only building base variant until stable
+          # Primary: CUDA 13.0 + PyTorch 2.11.0 (default, :latest tag)
+          - target: base
+            cuda: 13-0
+          # Fallback: CUDA 12.8 + PyTorch 2.11.0 (known-good)
           - target: base
             cuda: 12-8
     steps:
       - name: Check if should run
         run: |
           TARGETS="${{ github.event.inputs.targets || 'base' }}"
-          CUDA="${{ github.event.inputs.cuda_versions || '12-8' }}"
+          CUDA="${{ github.event.inputs.cuda_versions || '13-0' }}"
 
           if [[ ",$TARGETS," != *",${{ matrix.target }},"* ]]; then
             echo "SKIP_BUILD=true" >> $GITHUB_ENV

@@ -2,6 +2,21 @@
 
 All notable changes to ComfyUI-docker. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.3.0] - 2026-04-26
+
+### Added
+- CUDA 13.0 build target (`base-13-0`) as primary CI matrix entry with `:latest` Docker tag
+- PyTorch 2.11.0 for both CUDA 12.8 and 13.0 builds (cu128 and cu130 wheels)
+- Parameterized Dockerfile `FROM` statements via `BASE_IMAGE` and `RUNTIME_BASE_IMAGE` ARGs
+- `RUNTIME_BASE_IMAGE` args in `_cu128` and `_cu130` bake targets for correct runtime stage images
+
+### Changed
+- `:latest` Docker tag moves from `base-12-8` to `base-13-0` (Blackwell-native, backward-compatible)
+- CI matrix builds sequentially (`max-parallel: 1`) — both 12.8 and 13.0 build every run
+- `TORCH_VERSION` default: `2.8.0` → `2.11.0`
+- `DEFAULT_CUDA` default: `cu128` → `cu130`
+- Manual trigger default CUDA version: `12-8` → `13-0`
+
 ## [v1.2.0] - 2026-04-26
 
 ### Added

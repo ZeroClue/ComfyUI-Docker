@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Docker Build Commands
 ```bash
 # Build specific variants locally
-docker buildx bake base-12-6  # Full installation with custom nodes
-docker buildx bake slim-12-6  # Production optimized
+docker buildx bake base-13-0  # CUDA 13.0 (default, :latest tag)
+docker buildx bake base-12-8  # CUDA 12.8 (known-good fallback)
+docker buildx bake slim-12-8  # Production optimized
 
 # Build and push all variants
 docker buildx bake --push
@@ -17,7 +18,7 @@ docker buildx bake --push
 gh workflow run build.yml
 
 # Trigger specific variant
-gh workflow run build.yml -f targets=minimal -f cuda_versions=12-8
+gh workflow run build.yml -f targets=base -f cuda_versions=13-0
 
 # Watch build progress
 gh run watch --interval 30
@@ -39,6 +40,10 @@ python scripts/preset_updater.py update
 - **base** (~8-12GB): ComfyUI + Manager + custom nodes + dev tools (ONLY VARIANT CURRENTLY BUILT)
 
 **CUDA Support**: 12.4, 12.5, 12.6, 12.8, 12.9, 13.0. Matrix builds defined in `docker-bake.hcl`.
+
+**Active CI Builds** (both build every run):
+- `base-13-0`: CUDA 13.0 + PyTorch 2.11.0 — `:latest` tag, Blackwell-native
+- `base-12-8`: CUDA 12.8 + PyTorch 2.11.0 — known-good fallback
 
 **Note**: slim and minimal variants temporarily disabled in GitHub Actions while focusing on base stability.
 
@@ -347,7 +352,7 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "comfyui-dashboard",
-    "imageName": "zeroclue/comfyui:base-py3.13-cu128",
+    "imageName": "zeroclue/comfyui:base-py3.13-cu130",
     "computeType": "GPU",
     "gpuTypeIds": ["NVIDIA RTX 2000 Ada Generation"],
     "dataCenterIds": ["EU-RO-1"],
@@ -519,5 +524,6 @@ cleanup via `@alpine:destroyed` on the Alpine root element.
 ## Docker Tag Versioning
 
 CI resolves latest git tag via `git describe --tags --abbrev=0` and passes it as `EXTRA_TAG`
-to docker-bake. The `tag()` function produces both floating (`base-py3.13-cu128`) and pinned
-(`base-py3.13-cu128-v1.2.0`) tags when EXTRA_TAG is set. HCL supports ternary in functions.
+to docker-bake. The `tag()` function produces both floating (`base-py3.13-cu130`) and pinned
+(`base-py3.13-cu130-v1.3.0`) tags when EXTRA_TAG is set. `:latest` tag points to the CUDA 13.0
+build. HCL supports ternary in functions.

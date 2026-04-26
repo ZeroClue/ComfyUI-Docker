@@ -125,12 +125,29 @@ jobs:
         id: date
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
+      - name: Resolve version tag
+        if: env.SKIP_BUILD != 'true'
+        id: version
+        run: |
+          GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$GIT_TAG" ]; then
+            echo "extra_tag=-${GIT_TAG}" >> $GITHUB_OUTPUT
+            echo "version=${GIT_TAG}" >> $GITHUB_OUTPUT
+            echo "Version tag: ${GIT_TAG}"
+          else
+            echo "extra_tag=" >> $GITHUB_OUTPUT
+            echo "version=dev" >> $GITHUB_OUTPUT
+            echo "No git tag found, building without version pin"
+          fi
+
       - name: Build and push
         if: env.SKIP_BUILD != 'true'
         uses: docker/bake-action@v6
         with:
           targets: ${{ matrix.target }}-${{ matrix.cuda }}
           push: true
+        env:
+          EXTRA_TAG: ${{ steps.version.outputs.extra_tag }}
 
       - name: Free disk space
         if: env.SKIP_BUILD != 'true'
@@ -147,6 +164,7 @@ jobs:
           echo "- **CUDA Version**: ${{ matrix.cuda }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Repository**: zeroclue/comfyui" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Date**: ${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Mode**: Base variant only (stability focus)" >> $GITHUB_STEP_SUMMARY
           echo "- **Preset Manager**: Included (all variants)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

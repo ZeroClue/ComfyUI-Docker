@@ -21,10 +21,16 @@ variable "EXTRA_TAG" {
     default = ""
 }
 
-# Primary tag function: latest-py313-cu128
+# Primary tag function: produces both floating and version-pinned tags
+# e.g. base-py3.13-cu128 AND base-py3.13-cu128-v1.1.0
 function "tag" {
     params = [tag, cuda]
-    result = ["${DOCKERHUB_REPO_NAME}:${tag}-py${PYTHON_VERSION}-${cuda}${EXTRA_TAG}"]
+    result = EXTRA_TAG != "" ? [
+        "${DOCKERHUB_REPO_NAME}:${tag}-py${PYTHON_VERSION}-${cuda}",
+        "${DOCKERHUB_REPO_NAME}:${tag}-py${PYTHON_VERSION}-${cuda}${EXTRA_TAG}"
+    ] : [
+        "${DOCKERHUB_REPO_NAME}:${tag}-py${PYTHON_VERSION}-${cuda}"
+    ]
 }
 
 # Legacy tag function for backward compatibility: base-torch2.8.0-cu128

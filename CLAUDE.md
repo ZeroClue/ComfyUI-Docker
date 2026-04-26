@@ -567,4 +567,19 @@ Load Alpine.js at end of `<body>`, AFTER `{% block extra_scripts %}` — not wit
 Historical learnings moved to `docs/LEARNINGS.md`. Key gotchas still in this file:
 - **Persistence import pattern** — see Persistence Layer section above
 - **Alpine.js loading** — see Dashboard Known Issues section above
+
+## ComfyUI Queue API
+
+Queue items are arrays: `[number, prompt_id, prompt, extra_data, outputs_to_execute]`.
+Use `item[1]` for prompt_id. ComfyUI supports interrupt (`POST /interrupt`) and delete
+(`POST /queue` with `{"delete": [prompt_id]}`), but NOT pause/resume.
+
+Frontend queue card polls `GET /api/workflows/queue/status` every 3 seconds. Interval
+cleanup via `@alpine:destroyed` on the Alpine root element.
+
+## Docker Tag Versioning
+
+CI resolves latest git tag via `git describe --tags --abbrev=0` and passes it as `EXTRA_TAG`
+to docker-bake. The `tag()` function produces both floating (`base-py3.13-cu128`) and pinned
+(`base-py3.13-cu128-v1.2.0`) tags when EXTRA_TAG is set. HCL supports ternary in functions.
 - **Container metrics** — use cgroup files for memory, `du` for disk, not `psutil`

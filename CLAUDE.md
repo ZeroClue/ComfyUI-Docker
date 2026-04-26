@@ -68,12 +68,6 @@ Apps are baked into container image at `/app/`. Models live on network volume at
 - `/workspace/uploads/`: User uploads
 - `/workspace/config/`: User configuration
 
-**Key Benefits**:
-- No rsync needed → instant startup
-- Easy updates → replace container, keep models
-- Follows 12-factor app principles
-- Native RunPod architecture alignment
-
 ## Persistence Layer
 
 SQLite database at `/workspace/data/dashboard.db` provides persistent storage across pod restarts.
@@ -124,22 +118,12 @@ All sections use real API data (no mockups):
 - Real-time progress tracking via WebSocket (`/ws/dashboard`)
 - System status monitoring
 
-**API Endpoints**:
-- `/api/dashboard/stats` - Home page statistics
-- `/api/activity/recent` - Combined activity feed (generations + downloads)
-- `/api/activity/clear` - Clear activity history
-- `/api/models/` - List installed models
-- `/api/models/presets` - Presets with installation status
-- `/api/presets/` - Preset management (list, refresh, install, pause, cancel)
-- `/api/presets/queue/status` - Download queue status
-- `/api/presets/refresh` - Fetch latest presets.yaml from GitHub
-- `/api/workflows/` - Workflow management and execution
-- `/api/system/status` - System health check
-- `/api/system/resources` - CPU, memory, disk, GPU usage
-- `/api/generate` - Content generation endpoint
-- `/api/presets/recommendations` - Filter presets by GPU VRAM compatibility
-- `/api/presets/updates` - Check for preset version updates
-- `/api/presets/registry/sync` - Sync from remote registry.json
+**API Endpoints** (non-obvious ones — standard CRUD at `/api/models/`, `/api/system/`, etc.):
+- `POST /api/generate/start` - Queue workflow for execution, returns prompt_id
+- `POST /api/generate/{prompt_id}/cancel` - Interrupt running execution
+- `POST /api/workflows/queue/delete/{prompt_id}` - Delete pending item from ComfyUI queue
+- `POST /api/presets/registry/sync` - Pull registry.json + model_index.json from GitHub
+- `POST /api/llm/enhance` - Optional prompt enhancement via local LLM
 
 **Page Routes**:
 - `/` - Home dashboard
@@ -158,7 +142,7 @@ All-in-one workflow consumer with:
 - **Real-Time Progress**: Hybrid WebSocket + REST polling
 - **Optional LLM**: Prompt enhancement via local models (Phi-3, Qwen, Llama)
 
-**New Backend Components:**
+**Backend Components:**
 - `dashboard/core/workflow_scanner.py`: Scan workflows, extract metadata
 - `dashboard/core/intent_matcher.py`: Pattern-match intent to workflows
 - `dashboard/core/generation_manager.py`: Track generations, WebSocket broadcast
@@ -515,19 +499,13 @@ These documents are gitignored but tracked with `git add -f`.
 **Alpine.js Script Loading:**
 Load Alpine.js at end of `<body>`, AFTER `{% block extra_scripts %}` — not with `defer`. Inline scripts must define functions before Alpine initializes.
 
-## Performance Optimizations (2026-02-19)
+## Performance Optimizations
 
 ### PresetCache System
 - **60-second TTL cache** for preset API responses to avoid repeated file I/O
 - **Batch installation checks** avoids timeout on large model lists
 - **Cache invalidation** triggered on download complete and preset delete
 - Location: `dashboard/api/presets.py` - `PresetCache` class
-
-## Bug Fixes & Learnings
-
-Historical learnings moved to `docs/LEARNINGS.md`. Key gotchas still in this file:
-- **Persistence import pattern** — see Persistence Layer section above
-- **Alpine.js loading** — see Dashboard Known Issues section above
 
 ## ComfyUI Queue API
 

@@ -52,7 +52,7 @@ The project uses a 4-stage multi-stage build (`Dockerfile`):
 - **Stage 4 (runtime)**: Minimal runtime image with artifacts from previous stages
 - **Matrix Builds**: Supports multiple CUDA versions and image variants via `docker-bake.hcl`
 
-## Revolutionary Architecture
+## Container vs Volume Layout
 Apps are baked into container image at `/app/`. Models live on network volume at `/workspace/`.
 
 **Container Volume** (ephemeral, baked in image):
@@ -97,14 +97,6 @@ from ..core.persistence import settings_manager
 from ..core import persistence
 persistence.settings_manager.get("key")
 ```
-
-**API Endpoints:**
-- `GET /api/settings` - Get settings (HF token masked)
-- `PATCH /api/settings` - Update setting
-- `POST /api/settings/hf-token` - Save HF token
-- `POST /api/settings/hf-token/validate` - Validate token against HuggingFace API
-- `GET /api/activity/recent` - Get activity log
-- `POST /api/activity/clear` - Clear activity history
 
 ## Unified Dashboard
 FastAPI-based unified interface replacing Preset Manager and Studio.
@@ -158,9 +150,9 @@ All sections use real API data (no mockups):
 - `/settings` - Settings page
 - `/pro` - Pro features
 
-## Generate Page Redesign (2026-02-21)
+## Generate Page
 
-Redesigned as all-in-one workflow consumer with:
+All-in-one workflow consumer with:
 - **Workflow-First UI**: Card-based browser with metadata
 - **Intent-Based Entry**: Pattern-matched shortcuts
 - **Real-Time Progress**: Hybrid WebSocket + REST polling
@@ -176,7 +168,7 @@ Redesigned as all-in-one workflow consumer with:
 
 **Design Docs:** `docs/plans/2026-02-21-generate-page-*.md`
 
-## LLM Integration (2026-02-22)
+## LLM Integration
 
 Optional prompt enhancement via local LLM models (Phi-3, Qwen, Llama).
 
@@ -190,7 +182,7 @@ Optional prompt enhancement via local LLM models (Phi-3, Qwen, Llama).
 
 **Fallback:** When LLM disabled or fails, uses static enhancement (quality modifiers)
 
-## Workflow Preset Suggestions (2026-02-23)
+## Workflow Preset Suggestions
 
 Suggest presets for missing models in user workflows.
 
@@ -209,14 +201,13 @@ Suggest presets for missing models in user workflows.
 - Model not in any preset → Added to `unmapped_models`, shows "Manual download required"
 - model_index.json not synced → Returns empty mapping, shows sync prompt
 
-## Preset Management System
-Located in `scripts/preset_manager/` with three core components:
+## Legacy Preset Manager
+Located in `scripts/preset_manager/` — superseded by Unified Dashboard. Still used by CLI tools:
+- `core.py`: ModelManager class handling CRUD operations for 56+ presets
+- `web_interface.py`: Flask web UI on port 9000 (disabled when dashboard active)
+- `config.py`: Configuration mappings and model path definitions
 
-1. **core.py**: ModelManager class handling CRUD operations for 56+ presets
-2. **web_interface.py**: Flask web UI on port 9000 for visual preset management
-3. **config.py**: Configuration mappings and model path definitions
-
-## Preset Registry System (2026-02-20)
+## Preset Registry System
 
 The preset system now uses a **separate repository**: [comfyui-presets](https://github.com/ZeroClue/comfyui-presets)
 
@@ -441,34 +432,6 @@ API key in `.runpod/.env`. Use GraphQL (`https://api.runpod.io/graphql`) for que
 
 # Development & Testing
 
-## Preset System Validation
-```bash
-# Validate preset configuration syntax and completeness
-python scripts/preset_validator.py
-
-# Test download functionality and URL availability
-python scripts/test_preset_system.py
-
-# Generate and preview download scripts for debugging
-python scripts/generate_download_scripts.py
-
-# Update preset configurations from GitHub (runtime updates)
-python scripts/preset_updater.py update
-```
-
-## Preset Management Tools
-```bash
-# Command-line preset management
-python scripts/preset_manager_cli.py list
-python scripts/preset_manager_cli.py install WAN_22_5B_TIV2
-python scripts/preset_manager_cli.py status
-
-# Unified downloader with environment variable support
-python scripts/unified_preset_downloader.py download
-python scripts/unified_preset_downloader.py list
-python scripts/unified_preset_downloader.py status
-```
-
 ## Build Debugging
 - Check `.github/workflows/build.yml` for matrix configuration
 - Review `docker-bake.hcl` for target definitions and CUDA variants
@@ -541,9 +504,7 @@ Major features have design docs in `docs/plans/`:
 
 These documents are gitignored but tracked with `git add -f`.
 
-## Dashboard Known Issues (2026-02-22)
-
-All major dashboard features working. See Feature Status section for details.
+## Dashboard Known Issues
 
 **Known Limitations:**
 - ComfyUI does not support pause/resume — only interrupt/cancel. No pause endpoint exposed.
@@ -582,4 +543,3 @@ cleanup via `@alpine:destroyed` on the Alpine root element.
 CI resolves latest git tag via `git describe --tags --abbrev=0` and passes it as `EXTRA_TAG`
 to docker-bake. The `tag()` function produces both floating (`base-py3.13-cu128`) and pinned
 (`base-py3.13-cu128-v1.2.0`) tags when EXTRA_TAG is set. HCL supports ternary in functions.
-- **Container metrics** — use cgroup files for memory, `du` for disk, not `psutil`

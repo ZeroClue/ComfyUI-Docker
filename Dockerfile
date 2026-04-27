@@ -315,6 +315,7 @@ ARG TORCH_VERSION=2.11.0
 ARG CUDA_VERSION=cu128
 ARG SKIP_CUSTOM_NODES=false
 ARG INSTALL_CODE_SERVER=true
+ARG IMAGE_VERSION=dev
 
 # Set the shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -513,7 +514,8 @@ RUN echo "========================================" > /build-info.txt && \
     echo "" >> /build-info.txt && \
     echo "========================================" >> /build-info.txt
 
-# Expose ports
+# Write application version for update checks
+RUN echo "${IMAGE_VERSION}" > /app/VERSION
 EXPOSE 22 3000 8080 8082 8888 9000
 
 # Set entrypoint

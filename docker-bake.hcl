@@ -21,6 +21,10 @@ variable "EXTRA_TAG" {
     default = ""
 }
 
+variable "IMAGE_VERSION" {
+    default = EXTRA_TAG != "" ? substr(EXTRA_TAG, 1, -1) : "dev"
+}
+
 # Primary tag function: produces both floating and version-pinned tags
 # e.g. base-py3.13-cu128 AND base-py3.13-cu128-v1.1.0
 function "tag" {
@@ -45,6 +49,7 @@ target "_common" {
     args = {
         PYTHON_VERSION      = PYTHON_VERSION
         TORCH_VERSION       = TORCH_VERSION
+        IMAGE_VERSION       = IMAGE_VERSION
         INSTALL_CODE_SERVER = "true"
         INSTALL_DEV_TOOLS   = "true"
         INSTALL_SCIENCE_PACKAGES = "true"

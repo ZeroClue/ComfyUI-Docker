@@ -215,9 +215,6 @@ async def get_resource_usage() -> ResourceUsage:
             stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
             if proc.returncode == 0:
                 used_bytes = int(stdout.decode().split()[0])
-            if result.returncode == 0:
-                used_bytes = int(result.stdout.split()[0])
-                # Try to get volume size from environment or default to 100GB
                 import os
                 volume_gb = int(os.environ.get('RUNPOD_VOLUME_GB', 100))
                 total_bytes = volume_gb * 1024 * 1024 * 1024
@@ -232,7 +229,6 @@ async def get_resource_usage() -> ResourceUsage:
                     "path": workspace_path
                 }
             else:
-                # Fallback to psutil if du fails
                 disk = psutil.disk_usage(workspace_path)
                 disk_info = {
                     "total": disk.total,
@@ -435,3 +431,70 @@ def get_uptime() -> str:
     minutes = int((uptime_seconds % 3600) // 60)
 
     return f"{days}d {hours}h {minutes}m"
+
+
+# Update check state
+_update_cache: Dict = {"latest_version": None, "checked_at": 0}
+_CACHE_TTL = 3600  # 1 hour
+
+
+@router.get("/update-check")
+async def check_for_updates():
+    """Check if a newer Docker image version is available on GitHub"""
+    import urllib.request
+    import urllib.error
+    import time
+    import json as _json
+
+    version_file = Path("/app/VERSION")
+    try:
+        current = version_file.read_text().strip()
+    except FileNotFoundError:
+        current = "dev"
+
+    if current == "dev" or not current:
+        return {"update_available": False, "current_version": "dev"}
+
+    now = time.time()
+    latest = _update_cache.get("latest_version")
+
+    if not latest or (now - _update_cache["checked_at"]) >= _CACHE_TTL:
+        try:
+            req = urllib.request.Request(
+                "https://api.github.com/repos/ZeroClue/ComfyUI-Docker/releases/latest",
+                headers={"User-Agent": "ComfyUI-Docker-Dashboard"}
+            )
+            loop = asyncio.get_running_loop()
+            data = await loop.run_in_executor(None, lambda: _fetch_github_release(req))
+            tag = data.get("tag_name", "")
+            if tag:
+                _update_cache["latest_version"] = tag
+                _update_cache["checked_at"] = now
+            latest = _update_cache.get("latest_version", "")
+        except Exception:
+            _update_cache["checked_at"] = now
+            return {"update_available": False, "current_version": current, "error": "check_failed"}
+
+    def parse_ver(v):
+        return tuple(int(x) for x in v.lstrip("v").split("."))
+    try:
+        update_available = parse_ver(latest) > parse_ver(current)
+    except (ValueError, TypeError):
+        update_available = False
+
+    result = {
+        "update_available": update_available,
+        "current_version": current,
+        "latest_version": latest,
+    }
+    if update_available:
+        result["instructions"] = {
+            "runpod": f"Stop pod → change image tag to include {latest} → restart pod",
+            "docker": "docker pull zeroclue/comfyui:latest, then recreate container",
+        }
+    return result
+
+
+def _fetch_github_release(req):
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return _json.loads(resp.read().decode())

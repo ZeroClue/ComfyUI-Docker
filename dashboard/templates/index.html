@@ -14,6 +14,36 @@
         <p class="text-text-secondary text-sm">Your AI workspace is ready</p>
     </div>
 
+    <!-- Update Available Banner -->
+    <template x-if="updateInfo.update_available && dismissedVersion !== updateInfo.latest_version">
+        <div class="mb-6 bg-accent-info/10 border border-accent-info/30 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-md bg-accent-info/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span class="text-accent-info text-sm">↑</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="font-semibold text-sm">Update Available</span>
+                        <span class="text-xs text-text-tertiary"
+                              x-text="`${updateInfo.current_version} → ${updateInfo.latest_version}`"></span>
+                    </div>
+                    <div class="text-text-secondary text-xs space-y-1">
+                        <p><span class="text-text-tertiary">RunPod:</span> Stop pod → change image tag to
+                           <span class="font-mono text-accent-info" x-text="updateInfo.latest_version"></span> → restart pod</p>
+                        <p><span class="text-text-tertiary">Docker:</span>
+                           <code class="font-mono text-xs bg-bg-tertiary px-1.5 py-0.5 rounded">docker pull zeroclue/comfyui:latest</code>
+                           then recreate container</p>
+                    </div>
+                </div>
+                <button @click="dismissUpdate()"
+                        class="w-7 h-7 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors rounded hover:bg-bg-hover flex-shrink-0"
+                        title="Dismiss">
+                    ✕
+                </button>
+            </div>
+        </div>
+    </template>
+
     <!-- Quick Actions -->
     <section class="mb-8">
         <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
@@ -609,10 +639,18 @@ function homeDashboard() {
             storageUsed: '0 GB',
             activeWorkflows: 0
         },
+        updateInfo: {
+            update_available: false,
+            current_version: '',
+            latest_version: '',
+            instructions: null
+        },
+        dismissedVersion: localStorage.getItem('dismissed_update_version') || '',
 
         initHomeDashboard() {
             // Load stats from API
             this.loadStats();
+            this.checkForUpdates();
 
             // Listen for system status updates
             window.addEventListener('system-status', (e) => {
@@ -635,6 +673,22 @@ function homeDashboard() {
         updateResources(data) {
             // Update resource displays
             console.log('Resources updated:', data);
+        },
+
+        async checkForUpdates() {
+            try {
+                const response = await fetch('/api/system/update-check');
+                if (response.ok) {
+                    this.updateInfo = await response.json();
+                }
+            } catch (error) {
+                // Silent fail — update check is non-critical
+            }
+        },
+
+        dismissUpdate() {
+            this.dismissedVersion = this.updateInfo.latest_version;
+            localStorage.setItem('dismissed_update_version', this.dismissedVersion);
         }
     }
 }

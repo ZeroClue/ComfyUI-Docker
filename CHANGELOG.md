@@ -2,6 +2,18 @@
 
 All notable changes to ComfyUI-docker. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.4.1] - 2026-04-27
+
+### Fixed
+- Dashboard model scanner now includes `diffusion_models` and `model_patches` directories (Qwen, FLUX, SD3, Z-Image models were invisible in the Models page)
+
+## [v1.4.0] - 2026-04-27
+
+### Fixed
+- Critical dashboard security and reliability fixes
+- Pin starlette<1.0.0 to prevent Jinja2 template cache breakage
+- Quote starlette version pin to prevent shell redirect in Dockerfile
+
 ## [v1.3.0] - 2026-04-26
 
 ### Added

@@ -297,7 +297,7 @@ more free space. Successful builds typically take 25-30 minutes.
 - `dashboard/core/persistence.py`: SettingsManager, ActivityLogger, DownloadHistory classes
 - `dashboard/core/downloader.py`: Background download manager with HF token support
 - `scripts/preset_manager/core.py`: Main preset management logic and ModelManager class
-- `config/presets.yaml`: Central preset configuration (currently 56 presets)
+- `config/presets.yaml`: Central preset configuration (legacy; registry.json has 60 presets)
 - `scripts/preset_updater.py`: GitHub-based preset updating system
 - `scripts/unified_preset_downloader.py`: Unified download system for all preset types
 
@@ -461,12 +461,15 @@ Add to Dockerfile if custom node warnings appear during startup.
 ## Model Path Structure
 All models are installed to `/workspace/models/` with standardized paths:
 - `checkpoints/`: Main model files (diffusion models, FLUX, etc.)
+- `diffusion_models/`: Modern diffusion models (Qwen, FLUX, SD3, Cosmos, Z-Image) — UNETLoader searches here
 - `text_encoders/`: T5, CLIP-L, and other text encoders
 - `vae/`: Variational autoencoders
 - `clip_vision/`: Image encoders for I2V workflows
 - `audio_encoders/`: Audio processing models
 - `loras/`: LoRA adapters and enhancement models
 - `upscale_models/`: Image upscaling models
+- `controlnet/`: ControlNet models
+- `model_patches/`: Model patch files for ControlNet variants
 
 ## Design Documentation
 

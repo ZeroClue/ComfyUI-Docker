@@ -68,6 +68,7 @@ def scan_model_directory(base_path: Path) -> Dict[str, List[ModelFile]]:
     """Scan model directory and return organized file information"""
     model_types = {
         'checkpoints': ['.safetensors', '.ckpt', '.pt', '.pth'],
+        'diffusion_models': ['.safetensors', '.ckpt', '.pt', '.pth', '.bin'],
         'text_encoders': ['.safetensors', '.ckpt', '.pt', '.pth', '.bin'],
         'vae': ['.safetensors', '.ckpt', '.pt', '.pth'],
         'clip_vision': ['.safetensors', '.pt', '.pth'],
@@ -76,6 +77,7 @@ def scan_model_directory(base_path: Path) -> Dict[str, List[ModelFile]]:
         'audio_encoders': ['.safetensors', '.pt', '.pth', '.bin'],
         'controlnet': ['.safetensors', '.ckpt', '.pt', '.pth'],
         'ipadapters': ['.safetensors', '.pt', '.pth'],
+        'model_patches': ['.safetensors', '.pt', '.pth'],
     }
 
     models_by_type = {type_name: [] for type_name in model_types.keys()}

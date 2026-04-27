@@ -191,10 +191,7 @@ Suggest presets for missing models in user workflows.
 - model_index.json not synced → Returns empty mapping, shows sync prompt
 
 ## Legacy Preset Manager
-Located in `scripts/preset_manager/` — superseded by Unified Dashboard. Still used by CLI tools:
-- `core.py`: ModelManager class handling CRUD operations for 56+ presets
-- `web_interface.py`: Flask web UI on port 9000 (disabled when dashboard active)
-- `config.py`: Configuration mappings and model path definitions
+Located in `scripts/preset_manager/` — superseded by Unified Dashboard. Still used by CLI tools (`core.py`, `web_interface.py`, `config.py`).
 
 ## Preset Registry System
 
@@ -276,27 +273,13 @@ GitHub Actions runners have ~14GB RAM and no GPU. SageAttention builds require:
 If build fails at ~50min with runner communication loss, reduce parallelism further.
 
 ## Preset Configuration Schema
-```yaml
-presets:
-  PRESET_ID:
-    name: Display Name
-    category: Video Generation|Image Generation|Audio Generation
-    type: video|image|audio
-    description: Model description
-    download_size: 14.5GB
-    files:
-      - path: checkpoints/model.safetensors
-        url: https://huggingface.co/...
-        size: 4.8GB
-    use_case: Primary use case
-    tags: [tag1, tag2]
-```
+Defined in `config/presets.yaml`. Each preset has: `name`, `category` (Video/Image/Audio), `type`, `download_size`, `files` (with `path`, `url`, `size`), `use_case`, `tags`.
 
 ## Automated Build Pipeline
 GitHub Actions workflow (`.github/workflows/build.yml`) provides:
 - Matrix builds across CUDA versions (12.4-13.0)
 - Automatic Docker Hub pushes for successful builds
-- Manual build triggers for large variants (base-12-8)
+- Manual build triggers for large variants
 - Build status monitoring and reliability optimization
 
 **Known Issue**: GitHub Actions runners have ~14GB disk space. Large builds may fail with
@@ -346,7 +329,7 @@ echo "RUNPOD_API_KEY=your_key_here" > .runpod/.env
 ```bash
 # Source environment and deploy
 # GPU preference: RTX 2000 Ada > RTX 4000 Ada > RTX 4090
-# Region: EU-RO-1 recommended (better CUDA 12.8+ driver support)
+# Region: EU-RO-1 recommended (better CUDA 13.0+ driver support)
 source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
   -H "Authorization: Bearer $RUNPOD_API_KEY" \
   -H "Content-Type: application/json" \
@@ -365,8 +348,8 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
 
 ### Image Tag Format
 **CRITICAL:** Image tags use DOTS in Python version: `py3.13` NOT `py313`
-- ✅ Correct: `zeroclue/comfyui:base-py3.13-cu128`
-- ❌ Wrong: `zeroclue/comfyui:base-py313-cu128`
+- ✅ Correct: `zeroclue/comfyui:base-py3.13-cu130`
+- ❌ Wrong: `zeroclue/comfyui:base-py313-cu130`
 
 ## Container Ports
 - **8082**: Unified Dashboard (PRIMARY INTERFACE - FastAPI + htmx + Alpine.js)
@@ -390,12 +373,12 @@ source .runpod/.env && curl -X POST "https://rest.runpod.io/v1/pods" \
 **Module Execution**:
 Dashboard runs as a Python module from `/app`:
 ```bash
-cd /app && PYTHONPATH=/app python3 -m dashboard.main
+cd /app && PYTHONPATH=/app /app/venv/bin/python -m dashboard.main
 ```
 
 Or with uvicorn:
 ```bash
-cd /app && PYTHONPATH=/app uvicorn dashboard.main:app --host 0.0.0.0 --port 8000
+cd /app && PYTHONPATH=/app /app/venv/bin/uvicorn dashboard.main:app --host 0.0.0.0 --port 8000
 ```
 
 ## Unified Dashboard Authentication
@@ -425,7 +408,7 @@ API key in `.runpod/.env`. Use GraphQL (`https://api.runpod.io/graphql`) for que
 - Check `.github/workflows/build.yml` for matrix configuration
 - Review `docker-bake.hcl` for target definitions and CUDA variants
 - Monitor GitHub Actions build logs for disk space and timeout issues
-- Use manual workflow triggers for large variants (base-12-8 requires manual build)
+- Use manual workflow triggers for specific variants
 
 ## Debugging Dependencies
 
@@ -527,3 +510,48 @@ CI resolves latest git tag via `git describe --tags --abbrev=0` and passes it as
 to docker-bake. The `tag()` function produces both floating (`base-py3.13-cu130`) and pinned
 (`base-py3.13-cu130-v1.3.0`) tags when EXTRA_TAG is set. `:latest` tag points to the CUDA 13.0
 build. HCL supports ternary in functions.
+
+## Dockerfile Gotchas
+
+**ARGs in FROM must be global scope**: Docker only resolves ARGs in `FROM` if declared *before*
+the first `FROM`. ARGs inside a build stage work for `RUN` commands but not `FROM`. Put
+`BASE_IMAGE` and `RUNTIME_BASE_IMAGE` at the top of the Dockerfile.
+
+**Quote pip version pins with `<` or `>`**: In Dockerfile `RUN pip install`, unquoted
+`starlette<1.0.0` is interpreted as a shell redirect. Use `"starlette<1.0.0"`.
+
+**Pin starlette<1.0.0**: Starlette 1.0.0 broke Jinja2 template caching (`TypeError: unhashable
+type: 'dict'`). The dashboard fails on every page load with 1.0.0+.
+
+**ComfyUI-Attention-Optimizer is NOT on PyPI**: It's a custom node (git clone), not a pip
+package. `install_sageattention.sh` must skip gracefully for CUDA 13+ instead of trying
+`pip install`. Add it to `custom_nodes.txt` instead.
+
+## Network Volume Sharing with Serverless
+
+Pod mounts volume at `/workspace`, serverless endpoints mount at `/runpod-volume` (same disk).
+Models live at `{mount}/models/` on the volume. Serverless `start.sh` symlinks
+`/comfyui/models/X` → `/runpod-volume/models/X`. Pod uses `/workspace/models/` directly.
+Shared models (e.g. `clip/qwen_2.5_vl_7b_fp8_scaled.safetensors`, `vae/qwen_image_vae.safetensors`)
+download once, reused by both endpoints.
+
+## Dashboard Development Gotchas
+
+**Alpine.js v3, not v2**: The CDN loads Alpine v3. Use `Alpine.$data(el)` not `app.__x.$data`.
+Loops use `<template x-for="item in items" :key="item.id">` not `v-for` (that's Vue.js).
+
+**Jinja2 autoescape is enabled**: `templates.env.autoescape = True` in main.py. Use `| tojson`
+for JS string interpolation in x-data attributes, not raw `{{ }}`.
+
+**Single ConnectionManager in core/websocket.py**: All WebSocket endpoints use one manager with
+channel routing. Do not create separate connection sets in other modules.
+
+**Database uses persistent SQLite connection**: `execute_commit()` returns `lastrowid` directly.
+Don't call `last_insert_rowid()` on a separate query — it returns 0 on a different connection.
+
+**Run blocking calls in executors**: `psutil.cpu_percent()`, `subprocess.run`, SHA256 hashing,
+and SQLite writes are synchronous. Wrap in `loop.run_in_executor(None, ...)` or use
+`asyncio.create_subprocess_exec` to avoid blocking the event loop.
+
+**Path validation required**: Any user-supplied path must be resolved and checked against
+allowed prefixes. Use `Path(path).resolve()` + `startswith(base_path.resolve())`.
